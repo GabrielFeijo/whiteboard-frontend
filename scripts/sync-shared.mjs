@@ -1,13 +1,4 @@
 #!/usr/bin/env node
-/**
- * Sincroniza o módulo shared (e as fixtures de protocolo) a partir do backend,
- * que é a fonte da verdade (ADR-000).
- *
- *   npm run sync:shared            # copia backend/src/shared -> src/shared
- *   npm run sync:shared -- --check # só verifica drift (usado no CI); sai com 1 se divergir
- *
- * Caminho do backend: BACKEND_DIR (padrão ../backend).
- */
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
