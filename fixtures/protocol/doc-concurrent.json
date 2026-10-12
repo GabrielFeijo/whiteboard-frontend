@@ -1,0 +1,27 @@
+{
+  "description": "A move r1 e B pinta r1 ao mesmo tempo; ambas as edições são preservadas.",
+  "base": "AQ/pBwAnAQhlbGVtZW50cwJyMQEoAOkHAAJpZAF3AnIxKADpBwAEdHlwZQF3BHJlY3QoAOkHAAF4AX0AKADpBwABeQF9ACgA6QcAAXcBfaQBKADpBwABaAF9PCgA6QcACHJvdGF0aW9uAX0AKADpBwABegF3AmEwKADpBwAJY3JlYXRlZEJ5AXcCdTEnAOkHAAVzdHlsZQEoAOkHCgRmaWxsAXcHI2ZmZmZmZigA6QcKBnN0cm9rZQF3ByMwMDAwMDAoAOkHCgtzdHJva2VXaWR0aAF9AigA6QcKB29wYWNpdHkBfQEA",
+  "updatesAnyOrder": [
+    "AQLRDwCo6QcDAX0yqOkHBAF9hgEB6QcBAwI=",
+    "AQG5FwCo6QcLAXcHI2ZmMDAwMAHpBwELAQ=="
+  ],
+  "expected": {
+    "r1": {
+      "id": "r1",
+      "type": "rect",
+      "x": 50,
+      "y": 70,
+      "w": 100,
+      "h": 60,
+      "rotation": 0,
+      "z": "a0",
+      "createdBy": "u1",
+      "style": {
+        "fill": "#ff0000",
+        "stroke": "#000000",
+        "strokeWidth": 2,
+        "opacity": 1
+      }
+    }
+  }
+}
