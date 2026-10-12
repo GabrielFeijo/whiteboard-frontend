@@ -2,15 +2,16 @@
 
 import React from "react";
 import { useI18n, Locale } from "../i18n";
+import { BrazilFlagIcon, USFlagIcon } from "./icons";
 
 interface LanguageSwitcherProps {
   className?: string;
   variant?: "pill" | "compact";
 }
 
-const LANGUAGES: { code: Locale; flag: string; label: string }[] = [
-  { code: "pt", flag: "🇧🇷", label: "PT" },
-  { code: "en", flag: "🇺🇸", label: "EN" },
+const LANGUAGES: { code: Locale; icon: React.ReactNode; label: string }[] = [
+  { code: "pt", icon: <BrazilFlagIcon />, label: "PT" },
+  { code: "en", icon: <USFlagIcon />, label: "EN" },
 ];
 
 export function LanguageSwitcher({ className = "", variant = "pill" }: LanguageSwitcherProps) {
@@ -29,13 +30,13 @@ export function LanguageSwitcher({ className = "", variant = "pill" }: LanguageS
               key={lang.code}
               type="button"
               onClick={() => setLocale(lang.code)}
-              className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold transition ${
+              className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold transition ${
                 isActive
                   ? "bg-indigo-600 text-white shadow-xs"
                   : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
               }`}
             >
-              <span>{lang.flag}</span>
+              <span className="inline-flex items-center">{lang.icon}</span>
               <span>{lang.label}</span>
             </button>
           );
@@ -62,7 +63,7 @@ export function LanguageSwitcher({ className = "", variant = "pill" }: LanguageS
                 : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
             }`}
           >
-            <span>{lang.flag}</span>
+            <span className="inline-flex items-center">{lang.icon}</span>
             <span>{lang.label}</span>
           </button>
         );

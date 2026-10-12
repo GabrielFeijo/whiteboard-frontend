@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { SyncProvider } from "../collab/sync-provider";
 import { Role } from "../shared";
 import { useI18n } from "../i18n";
+import { EyeIcon } from "./icons";
 
 interface CollaboratorInfo {
   clientId: number;
@@ -96,8 +97,8 @@ export function CollaboratorsList({
             >
               {initials}
               {isFollowing && (
-                <span className="absolute -bottom-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-indigo-600 text-[8px] text-white">
-                  👁
+                <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-indigo-600 text-white shadow-xs">
+                  <EyeIcon />
                 </span>
               )}
             </button>
