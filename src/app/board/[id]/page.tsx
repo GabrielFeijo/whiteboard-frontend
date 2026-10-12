@@ -11,7 +11,6 @@ import { Toolbar } from "../../../components/toolbar";
 import { PropertiesPalette } from "../../../components/properties-palette";
 import { ZoomControls } from "../../../components/zoom-controls";
 import { CollaboratorsList } from "../../../components/collaborators-list";
-import { ConnectionBadge } from "../../../components/connection-status";
 import { ShareModal } from "../../../components/share-modal";
 import { ExportModal } from "../../../components/export-modal";
 import { VersionHistoryModal } from "../../../components/version-history-modal";
@@ -240,8 +239,6 @@ function BoardStudioInner() {
         </div>
 
         <div className="flex items-center gap-2 pointer-events-auto">
-          {provider && <ConnectionBadge status={provider.status} />}
-
           <CollaboratorsList
             provider={provider}
             followingClientId={followingClientId}
