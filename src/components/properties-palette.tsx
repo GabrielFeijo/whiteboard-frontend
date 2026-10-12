@@ -9,9 +9,69 @@ interface PropertiesPaletteProps {
   engine?: CanvasEngine | null;
 }
 
+interface TextContentEditorProps {
+  initialText: string;
+  onChange: (text: string) => void;
+  engine?: CanvasEngine | null;
+  placeholder: string;
+  title: string;
+}
+
+function TextContentEditor({
+  initialText,
+  onChange,
+  engine,
+  placeholder,
+  title,
+}: TextContentEditorProps) {
+  const [text, setText] = useState(initialText);
+  const textInputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!engine) return;
+    const handleFocus = () => {
+      textInputRef.current?.focus();
+      textInputRef.current?.select();
+    };
+    return engine.events.on("focusTextInput", handleFocus);
+  }, [engine]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      textInputRef.current?.focus();
+      textInputRef.current?.select();
+    }, 50);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const next = e.target.value;
+    setText(next);
+    onChange(next);
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+          {title}
+        </label>
+        <span className="text-[10px] text-zinc-400">{text.length}</span>
+      </div>
+      <textarea
+        ref={textInputRef}
+        value={text}
+        onChange={handleChange}
+        placeholder={placeholder}
+        rows={3}
+        className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-indigo-500 dark:focus:bg-zinc-800 dark:focus:ring-indigo-500/30 selection:bg-indigo-600 selection:text-white resize-y min-h-15"
+      />
+    </div>
+  );
+}
+
 export function PropertiesPalette({ engine }: PropertiesPaletteProps) {
   const { t } = useI18n();
-  const textInputRef = useRef<HTMLTextAreaElement>(null);
   const {
     strokeColor,
     setStrokeColor,
@@ -28,14 +88,6 @@ export function PropertiesPalette({ engine }: PropertiesPaletteProps) {
   const primaryElement = selectedElements[0];
   const currentId = primaryElement?.id ?? null;
 
-  const [prevId, setPrevId] = useState<string | null>(null);
-  const [textValue, setTextValue] = useState("");
-
-  if (currentId !== prevId) {
-    setPrevId(currentId);
-    setTextValue(primaryElement?.text ?? "");
-  }
-
   const isTextual = primaryElement?.type === "sticky" || primaryElement?.type === "text";
   const hasFill =
     !primaryElement ||
@@ -43,27 +95,6 @@ export function PropertiesPalette({ engine }: PropertiesPaletteProps) {
     primaryElement.type === "ellipse" ||
     primaryElement.type === "diamond" ||
     primaryElement.type === "sticky";
-
-  useEffect(() => {
-    const handleFocus = () => {
-      textInputRef.current?.focus();
-      textInputRef.current?.select();
-    };
-    window.addEventListener("wb-focus-text-input", handleFocus);
-    return () => {
-      window.removeEventListener("wb-focus-text-input", handleFocus);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (isTextual && currentId) {
-      const timer = setTimeout(() => {
-        textInputRef.current?.focus();
-        textInputRef.current?.select();
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, [currentId, isTextual]);
 
   const strokeColors = [
     "#0f172a",
@@ -106,11 +137,6 @@ export function PropertiesPalette({ engine }: PropertiesPaletteProps) {
   const handleOpacityChange = (value: number) => {
     setOpacity(value);
     engine?.updateSelectedStyle({ opacity: value });
-  };
-
-  const handleTextChange = (newText: string) => {
-    setTextValue(newText);
-    engine?.updateSelectedText(newText);
   };
 
   const getElementTypeName = (type?: string) => {
@@ -160,25 +186,15 @@ export function PropertiesPalette({ engine }: PropertiesPaletteProps) {
         )}
       </div>
 
-      {isTextual && selectedIds.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between">
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-              {t("properties.textContent")}
-            </label>
-            <span className="text-[10px] text-zinc-400">
-              {textValue.length}
-            </span>
-          </div>
-          <textarea
-            ref={textInputRef}
-            value={textValue}
-            onChange={(e) => handleTextChange(e.target.value)}
-            placeholder={t("properties.typeTextPlaceholder")}
-            rows={3}
-            className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 text-xs text-zinc-900 placeholder:text-zinc-400 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-indigo-500 dark:focus:bg-zinc-800 dark:focus:ring-indigo-500/30 selection:bg-indigo-600 selection:text-white resize-y min-h-15"
-          />
-        </div>
+      {isTextual && selectedIds.length > 0 && currentId && (
+        <TextContentEditor
+          key={currentId}
+          initialText={primaryElement?.text ?? ""}
+          onChange={(newText) => engine?.updateSelectedText(newText)}
+          engine={engine}
+          placeholder={t("properties.typeTextPlaceholder")}
+          title={t("properties.textContent")}
+        />
       )}
 
       <div>
