@@ -8,6 +8,7 @@ import { Viewport } from "./viewport";
 import { SpatialIndex } from "./spatial-index";
 import { renderElement } from "./renderers/element-renderer";
 import { drawFreehand } from "./renderers/freehand-renderer";
+import { measureTextDimensions } from "./renderers/text-renderer";
 import { Tool, useCanvasStore } from "../store/canvas-store";
 import { LocalUndoManager, LOCAL_ORIGIN } from "../collab/undo-manager";
 import { SyncProvider } from "../collab/sync-provider";
@@ -35,7 +36,6 @@ export class CanvasEngine {
   private elementsObserver: Parameters<Y.Map<unknown>["observeDeep"]>[0] | null = null;
   private providerUnsub: (() => void) | null = null;
   private docUpdateHandler: (() => void) | null = null;
-  private activeTextarea: HTMLTextAreaElement | null = null;
 
   constructor(
     private readonly container: HTMLDivElement,
@@ -689,6 +689,7 @@ export class CanvasEngine {
   }
 
   private createStickyNote(worldPt: { x: number; y: number }) {
+    const store = useCanvasStore.getState();
     const id = nanoid(10);
     const z = this.getNextZIndex();
     const elementMap = new Y.Map<unknown>();
@@ -700,10 +701,10 @@ export class CanvasEngine {
     elementMap.set("h", 160);
     elementMap.set("rotation", 0);
     elementMap.set("z", z);
-    elementMap.set("text", "New Sticky Note\nDouble click to edit");
+    elementMap.set("text", "Nota");
     elementMap.set("createdBy", this.userId);
     elementMap.set("style", {
-      fill: "#fef08a",
+      fill: store.fillColor === "transparent" ? "#fef08a" : store.fillColor || "#fef08a",
       stroke: "rgba(0,0,0,0.1)",
       strokeWidth: 1,
       opacity: 1,
@@ -714,26 +715,33 @@ export class CanvasEngine {
     }, LOCAL_ORIGIN);
 
     this.spatialIndex.insert(id, worldPt.x, worldPt.y, 180, 160);
+    store.setSelectedIds([id]);
+    this.syncStoreWithSelection([id]);
     this.isDirty = true;
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("wb-focus-text-input"));
+    }, 50);
   }
 
   private createTextElement(worldPt: { x: number; y: number }) {
+    const store = useCanvasStore.getState();
     const id = nanoid(10);
     const z = this.getNextZIndex();
+    const dims = measureTextDimensions("Texto");
     const elementMap = new Y.Map<unknown>();
     elementMap.set("id", id);
     elementMap.set("type", "text");
     elementMap.set("x", Math.round(worldPt.x));
     elementMap.set("y", Math.round(worldPt.y));
-    elementMap.set("w", 120);
-    elementMap.set("h", 30);
+    elementMap.set("w", dims.w);
+    elementMap.set("h", dims.h);
     elementMap.set("rotation", 0);
     elementMap.set("z", z);
-    elementMap.set("text", "Text Element");
+    elementMap.set("text", "Texto");
     elementMap.set("createdBy", this.userId);
     elementMap.set("style", {
       fill: "transparent",
-      stroke: "#0f172a",
+      stroke: store.strokeColor || "#0f172a",
       strokeWidth: 1,
       opacity: 1,
     });
@@ -742,8 +750,13 @@ export class CanvasEngine {
       getDocRoots(this.doc).elements.set(id, elementMap);
     }, LOCAL_ORIGIN);
 
-    this.spatialIndex.insert(id, worldPt.x, worldPt.y, 120, 30);
+    this.spatialIndex.insert(id, worldPt.x, worldPt.y, dims.w, dims.h);
+    store.setSelectedIds([id]);
+    this.syncStoreWithSelection([id]);
     this.isDirty = true;
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("wb-focus-text-input"));
+    }, 50);
   }
 
   public zoomIn() {
@@ -841,6 +854,16 @@ export class CanvasEngine {
         const map = roots.elements.get(id);
         if (map) {
           map.set("text", text);
+          const type = map.get("type") as string;
+          if (type === "text") {
+            const dims = measureTextDimensions(text);
+            const x = map.get("x") as number;
+            const y = map.get("y") as number;
+            map.set("w", dims.w);
+            map.set("h", dims.h);
+            this.spatialIndex.remove(id);
+            this.spatialIndex.insert(id, x, y, dims.w, dims.h);
+          }
         }
       });
     }, LOCAL_ORIGIN);
@@ -1000,83 +1023,15 @@ export class CanvasEngine {
 
     const el = map.toJSON() as ElementData;
     if (el.type === "sticky" || el.type === "text") {
-      this.startInlineTextEdit(hitId, el);
+      const store = useCanvasStore.getState();
+      store.setSelectedIds([hitId]);
+      this.syncStoreWithSelection([hitId]);
+      window.dispatchEvent(new CustomEvent("wb-focus-text-input"));
     }
   };
 
-  private startInlineTextEdit(id: string, el: ElementData) {
-    if (this.activeTextarea) {
-      this.finishInlineTextEdit();
-    }
-
-    const screenPos = this.viewport.worldToScreen({ x: el.x, y: el.y });
-    const zoom = this.viewport.zoom;
-
-    const textarea = document.createElement("textarea");
-    textarea.value = el.text || "";
-    textarea.style.position = "absolute";
-    textarea.style.left = `${screenPos.x}px`;
-    textarea.style.top = `${screenPos.y}px`;
-    textarea.style.width = `${Math.max(el.w * zoom, 120)}px`;
-    textarea.style.height = `${Math.max(el.h * zoom, 40)}px`;
-    textarea.style.zIndex = "35";
-    textarea.style.padding = el.type === "sticky" ? `${12 * zoom}px` : "2px";
-    textarea.style.background = el.type === "sticky" ? (el.style.fill || "#fef08a") : "rgba(255, 255, 255, 0.95)";
-    textarea.style.color = el.type === "sticky" ? "#1e293b" : (el.style.stroke || "#000000");
-    textarea.style.font = el.type === "sticky" ? `${14 * zoom}px Inter, sans-serif` : `${16 * zoom}px Inter, sans-serif`;
-    textarea.style.lineHeight = el.type === "sticky" ? `${20 * zoom}px` : `${22 * zoom}px`;
-    textarea.style.border = "2px solid #6366f1";
-    textarea.style.borderRadius = el.type === "sticky" ? "4px" : "2px";
-    textarea.style.outline = "none";
-    textarea.style.boxShadow = "0 8px 24px rgba(0,0,0,0.18)";
-    textarea.style.resize = "none";
-
-    const commitChange = () => {
-      const roots = getDocRoots(this.doc);
-      const map = roots.elements.get(id);
-      if (map) {
-        this.doc.transact(() => {
-          map.set("text", textarea.value);
-        }, LOCAL_ORIGIN);
-        this.isDirty = true;
-      }
-    };
-
-    textarea.addEventListener("input", commitChange);
-
-    textarea.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        this.finishInlineTextEdit();
-      } else if (e.key === "Enter" && !e.shiftKey && el.type === "text") {
-        e.preventDefault();
-        this.finishInlineTextEdit();
-      }
-    });
-
-    textarea.addEventListener("blur", () => {
-      this.finishInlineTextEdit();
-    });
-
-    this.container.appendChild(textarea);
-    this.activeTextarea = textarea;
-    textarea.focus();
-    textarea.select();
-  }
-
-  private finishInlineTextEdit() {
-    if (this.activeTextarea) {
-      if (this.activeTextarea.parentElement) {
-        this.activeTextarea.parentElement.removeChild(this.activeTextarea);
-      }
-      this.activeTextarea = null;
-      this.isDirty = true;
-    }
-  }
-
   destroy() {
     this.isDestroyed = true;
-    this.finishInlineTextEdit();
     if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
     window.removeEventListener("resize", this.handleResize);
     this.overlayCanvas.removeEventListener("pointerdown", this.onPointerDown);

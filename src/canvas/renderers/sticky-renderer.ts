@@ -16,11 +16,16 @@ export function drawSticky(ctx: CanvasRenderingContext2D, el: ElementData) {
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  if (el.text) {
+  ctx.font = "14px Inter, sans-serif";
+  ctx.textBaseline = "top";
+  const text = el.text ?? "";
+
+  if (!text) {
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillText("Nota...", el.x + 12, el.y + 12, el.w - 24);
+  } else {
     ctx.fillStyle = "#1e293b";
-    ctx.font = "14px Inter, sans-serif";
-    ctx.textBaseline = "top";
-    const lines = el.text.split("\n");
+    const lines = text.split("\n");
     lines.forEach((line, idx) => {
       ctx.fillText(line, el.x + 12, el.y + 12 + idx * 20, el.w - 24);
     });
