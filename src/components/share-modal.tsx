@@ -47,7 +47,7 @@ export function ShareModal({ boardId, boardTitle, isOpen, onClose }: ShareModalP
     const hours = data.expiresHours ? parseInt(data.expiresHours, 10) : undefined;
     const res = await createMutation.mutateAsync({
       role: data.role as Role,
-      expiresInDays: hours ? Math.ceil(hours / 24) : undefined,
+      expiresInHours: hours,
     });
     setCreatedToken(res.token);
   };

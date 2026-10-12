@@ -31,11 +31,13 @@ export function useBoardsQuery(cursor?: string, limit = 20) {
   });
 }
 
-export function useBoardQuery(boardId: string, enabled = true) {
+export function useBoardQuery(boardId: string, token?: string, enabled = true) {
   return useQuery({
-    queryKey: ["board", boardId],
+    queryKey: ["board", boardId, token],
     queryFn: async () => {
-      const response = await api.get<BoardDetail>(`/boards/${boardId}`);
+      const response = await api.get<BoardDetail>(`/boards/${boardId}`, {
+        params: token ? { token } : undefined,
+      });
       return response.data;
     },
     enabled: Boolean(boardId) && enabled,

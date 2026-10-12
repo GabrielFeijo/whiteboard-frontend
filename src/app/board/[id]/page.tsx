@@ -43,7 +43,10 @@ function BoardStudioInner() {
   const linkToken = searchParams.get("token") || undefined;
 
   const { user, isInitialized, init } = useAuthStore();
-  const { data: board, isLoading: isBoardLoading, error: boardError } = useBoardQuery(boardId);
+  const { data: board, isLoading: isBoardLoading, error: boardError } = useBoardQuery(
+    boardId,
+    linkToken,
+  );
 
   const [showShareModal, setShowShareModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);

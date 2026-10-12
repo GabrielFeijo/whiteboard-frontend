@@ -28,7 +28,7 @@ export function useShareLinksQuery(boardId: string, enabled = true) {
 export function useCreateShareLinkMutation(boardId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (dto: { role?: Role; expiresInDays?: number }) => {
+    mutationFn: async (dto: { role?: Role; expiresInHours?: number }) => {
       const response = await api.post<CreatedShareLink>(`/boards/${boardId}/links`, dto);
       return response.data;
     },
