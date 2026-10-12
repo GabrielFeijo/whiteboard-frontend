@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
-import { ConnectionStatus } from '../collab/sync-provider';
+import type { ConnectionStatus as ConnectionStatusType } from '../collab/sync-provider';
 
 interface ConnectionStatusProps {
-  status: ConnectionStatus;
+  status: ConnectionStatusType;
 }
 
 export function ConnectionBadge({ status }: ConnectionStatusProps) {
@@ -40,3 +40,5 @@ export function ConnectionBadge({ status }: ConnectionStatusProps) {
       );
   }
 }
+
+export const ConnectionStatus = ConnectionBadge;
