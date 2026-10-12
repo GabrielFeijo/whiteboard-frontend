@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { useCanvasStore } from '../store/canvas-store';
+import React from "react";
+import { useCanvasStore } from "../store/canvas-store";
 
 interface ZoomControlsProps {
   onZoomIn?: () => void;
@@ -43,7 +43,13 @@ export function ZoomControls({ onZoomIn, onZoomOut, onResetZoom }: ZoomControlsP
         title="Zoom Out (-)"
         className="flex h-8 w-8 items-center justify-center rounded-xl text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
       >
-        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg
+          className="h-4 w-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           <line x1="5" y1="12" x2="19" y2="12" />
         </svg>
       </button>
@@ -61,7 +67,13 @@ export function ZoomControls({ onZoomIn, onZoomOut, onResetZoom }: ZoomControlsP
         title="Zoom In (+)"
         className="flex h-8 w-8 items-center justify-center rounded-xl text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
       >
-        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg
+          className="h-4 w-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           <line x1="12" y1="5" x2="12" y2="19" />
           <line x1="5" y1="12" x2="19" y2="12" />
         </svg>

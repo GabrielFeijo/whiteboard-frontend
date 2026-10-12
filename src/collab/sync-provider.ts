@@ -1,19 +1,14 @@
-import * as Y from 'yjs';
-import * as syncProtocol from 'y-protocols/sync';
-import * as awarenessProtocol from 'y-protocols/awareness';
-import * as encoding from 'lib0/encoding';
-import * as decoding from 'lib0/decoding';
-import { IndexeddbPersistence } from 'y-indexeddb';
-import { apiFetch, WS_URL } from '../lib/api/client';
-import { MSG, WS_CLOSE, Role } from '../shared';
+import * as Y from "yjs";
+import * as syncProtocol from "y-protocols/sync";
+import * as awarenessProtocol from "y-protocols/awareness";
+import * as encoding from "lib0/encoding";
+import * as decoding from "lib0/decoding";
+import { IndexeddbPersistence } from "y-indexeddb";
+import { api, WS_URL } from "../lib/api/client";
+import { MSG, WS_CLOSE, Role } from "../shared";
 
 export type ConnectionStatus =
-  | 'connecting'
-  | 'connected'
-  | 'syncing'
-  | 'synced'
-  | 'offline'
-  | 'forbidden';
+  "connecting" | "connected" | "syncing" | "synced" | "offline" | "forbidden";
 
 export class SyncProvider {
   readonly doc: Y.Doc;
@@ -23,8 +18,8 @@ export class SyncProvider {
   private reconnectDelay = 1000;
   private isDestroyed = false;
   private indexeddbProvider: IndexeddbPersistence | null = null;
-  status: ConnectionStatus = 'connecting';
-  role: Role = 'VIEWER';
+  status: ConnectionStatus = "connecting";
+  role: Role = "VIEWER";
   private listeners = new Set<(status: ConnectionStatus) => void>();
 
   constructor(
@@ -34,17 +29,14 @@ export class SyncProvider {
     this.doc = new Y.Doc();
     this.awareness = new awarenessProtocol.Awareness(this.doc);
 
-    // Setup local offline cache via IndexedDB (doc §12)
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       this.indexeddbProvider = new IndexeddbPersistence(`wb-${boardId}`, this.doc);
     }
 
-    // Connect WebSocket
     this.connect();
 
-    // Broadcast local Y.Doc mutations to server
-    this.doc.on('update', (update: Uint8Array, origin: unknown) => {
-      if (origin !== this && this.ws?.readyState === WebSocket.OPEN && this.role !== 'VIEWER') {
+    this.doc.on("update", (update: Uint8Array, origin: unknown) => {
+      if (origin !== this && this.ws?.readyState === WebSocket.OPEN && this.role !== "VIEWER") {
         const encoder = encoding.createEncoder();
         encoding.writeVarUint(encoder, MSG.SYNC);
         syncProtocol.writeUpdate(encoder, update);
@@ -52,19 +44,24 @@ export class SyncProvider {
       }
     });
 
-    // Broadcast awareness updates (cursors, selection)
-    this.awareness.on('update', ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[] }, origin: unknown) => {
-      if (origin !== this && this.ws?.readyState === WebSocket.OPEN) {
-        const changedClients = added.concat(updated).concat(removed);
-        const encoder = encoding.createEncoder();
-        encoding.writeVarUint(encoder, MSG.AWARENESS);
-        encoding.writeVarUint8Array(
-          encoder,
-          awarenessProtocol.encodeAwarenessUpdate(this.awareness, changedClients),
-        );
-        this.ws.send(encoding.toUint8Array(encoder));
-      }
-    });
+    this.awareness.on(
+      "update",
+      (
+        { added, updated, removed }: { added: number[]; updated: number[]; removed: number[] },
+        origin: unknown,
+      ) => {
+        if (origin !== this && this.ws?.readyState === WebSocket.OPEN) {
+          const changedClients = added.concat(updated).concat(removed);
+          const encoder = encoding.createEncoder();
+          encoding.writeVarUint(encoder, MSG.AWARENESS);
+          encoding.writeVarUint8Array(
+            encoder,
+            awarenessProtocol.encodeAwarenessUpdate(this.awareness, changedClients),
+          );
+          this.ws.send(encoding.toUint8Array(encoder));
+        }
+      },
+    );
   }
 
   onStatusChange(cb: (status: ConnectionStatus) => void) {
@@ -80,46 +77,36 @@ export class SyncProvider {
 
   private async connect() {
     if (this.isDestroyed) return;
-    this.setStatus('connecting');
+    this.setStatus("connecting");
 
     try {
-      // 1. Fetch single-use ticket
-      const res = await apiFetch<{ ticket: string; role: Role }>(
+      const res = await api.post<{ ticket: string; role: Role }>(
         `/boards/${this.boardId}/ws-ticket`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ token: this.shareToken }),
-        },
+        { token: this.shareToken },
       );
-      this.role = res.role;
+      this.role = res.data.role;
 
-      // 2. Open WebSocket
-      const url = `${WS_URL}?ticket=${res.ticket}`;
+      const url = `${WS_URL}?ticket=${res.data.ticket}`;
       const ws = new WebSocket(url);
-      ws.binaryType = 'arraybuffer';
+      ws.binaryType = "arraybuffer";
       this.ws = ws;
 
       ws.onopen = () => {
         this.reconnectDelay = 1000;
-        this.setStatus('syncing');
+        this.setStatus("syncing");
 
-        // Send local SyncStep1 (state vector) to server
         const encoder = encoding.createEncoder();
         encoding.writeVarUint(encoder, MSG.SYNC);
         syncProtocol.writeSyncStep1(encoder, this.doc);
         ws.send(encoding.toUint8Array(encoder));
 
-        // Send local awareness state
         const states = this.awareness.getStates();
         if (states.size > 0) {
           const awEncoder = encoding.createEncoder();
           encoding.writeVarUint(awEncoder, MSG.AWARENESS);
           encoding.writeVarUint8Array(
             awEncoder,
-            awarenessProtocol.encodeAwarenessUpdate(
-              this.awareness,
-              Array.from(states.keys()),
-            ),
+            awarenessProtocol.encodeAwarenessUpdate(this.awareness, Array.from(states.keys())),
           );
           ws.send(encoding.toUint8Array(awEncoder));
         }
@@ -137,8 +124,8 @@ export class SyncProvider {
           if (encoding.length(encoder) > 1 && ws.readyState === WebSocket.OPEN) {
             ws.send(encoding.toUint8Array(encoder));
           }
-          if (this.status === 'syncing') {
-            this.setStatus('synced');
+          if (this.status === "syncing") {
+            this.setStatus("synced");
           }
         } else if (messageType === MSG.AWARENESS) {
           awarenessProtocol.applyAwarenessUpdate(
@@ -151,19 +138,19 @@ export class SyncProvider {
 
       ws.onclose = (event) => {
         if (event.code === WS_CLOSE.FORBIDDEN) {
-          this.setStatus('forbidden');
+          this.setStatus("forbidden");
           return;
         }
-        this.setStatus('offline');
+        this.setStatus("offline");
         this.scheduleReconnect();
       };
 
       ws.onerror = () => {
-        this.setStatus('offline');
+        this.setStatus("offline");
         ws.close();
       };
     } catch {
-      this.setStatus('offline');
+      this.setStatus("offline");
       this.scheduleReconnect();
     }
   }

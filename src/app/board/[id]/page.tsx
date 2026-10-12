@@ -1,37 +1,29 @@
-'use client';
+"use client";
 
-import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useAuthStore } from '../../../store/auth-store';
-import { apiFetch } from '../../../lib/api/client';
-import { Role } from '../../../shared';
-import { SyncProvider } from '../../../collab/sync-provider';
-import { CanvasEngine } from '../../../canvas/canvas-engine';
-import { Toolbar } from '../../../components/toolbar';
-import { PropertiesPalette } from '../../../components/properties-palette';
-import { ZoomControls } from '../../../components/zoom-controls';
-import { CollaboratorsList } from '../../../components/collaborators-list';
-import { ConnectionBadge } from '../../../components/connection-status';
-import { ShareModal } from '../../../components/share-modal';
-import { ExportModal } from '../../../components/export-modal';
-import { VersionHistoryModal } from '../../../components/version-history-modal';
-
-interface BoardDetail {
-  id: string;
-  title: string;
-  role: Role;
-  ownerId: string;
-}
+import React, { useEffect, useRef, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useAuthStore } from "../../../store/auth-store";
+import { useBoardQuery } from "../../../hooks/use-boards";
+import { SyncProvider } from "../../../collab/sync-provider";
+import { CanvasEngine } from "../../../canvas/canvas-engine";
+import { Toolbar } from "../../../components/toolbar";
+import { PropertiesPalette } from "../../../components/properties-palette";
+import { ZoomControls } from "../../../components/zoom-controls";
+import { CollaboratorsList } from "../../../components/collaborators-list";
+import { ConnectionBadge } from "../../../components/connection-status";
+import { ShareModal } from "../../../components/share-modal";
+import { ExportModal } from "../../../components/export-modal";
+import { VersionHistoryModal } from "../../../components/version-history-modal";
 
 const AVATAR_COLORS = [
-  '#ef4444',
-  '#f59e0b',
-  '#10b981',
-  '#3b82f6',
-  '#8b5cf6',
-  '#ec4899',
-  '#06b6d4',
-  '#84cc16',
+  "#ef4444",
+  "#f59e0b",
+  "#10b981",
+  "#3b82f6",
+  "#8b5cf6",
+  "#ec4899",
+  "#06b6d4",
+  "#84cc16",
 ];
 
 function getUserColor(id?: string) {
@@ -48,21 +40,16 @@ function BoardStudioInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const boardId = params.id as string;
-  const linkToken = searchParams.get('token') || undefined;
+  const linkToken = searchParams.get("token") || undefined;
 
   const { user, isInitialized, init } = useAuthStore();
+  const { data: board, isLoading: isBoardLoading, error: boardError } = useBoardQuery(boardId);
 
-  const [board, setBoard] = useState<BoardDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Modals state
   const [showShareModal, setShowShareModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showProperties, setShowProperties] = useState(true);
 
-  // Collab & Canvas references
   const containerRef = useRef<HTMLDivElement>(null);
   const bgCanvasRef = useRef<HTMLCanvasElement>(null);
   const contentCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -70,8 +57,6 @@ function BoardStudioInner() {
 
   const [provider, setProvider] = useState<SyncProvider | null>(null);
   const [engine, setEngine] = useState<CanvasEngine | null>(null);
-
-  // Follow Presenter mode
   const [followingClientId, setFollowingClientId] = useState<number | null>(null);
 
   const localColor = getUserColor(user?.id);
@@ -80,54 +65,29 @@ function BoardStudioInner() {
     init();
   }, [init]);
 
-  // Load Board details and initialize SyncProvider
   useEffect(() => {
-    if (!isInitialized || !boardId) return;
+    if (!isInitialized || !boardId || !board) return;
 
-    let ignore = false;
+    const sync = new SyncProvider(boardId, linkToken);
 
-    async function setupBoardAndCollab() {
-      try {
-        // 1. Fetch board metadata
-        const boardData = await apiFetch<BoardDetail>(`/boards/${boardId}`);
-        if (ignore) return;
-        setBoard(boardData);
+    sync.awareness.setLocalStateField("user", {
+      id: user?.id || "guest",
+      name: user?.name || "Guest User",
+      email: user?.email,
+      color: localColor,
+      role: board.role,
+    });
 
-        // 2. Initialize SyncProvider
-        const sync = new SyncProvider(boardId, linkToken);
-
-        sync.awareness.setLocalStateField('user', {
-          id: user?.id || 'guest',
-          name: user?.name || 'Guest User',
-          email: user?.email,
-          color: localColor,
-          role: boardData.role,
-        });
-
-        if (ignore) {
-          sync.destroy();
-          return;
-        }
-
-        setProvider(sync);
-        setLoading(false);
-      } catch (err: unknown) {
-        if (!ignore) {
-          const msg = err instanceof Error ? err.message : 'Failed to connect to board';
-          setError(msg);
-          setLoading(false);
-        }
-      }
-    }
-
-    setupBoardAndCollab();
+    queueMicrotask(() => {
+      setProvider(sync);
+    });
 
     return () => {
-      ignore = true;
+      sync.destroy();
+      setProvider(null);
     };
-  }, [boardId, isInitialized, user, linkToken, localColor]);
+  }, [boardId, isInitialized, user, linkToken, localColor, board]);
 
-  // Instantiate CanvasEngine once canvases and provider are ready
   useEffect(() => {
     if (
       !provider ||
@@ -148,12 +108,10 @@ function BoardStudioInner() {
       provider.doc,
       provider,
       board.role,
-      user?.id || 'guest',
+      user?.id || "guest",
     );
 
-    // Initial broadcast of viewport
     canvasEngine.broadcastViewport();
-
     setEngine(canvasEngine);
 
     return () => {
@@ -162,7 +120,6 @@ function BoardStudioInner() {
     };
   }, [provider, board, user?.id]);
 
-  // Follow Presenter awareness listener
   useEffect(() => {
     if (!provider || !engine || followingClientId === null) return;
 
@@ -174,25 +131,15 @@ function BoardStudioInner() {
       }
     };
 
-    provider.awareness.on('change', onAwarenessChange);
-    // Apply immediate target viewport if available
+    provider.awareness.on("change", onAwarenessChange);
     onAwarenessChange();
 
     return () => {
-      provider.awareness.off('change', onAwarenessChange);
+      provider.awareness.off("change", onAwarenessChange);
     };
   }, [provider, engine, followingClientId]);
 
-  // Clean up provider on unmount
-  useEffect(() => {
-    return () => {
-      if (provider) {
-        provider.destroy();
-      }
-    };
-  }, [provider]);
-
-  if (loading) {
+  if (isBoardLoading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-slate-50 dark:bg-zinc-950">
         <div className="flex flex-col items-center gap-3">
@@ -203,16 +150,16 @@ function BoardStudioInner() {
     );
   }
 
-  if (error || !board) {
+  if (boardError || !board) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-slate-50 dark:bg-zinc-950 p-4">
         <div className="max-w-md rounded-2xl border border-red-200 bg-white p-6 text-center shadow-lg dark:border-red-900/50 dark:bg-zinc-900">
           <h2 className="text-base font-bold text-red-600 dark:text-red-400">Connection Error</h2>
           <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
-            {error || 'Could not join board workspace.'}
+            {boardError ? (boardError as Error).message : "Could not join board workspace."}
           </p>
           <button
-            onClick={() => router.push('/boards')}
+            onClick={() => router.push("/boards")}
             className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500"
           >
             Back to Dashboard
@@ -222,30 +169,30 @@ function BoardStudioInner() {
     );
   }
 
-  const isReadOnly = board.role === 'VIEWER';
+  const isReadOnly = board.role === "VIEWER";
 
   return (
     <div className="relative h-screen w-screen overflow-hidden select-none bg-slate-50 dark:bg-zinc-950">
-      {/* 1. Canvas 3-Layer Container */}
       <div ref={containerRef} className="absolute inset-0 h-full w-full">
         <canvas ref={bgCanvasRef} className="absolute inset-0 pointer-events-none" />
         <canvas ref={contentCanvasRef} className="absolute inset-0 pointer-events-none" />
-        <canvas
-          ref={overlayCanvasRef}
-          className="absolute inset-0 cursor-crosshair touch-none"
-        />
+        <canvas ref={overlayCanvasRef} className="absolute inset-0 cursor-crosshair touch-none" />
       </div>
 
-      {/* 2. Top Header Navigation Bar */}
       <header className="absolute top-3 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
-        {/* Left: Back & Board Title */}
         <div className="flex items-center gap-3 pointer-events-auto rounded-2xl border border-zinc-200/80 bg-white/95 px-3.5 py-1.5 shadow-sm backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-900/95">
           <button
-            onClick={() => router.push('/boards')}
+            onClick={() => router.push("/boards")}
             title="Back to boards"
             className="rounded-lg p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
           >
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
           </button>
@@ -263,7 +210,6 @@ function BoardStudioInner() {
           )}
         </div>
 
-        {/* Center: Top Toolbar */}
         <div className="pointer-events-auto">
           <Toolbar
             readOnly={isReadOnly}
@@ -274,7 +220,6 @@ function BoardStudioInner() {
           />
         </div>
 
-        {/* Right: Status, Collaborators & Actions */}
         <div className="flex items-center gap-2 pointer-events-auto">
           {provider && <ConnectionBadge status={provider.status} />}
 
@@ -285,36 +230,51 @@ function BoardStudioInner() {
           />
 
           <div className="flex items-center gap-1 rounded-2xl border border-zinc-200/80 bg-white/95 p-1 shadow-sm backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-900/95">
-            {/* Version History */}
             <button
               onClick={() => setShowHistoryModal(true)}
               title="Version History"
               className="rounded-xl p-1.5 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                className="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 14 14" />
               </svg>
             </button>
 
-            {/* Export */}
             <button
               onClick={() => setShowExportModal(true)}
               title="Export Canvas (PNG / SVG)"
               className="rounded-xl p-1.5 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                className="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
               </svg>
             </button>
 
-            {/* Share */}
-            {board.role === 'OWNER' && (
+            {board.role === "OWNER" && (
               <button
                 onClick={() => setShowShareModal(true)}
                 className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 shadow-sm"
               >
-                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  className="h-3.5 w-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13" />
                 </svg>
                 <span>Share</span>
@@ -324,7 +284,6 @@ function BoardStudioInner() {
         </div>
       </header>
 
-      {/* 3. Floating Properties Palette (Left Side) */}
       {!isReadOnly && (
         <div className="absolute left-4 top-18 z-20">
           <div className="flex items-center gap-1">
@@ -333,7 +292,13 @@ function BoardStudioInner() {
               className="flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-200/80 bg-white/95 text-zinc-600 shadow-md backdrop-blur-md hover:bg-zinc-100 dark:border-zinc-800/80 dark:bg-zinc-900/95 dark:text-zinc-300"
               title="Toggle Style Palette"
             >
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                className="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
               </svg>
             </button>
@@ -346,7 +311,6 @@ function BoardStudioInner() {
         </div>
       )}
 
-      {/* 4. Bottom Right: Zoom Controls */}
       <div className="absolute right-4 bottom-4 z-20">
         <ZoomControls
           onZoomIn={() => engine?.zoomIn()}
@@ -355,7 +319,6 @@ function BoardStudioInner() {
         />
       </div>
 
-      {/* 5. Modals */}
       {showShareModal && (
         <ShareModal
           isOpen={showShareModal}

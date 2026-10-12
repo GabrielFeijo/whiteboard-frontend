@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -11,7 +11,8 @@ export default function Home() {
           Collaborative Infinite Canvas for Teams
         </h1>
         <p className="text-lg text-zinc-600 dark:text-zinc-400">
-          Draw, write, brainstorm, and create in real-time with conflict-free synchronization, offline support, and live presence.
+          Draw, write, brainstorm, and create in real-time with conflict-free synchronization,
+          offline support, and live presence.
         </p>
 
         <div className="flex items-center justify-center gap-4 pt-4">

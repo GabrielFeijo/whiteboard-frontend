@@ -1,17 +1,17 @@
-import { create } from 'zustand';
+import { create } from "zustand";
 
 export type Tool =
-  | 'select'
-  | 'hand'
-  | 'rect'
-  | 'ellipse'
-  | 'diamond'
-  | 'line'
-  | 'arrow'
-  | 'text'
-  | 'sticky'
-  | 'freehand'
-  | 'eraser';
+  | "select"
+  | "hand"
+  | "rect"
+  | "ellipse"
+  | "diamond"
+  | "line"
+  | "arrow"
+  | "text"
+  | "sticky"
+  | "freehand"
+  | "eraser";
 
 interface CanvasState {
   activeTool: Tool;
@@ -29,14 +29,16 @@ interface CanvasState {
   setOpacity: (opacity: number) => void;
   setSelectedIds: (ids: string[]) => void;
   setZoom: (zoom: number | ((prev: number) => number)) => void;
-  setPan: (pan: { x: number; y: number } | ((prev: { x: number; y: number }) => { x: number; y: number })) => void;
+  setPan: (
+    pan: { x: number; y: number } | ((prev: { x: number; y: number }) => { x: number; y: number }),
+  ) => void;
   resetViewport: () => void;
 }
 
 export const useCanvasStore = create<CanvasState>((set) => ({
-  activeTool: 'select',
-  strokeColor: '#1e293b',
-  fillColor: '#ffffff',
+  activeTool: "select",
+  strokeColor: "#1e293b",
+  fillColor: "#ffffff",
   strokeWidth: 2,
   opacity: 1,
   selectedIds: [],
@@ -51,11 +53,14 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   setSelectedIds: (selectedIds) => set({ selectedIds }),
   setZoom: (updater) =>
     set((state) => ({
-      zoom: Math.min(Math.max(typeof updater === 'function' ? updater(state.zoom) : updater, 0.1), 5.0),
+      zoom: Math.min(
+        Math.max(typeof updater === "function" ? updater(state.zoom) : updater, 0.1),
+        5.0,
+      ),
     })),
   setPan: (updater) =>
     set((state) => ({
-      pan: typeof updater === 'function' ? updater(state.pan) : updater,
+      pan: typeof updater === "function" ? updater(state.pan) : updater,
     })),
   resetViewport: () => set({ zoom: 1, pan: { x: 0, y: 0 } }),
 }));

@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import * as Y from 'yjs';
-import DOMPurify from 'dompurify';
-import { ElementData, getDocRoots } from '../shared';
-import { renderElement } from '../canvas/renderers/element-renderer';
+import React, { useState } from "react";
+import * as Y from "yjs";
+import DOMPurify from "dompurify";
+import { ElementData, getDocRoots } from "../shared";
+import { renderElement } from "../canvas/renderers/element-renderer";
 
 interface ExportModalProps {
   doc: Y.Doc;
@@ -56,16 +56,16 @@ export function ExportModal({ doc, boardTitle, onClose }: ExportModalProps) {
       const elements = getElements();
       const bounds = computeBoundingBox(elements);
 
-      const canvas = document.createElement('canvas');
-      const dpr = 2; // high-res 2x
+      const canvas = document.createElement("canvas");
+      const dpr = 2;
       canvas.width = bounds.width * dpr;
       canvas.height = bounds.height * dpr;
 
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas 2D context not available');
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas 2D context not available");
 
       ctx.scale(dpr, dpr);
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, bounds.width, bounds.height);
 
       ctx.save();
@@ -78,16 +78,16 @@ export function ExportModal({ doc, boardTitle, onClose }: ExportModalProps) {
       canvas.toBlob((blob) => {
         if (!blob) return;
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = url;
-        a.download = `${boardTitle.toLowerCase().replace(/\s+/g, '-') || 'whiteboard'}.png`;
+        a.download = `${boardTitle.toLowerCase().replace(/\s+/g, "-") || "whiteboard"}.png`;
         a.click();
         URL.revokeObjectURL(url);
         setIsExporting(false);
         onClose();
-      }, 'image/png');
+      }, "image/png");
     } catch (err) {
-      console.error('PNG export failed', err);
+      console.error("PNG export failed", err);
       setIsExporting(false);
     }
   };
@@ -98,31 +98,31 @@ export function ExportModal({ doc, boardTitle, onClose }: ExportModalProps) {
       const elements = getElements();
       const bounds = computeBoundingBox(elements);
 
-      let svgElements = '';
+      let svgElements = "";
       elements.forEach((el) => {
-        const fill = el.style.fill || 'transparent';
-        const stroke = el.style.stroke || '#0f172a';
+        const fill = el.style.fill || "transparent";
+        const stroke = el.style.stroke || "#0f172a";
         const strokeWidth = el.style.strokeWidth || 2;
         const opacity = el.style.opacity ?? 1;
 
-        if (el.type === 'rect') {
+        if (el.type === "rect") {
           svgElements += `<rect x="${el.x}" y="${el.y}" width="${el.w}" height="${el.h}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" opacity="${opacity}" rx="4" />\n`;
-        } else if (el.type === 'ellipse') {
+        } else if (el.type === "ellipse") {
           svgElements += `<ellipse cx="${el.x + el.w / 2}" cy="${el.y + el.h / 2}" rx="${el.w / 2}" ry="${el.h / 2}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" opacity="${opacity}" />\n`;
-        } else if (el.type === 'diamond') {
+        } else if (el.type === "diamond") {
           const cx = el.x + el.w / 2;
           const cy = el.y + el.h / 2;
           const d = `M ${cx} ${el.y} L ${el.x + el.w} ${cy} L ${cx} ${el.y + el.h} L ${el.x} ${cy} Z`;
           svgElements += `<path d="${d}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" opacity="${opacity}" />\n`;
-        } else if (el.type === 'line' || el.type === 'arrow') {
+        } else if (el.type === "line" || el.type === "arrow") {
           svgElements += `<line x1="${el.x}" y1="${el.y}" x2="${el.x + el.w}" y2="${el.y + el.h}" stroke="${stroke}" stroke-width="${strokeWidth}" opacity="${opacity}" />\n`;
-        } else if (el.type === 'sticky') {
-          svgElements += `<rect x="${el.x}" y="${el.y}" width="${el.w}" height="${el.h}" fill="${fill || '#fef08a'}" stroke="${stroke}" stroke-width="${strokeWidth}" rx="4" />\n`;
+        } else if (el.type === "sticky") {
+          svgElements += `<rect x="${el.x}" y="${el.y}" width="${el.w}" height="${el.h}" fill="${fill || "#fef08a"}" stroke="${stroke}" stroke-width="${strokeWidth}" rx="4" />\n`;
           if (el.text) {
-            svgElements += `<text x="${el.x + 12}" y="${el.y + 24}" font-family="sans-serif" font-size="14" fill="#0f172a">${el.text.replace(/</g, '&lt;')}</text>\n`;
+            svgElements += `<text x="${el.x + 12}" y="${el.y + 24}" font-family="sans-serif" font-size="14" fill="#0f172a">${el.text.replace(/</g, "&lt;")}</text>\n`;
           }
-        } else if (el.type === 'text') {
-          svgElements += `<text x="${el.x}" y="${el.y + 20}" font-family="sans-serif" font-size="16" fill="${stroke}">${(el.text || '').replace(/</g, '&lt;')}</text>\n`;
+        } else if (el.type === "text") {
+          svgElements += `<text x="${el.x}" y="${el.y + 20}" font-family="sans-serif" font-size="16" fill="${stroke}">${(el.text || "").replace(/</g, "&lt;")}</text>\n`;
         }
       });
 
@@ -132,22 +132,21 @@ export function ExportModal({ doc, boardTitle, onClose }: ExportModalProps) {
   ${svgElements}
 </svg>`;
 
-      // Sanitize SVG with DOMPurify as required by ADR-000 & Epic 8
       const cleanSvg = DOMPurify.sanitize(rawSvg, {
         USE_PROFILES: { svg: true, svgFilters: true },
       });
 
-      const blob = new Blob([cleanSvg], { type: 'image/svg+xml;charset=utf-8' });
+      const blob = new Blob([cleanSvg], { type: "image/svg+xml;charset=utf-8" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `${boardTitle.toLowerCase().replace(/\s+/g, '-') || 'whiteboard'}.svg`;
+      a.download = `${boardTitle.toLowerCase().replace(/\s+/g, "-") || "whiteboard"}.svg`;
       a.click();
       URL.revokeObjectURL(url);
       setIsExporting(false);
       onClose();
     } catch (err) {
-      console.error('SVG export failed', err);
+      console.error("SVG export failed", err);
       setIsExporting(false);
     }
   };
@@ -155,9 +154,7 @@ export function ExportModal({ doc, boardTitle, onClose }: ExportModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-          Export Whiteboard
-        </h2>
+        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Export Whiteboard</h2>
         <p className="mt-1 text-xs text-zinc-500">
           Export the canvas elements as a high-resolution PNG image or vector SVG.
         </p>

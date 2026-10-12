@@ -1,8 +1,8 @@
-import { ElementData } from '../../shared';
-import { drawArrow, drawDiamond, drawEllipse, drawLine, drawRect } from './shape-renderer';
-import { drawFreehand } from './freehand-renderer';
-import { drawSticky } from './sticky-renderer';
-import { drawText } from './text-renderer';
+import { ElementData } from "../../shared";
+import { drawArrow, drawDiamond, drawEllipse, drawLine, drawRect } from "./shape-renderer";
+import { drawFreehand } from "./freehand-renderer";
+import { drawSticky } from "./sticky-renderer";
+import { drawText } from "./text-renderer";
 
 export function renderElement(ctx: CanvasRenderingContext2D, el: ElementData) {
   ctx.save();
@@ -17,28 +17,28 @@ export function renderElement(ctx: CanvasRenderingContext2D, el: ElementData) {
   }
 
   switch (el.type) {
-    case 'rect':
+    case "rect":
       drawRect(ctx, el);
       break;
-    case 'ellipse':
+    case "ellipse":
       drawEllipse(ctx, el);
       break;
-    case 'diamond':
+    case "diamond":
       drawDiamond(ctx, el);
       break;
-    case 'line':
+    case "line":
       drawLine(ctx, el);
       break;
-    case 'arrow':
+    case "arrow":
       drawArrow(ctx, el);
       break;
-    case 'freehand':
+    case "freehand":
       drawFreehand(ctx, el);
       break;
-    case 'sticky':
+    case "sticky":
       drawSticky(ctx, el);
       break;
-    case 'text':
+    case "text":
       drawText(ctx, el);
       break;
   }

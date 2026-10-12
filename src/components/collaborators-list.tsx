@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { SyncProvider } from '../collab/sync-provider';
-import { Role } from '../shared';
+import React, { useEffect, useState } from "react";
+import { SyncProvider } from "../collab/sync-provider";
+import { Role } from "../shared";
 
 interface CollaboratorInfo {
   clientId: number;
@@ -36,9 +36,9 @@ export function CollaboratorsList({
         if (!state.user) return;
         list.push({
           clientId,
-          name: state.user.name || 'Anonymous',
-          color: state.user.color || '#6366f1',
-          role: state.user.role || 'VIEWER',
+          name: state.user.name || "Anonymous",
+          color: state.user.color || "#6366f1",
+          role: state.user.role || "VIEWER",
           viewport: state.viewport,
         });
       });
@@ -47,10 +47,10 @@ export function CollaboratorsList({
     };
 
     updateCollaborators();
-    provider.awareness.on('change', updateCollaborators);
+    provider.awareness.on("change", updateCollaborators);
 
     return () => {
-      provider.awareness.off('change', updateCollaborators);
+      provider.awareness.off("change", updateCollaborators);
     };
   }, [provider]);
 
@@ -63,9 +63,9 @@ export function CollaboratorsList({
           const isMe = c.clientId === provider.doc.clientID;
           const isFollowing = followingClientId === c.clientId;
           const initials = c.name
-            .split(' ')
+            .split(" ")
             .map((n) => n[0])
-            .join('')
+            .join("")
             .toUpperCase()
             .slice(0, 2);
 
@@ -80,10 +80,10 @@ export function CollaboratorsList({
                   onFollowUser(isFollowing ? null : c.clientId);
                 }
               }}
-              title={`${c.name} (${c.role})${isMe ? ' - You' : isFollowing ? ' - Click to unfollow' : ' - Click to follow'}`}
+              title={`${c.name} (${c.role})${isMe ? " - You" : isFollowing ? " - Click to unfollow" : " - Click to follow"}`}
               className={`relative flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold text-white transition ring-2 ring-white dark:ring-zinc-900 ${
-                isFollowing ? 'scale-110 ring-indigo-500 z-10' : ''
-              } ${isMe ? 'cursor-default' : 'cursor-pointer hover:scale-105'}`}
+                isFollowing ? "scale-110 ring-indigo-500 z-10" : ""
+              } ${isMe ? "cursor-default" : "cursor-pointer hover:scale-105"}`}
               style={{ backgroundColor: c.color }}
             >
               {initials}

@@ -1,5 +1,5 @@
-import RBush from 'rbush';
-import { Rect } from './viewport';
+import RBush from "rbush";
+import { Rect } from "./viewport";
 
 export interface SpatialItem {
   minX: number;

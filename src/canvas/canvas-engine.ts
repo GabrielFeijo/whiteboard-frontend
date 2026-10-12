@@ -1,14 +1,14 @@
-import * as Y from 'yjs';
-import { nanoid } from 'nanoid';
-import { generateKeyBetween } from 'fractional-indexing';
-import { ElementData, getDocRoots, Role } from '../shared';
-import { Viewport } from './viewport';
-import { SpatialIndex } from './spatial-index';
-import { renderElement } from './renderers/element-renderer';
-import { drawFreehand } from './renderers/freehand-renderer';
-import { useCanvasStore } from '../store/canvas-store';
-import { LocalUndoManager, LOCAL_ORIGIN } from '../collab/undo-manager';
-import { SyncProvider } from '../collab/sync-provider';
+import * as Y from "yjs";
+import { nanoid } from "nanoid";
+import { generateKeyBetween } from "fractional-indexing";
+import { ElementData, getDocRoots, Role } from "../shared";
+import { Viewport } from "./viewport";
+import { SpatialIndex } from "./spatial-index";
+import { renderElement } from "./renderers/element-renderer";
+import { drawFreehand } from "./renderers/freehand-renderer";
+import { useCanvasStore } from "../store/canvas-store";
+import { LocalUndoManager, LOCAL_ORIGIN } from "../collab/undo-manager";
+import { SyncProvider } from "../collab/sync-provider";
 
 export class CanvasEngine {
   readonly viewport = new Viewport();
@@ -23,9 +23,8 @@ export class CanvasEngine {
   private animFrameId: number | null = null;
   private isDestroyed = false;
 
-  // Interaction state
   private isPointerDown = false;
-  private dragMode: 'none' | 'pan' | 'draw' | 'move' | 'selectBox' = 'none';
+  private dragMode: "none" | "pan" | "draw" | "move" | "selectBox" = "none";
   private startPoint = { x: 0, y: 0 };
   private currentPoint = { x: 0, y: 0 };
   private freehandDraft: number[] = [];
@@ -44,11 +43,11 @@ export class CanvasEngine {
   ) {
     this.undoManager = new LocalUndoManager(doc);
 
-    const bgCtx = bgCanvas.getContext('2d');
-    const contentCtx = contentCanvas.getContext('2d');
-    const overlayCtx = overlayCanvas.getContext('2d');
+    const bgCtx = bgCanvas.getContext("2d");
+    const contentCtx = contentCanvas.getContext("2d");
+    const overlayCtx = overlayCanvas.getContext("2d");
     if (!bgCtx || !contentCtx || !overlayCtx) {
-      throw new Error('Canvas 2D context not supported');
+      throw new Error("Canvas 2D context not supported");
     }
     this.bgCtx = bgCtx;
     this.contentCtx = contentCtx;
@@ -71,7 +70,6 @@ export class CanvasEngine {
   }
 
   private setupListeners() {
-    // 1. Observe Y.Doc mutations
     const roots = getDocRoots(this.doc);
     roots.elements.observeDeep((events) => {
       events.forEach((event) => {
@@ -84,15 +82,13 @@ export class CanvasEngine {
       this.isDirty = true;
     });
 
-    // 2. Resize observer
-    window.addEventListener('resize', this.handleResize);
+    window.addEventListener("resize", this.handleResize);
 
-    // 3. Pointer events
-    this.overlayCanvas.addEventListener('pointerdown', this.onPointerDown);
-    window.addEventListener('pointermove', this.onPointerMove);
-    window.addEventListener('pointerup', this.onPointerUp);
-    this.overlayCanvas.addEventListener('wheel', this.onWheel, { passive: false });
-    window.addEventListener('keydown', this.onKeyDown);
+    this.overlayCanvas.addEventListener("pointerdown", this.onPointerDown);
+    window.addEventListener("pointermove", this.onPointerMove);
+    window.addEventListener("pointerup", this.onPointerUp);
+    this.overlayCanvas.addEventListener("wheel", this.onWheel, { passive: false });
+    window.addEventListener("keydown", this.onKeyDown);
   }
 
   private handleResize = () => {
@@ -110,7 +106,7 @@ export class CanvasEngine {
       canvas.height = height * dpr;
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
       if (ctx) ctx.scale(dpr, dpr);
     });
   }
@@ -140,7 +136,7 @@ export class CanvasEngine {
     const pan = this.viewport.pan;
     const gridSize = 24 * zoom;
 
-    this.bgCtx.fillStyle = '#cbd5e1'; // light slate dots
+    this.bgCtx.fillStyle = "#cbd5e1";
     const startX = pan.x % gridSize;
     const startY = pan.y % gridSize;
 
@@ -162,7 +158,6 @@ export class CanvasEngine {
     this.contentCtx.translate(this.viewport.pan.x, this.viewport.pan.y);
     this.contentCtx.scale(this.viewport.zoom, this.viewport.zoom);
 
-    // Viewport spatial culling (doc §9.1)
     const bounds = this.viewport.getVisibleWorldBounds(w, h);
     const visibleIds = new Set(this.spatialIndex.search(bounds));
 
@@ -176,7 +171,6 @@ export class CanvasEngine {
       }
     });
 
-    // Sort by fractional indexing string z
     elements.sort((a, b) => (a.z > b.z ? 1 : a.z < b.z ? -1 : 0));
 
     elements.forEach((el) => {
@@ -197,40 +191,47 @@ export class CanvasEngine {
 
     const store = useCanvasStore.getState();
 
-    // 1. Selection outlines and bounding box
     if (store.selectedIds.length > 0) {
       const roots = getDocRoots(this.doc);
       store.selectedIds.forEach((id) => {
         const map = roots.elements.get(id);
         if (map) {
           const el = map.toJSON() as ElementData;
-          this.overlayCtx.strokeStyle = '#4f46e5'; // indigo-600
+          this.overlayCtx.strokeStyle = "#4f46e5";
           this.overlayCtx.lineWidth = 1.5 / this.viewport.zoom;
           this.overlayCtx.strokeRect(el.x - 4, el.y - 4, el.w + 8, el.h + 8);
         }
       });
     }
 
-    // 2. Selection Marquee Box
     if (this.selectBox) {
-      this.overlayCtx.fillStyle = 'rgba(99, 102, 241, 0.08)';
-      this.overlayCtx.strokeStyle = '#6366f1';
+      this.overlayCtx.fillStyle = "rgba(99, 102, 241, 0.08)";
+      this.overlayCtx.strokeStyle = "#6366f1";
       this.overlayCtx.lineWidth = 1 / this.viewport.zoom;
-      this.overlayCtx.fillRect(this.selectBox.x, this.selectBox.y, this.selectBox.w, this.selectBox.h);
-      this.overlayCtx.strokeRect(this.selectBox.x, this.selectBox.y, this.selectBox.w, this.selectBox.h);
+      this.overlayCtx.fillRect(
+        this.selectBox.x,
+        this.selectBox.y,
+        this.selectBox.w,
+        this.selectBox.h,
+      );
+      this.overlayCtx.strokeRect(
+        this.selectBox.x,
+        this.selectBox.y,
+        this.selectBox.w,
+        this.selectBox.h,
+      );
     }
 
-    // 3. Shape preview during drag
-    if (this.dragMode === 'draw' && store.activeTool !== 'freehand') {
+    if (this.dragMode === "draw" && store.activeTool !== "freehand") {
       const previewEl: ElementData = {
-        id: 'preview',
-        type: store.activeTool as ElementData['type'],
+        id: "preview",
+        type: store.activeTool as ElementData["type"],
         x: Math.min(this.startPoint.x, this.currentPoint.x),
         y: Math.min(this.startPoint.y, this.currentPoint.y),
         w: Math.abs(this.currentPoint.x - this.startPoint.x),
         h: Math.abs(this.currentPoint.y - this.startPoint.y),
         rotation: 0,
-        z: 'preview',
+        z: "preview",
         style: {
           fill: store.fillColor,
           stroke: store.strokeColor,
@@ -242,20 +243,19 @@ export class CanvasEngine {
       renderElement(this.overlayCtx, previewEl);
     }
 
-    // 4. Freehand stroke draft
     if (this.freehandDraft.length >= 2) {
       drawFreehand(this.overlayCtx, {
-        id: 'draft',
-        type: 'freehand',
+        id: "draft",
+        type: "freehand",
         x: 0,
         y: 0,
         w: 0,
         h: 0,
         rotation: 0,
-        z: 'draft',
+        z: "draft",
         points: this.freehandDraft,
         style: {
-          fill: 'transparent',
+          fill: "transparent",
           stroke: store.strokeColor,
           strokeWidth: store.strokeWidth,
           opacity: 1,
@@ -264,15 +264,13 @@ export class CanvasEngine {
       });
     }
 
-    // 5. Remote awareness cursors
     const states = this.provider.awareness.getStates();
     states.forEach((state, clientId) => {
       if (clientId === this.doc.clientID || !state.cursor) return;
       const { x, y } = state.cursor;
-      const user = state.user || { name: 'Collaborator', color: '#6366f1' };
+      const user = state.user || { name: "Collaborator", color: "#6366f1" };
 
-      // Draw cursor pointer
-      this.overlayCtx.fillStyle = user.color || '#6366f1';
+      this.overlayCtx.fillStyle = user.color || "#6366f1";
       this.overlayCtx.beginPath();
       this.overlayCtx.moveTo(x, y);
       this.overlayCtx.lineTo(x + 12 / this.viewport.zoom, y + 16 / this.viewport.zoom);
@@ -280,8 +278,7 @@ export class CanvasEngine {
       this.overlayCtx.closePath();
       this.overlayCtx.fill();
 
-      // Draw user name label
-      this.overlayCtx.fillStyle = user.color || '#6366f1';
+      this.overlayCtx.fillStyle = user.color || "#6366f1";
       this.overlayCtx.font = `${Math.max(11 / this.viewport.zoom, 8)}px sans-serif`;
       this.overlayCtx.fillText(user.name, x + 12 / this.viewport.zoom, y + 24 / this.viewport.zoom);
     });
@@ -298,16 +295,14 @@ export class CanvasEngine {
     this.startPoint = worldPt;
     this.currentPoint = worldPt;
 
-    // Pan with middle mouse button, hand tool, or shift drag
-    if (e.button === 1 || store.activeTool === 'hand') {
-      this.dragMode = 'pan';
+    if (e.button === 1 || store.activeTool === "hand") {
+      this.dragMode = "pan";
       return;
     }
 
-    if (this.role === 'VIEWER') return;
+    if (this.role === "VIEWER") return;
 
-    if (store.activeTool === 'select') {
-      // Hit-test element
+    if (store.activeTool === "select") {
       const hitId = this.hitTest(worldPt);
       if (hitId) {
         const isAlreadySelected = store.selectedIds.includes(hitId);
@@ -320,36 +315,35 @@ export class CanvasEngine {
             : [hitId];
 
         store.setSelectedIds(newSelected);
-        this.dragMode = 'move';
+        this.dragMode = "move";
 
-        // Record initial positions for moving
         const roots = getDocRoots(this.doc);
         this.moveInitialPositions.clear();
         newSelected.forEach((id) => {
           const map = roots.elements.get(id);
           if (map) {
             this.moveInitialPositions.set(id, {
-              x: map.get('x') as number,
-              y: map.get('y') as number,
+              x: map.get("x") as number,
+              y: map.get("y") as number,
             });
           }
         });
       } else {
         if (!e.shiftKey) store.setSelectedIds([]);
-        this.dragMode = 'selectBox';
+        this.dragMode = "selectBox";
         this.selectBox = { x: worldPt.x, y: worldPt.y, w: 0, h: 0 };
       }
-    } else if (store.activeTool === 'freehand') {
-      this.dragMode = 'draw';
+    } else if (store.activeTool === "freehand") {
+      this.dragMode = "draw";
       this.freehandDraft = [worldPt.x, worldPt.y, e.pressure || 0.5];
-    } else if (store.activeTool === 'sticky') {
+    } else if (store.activeTool === "sticky") {
       this.createStickyNote(worldPt);
-      store.setActiveTool('select');
-    } else if (store.activeTool === 'text') {
+      store.setActiveTool("select");
+    } else if (store.activeTool === "text") {
       this.createTextElement(worldPt);
-      store.setActiveTool('select');
+      store.setActiveTool("select");
     } else {
-      this.dragMode = 'draw';
+      this.dragMode = "draw";
     }
   };
 
@@ -359,12 +353,11 @@ export class CanvasEngine {
     const worldPt = this.viewport.screenToWorld(screenPt);
     this.currentPoint = worldPt;
 
-    // Broadcast cursor position in world coordinates (doc §8.1)
-    this.provider.awareness.setLocalStateField('cursor', { x: worldPt.x, y: worldPt.y });
+    this.provider.awareness.setLocalStateField("cursor", { x: worldPt.x, y: worldPt.y });
 
     if (!this.isPointerDown) return;
 
-    if (this.dragMode === 'pan') {
+    if (this.dragMode === "pan") {
       const dx = e.movementX;
       const dy = e.movementY;
       this.viewport.pan.x += dx;
@@ -374,7 +367,7 @@ export class CanvasEngine {
       return;
     }
 
-    if (this.dragMode === 'move') {
+    if (this.dragMode === "move") {
       const dx = worldPt.x - this.startPoint.x;
       const dy = worldPt.y - this.startPoint.y;
       const roots = getDocRoots(this.doc);
@@ -383,21 +376,21 @@ export class CanvasEngine {
         this.moveInitialPositions.forEach((initial, id) => {
           const map = roots.elements.get(id);
           if (map) {
-            map.set('x', Math.round(initial.x + dx));
-            map.set('y', Math.round(initial.y + dy));
+            map.set("x", Math.round(initial.x + dx));
+            map.set("y", Math.round(initial.y + dy));
           }
         });
       }, LOCAL_ORIGIN);
-    } else if (this.dragMode === 'selectBox') {
+    } else if (this.dragMode === "selectBox") {
       this.selectBox = {
         x: Math.min(this.startPoint.x, worldPt.x),
         y: Math.min(this.startPoint.y, worldPt.y),
         w: Math.abs(worldPt.x - this.startPoint.x),
         h: Math.abs(worldPt.y - this.startPoint.y),
       };
-    } else if (this.dragMode === 'draw') {
+    } else if (this.dragMode === "draw") {
       const store = useCanvasStore.getState();
-      if (store.activeTool === 'freehand') {
+      if (store.activeTool === "freehand") {
         this.freehandDraft.push(worldPt.x, worldPt.y, e.pressure || 0.5);
       }
     }
@@ -408,8 +401,8 @@ export class CanvasEngine {
     this.isPointerDown = false;
     const store = useCanvasStore.getState();
 
-    if (this.dragMode === 'draw') {
-      if (store.activeTool === 'freehand') {
+    if (this.dragMode === "draw") {
+      if (store.activeTool === "freehand") {
         if (this.freehandDraft.length >= 6) {
           this.commitFreehandElement(this.freehandDraft);
         }
@@ -419,16 +412,16 @@ export class CanvasEngine {
         const h = Math.abs(this.currentPoint.y - this.startPoint.y);
         if (w > 5 || h > 5) {
           this.commitShapeElement(
-            store.activeTool as ElementData['type'],
+            store.activeTool as ElementData["type"],
             Math.min(this.startPoint.x, this.currentPoint.x),
             Math.min(this.startPoint.y, this.currentPoint.y),
             w,
             h,
           );
-          store.setActiveTool('select');
+          store.setActiveTool("select");
         }
       }
-    } else if (this.dragMode === 'selectBox' && this.selectBox) {
+    } else if (this.dragMode === "selectBox" && this.selectBox) {
       const found = this.spatialIndex.search({
         minX: this.selectBox.x,
         minY: this.selectBox.y,
@@ -437,31 +430,31 @@ export class CanvasEngine {
       });
       store.setSelectedIds(found);
       this.selectBox = null;
-    } else if (this.dragMode === 'move') {
+    } else if (this.dragMode === "move") {
       this.undoManager.stopCapturing();
     }
 
-    this.dragMode = 'none';
+    this.dragMode = "none";
   };
 
   private onWheel = (e: WheelEvent) => {
     e.preventDefault();
     if (e.ctrlKey || e.metaKey) {
-      // Zoom
       const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
       const newZoom = Math.min(Math.max(this.viewport.zoom * zoomFactor, 0.1), 5.0);
 
       const mouseX = e.offsetX;
       const mouseY = e.offsetY;
-      this.viewport.pan.x = mouseX - (mouseX - this.viewport.pan.x) * (newZoom / this.viewport.zoom);
-      this.viewport.pan.y = mouseY - (mouseY - this.viewport.pan.y) * (newZoom / this.viewport.zoom);
+      this.viewport.pan.x =
+        mouseX - (mouseX - this.viewport.pan.x) * (newZoom / this.viewport.zoom);
+      this.viewport.pan.y =
+        mouseY - (mouseY - this.viewport.pan.y) * (newZoom / this.viewport.zoom);
       this.viewport.zoom = newZoom;
 
       const store = useCanvasStore.getState();
       store.setZoom(newZoom);
       store.setPan({ ...this.viewport.pan });
     } else {
-      // Pan
       this.viewport.pan.x -= e.deltaX;
       this.viewport.pan.y -= e.deltaY;
       useCanvasStore.getState().setPan({ ...this.viewport.pan });
@@ -472,8 +465,8 @@ export class CanvasEngine {
   private onKeyDown = (e: KeyboardEvent) => {
     const store = useCanvasStore.getState();
 
-    if ((e.key === 'Delete' || e.key === 'Backspace') && store.selectedIds.length > 0) {
-      if (this.role === 'VIEWER') return;
+    if ((e.key === "Delete" || e.key === "Backspace") && store.selectedIds.length > 0) {
+      if (this.role === "VIEWER") return;
       const roots = getDocRoots(this.doc);
       this.doc.transact(() => {
         store.selectedIds.forEach((id) => {
@@ -483,13 +476,13 @@ export class CanvasEngine {
       }, LOCAL_ORIGIN);
       store.setSelectedIds([]);
       this.isDirty = true;
-    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
       if (e.shiftKey) {
         this.undoManager.redo();
       } else {
         this.undoManager.undo();
       }
-    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
       this.undoManager.redo();
     }
   };
@@ -501,35 +494,41 @@ export class CanvasEngine {
       maxX: worldPt.x,
       maxY: worldPt.y,
     });
-    return hits[hits.length - 1] || null; // top-most element
+    return hits[hits.length - 1] || null;
   }
 
   private getNextZIndex(): string {
     const roots = getDocRoots(this.doc);
-    let highest = 'a0';
+    let highest = "a0";
     roots.elements.forEach((map) => {
-      const z = map.get('z') as string;
+      const z = map.get("z") as string;
       if (z && z > highest) highest = z;
     });
     return generateKeyBetween(highest, null);
   }
 
-  private commitShapeElement(type: ElementData['type'], x: number, y: number, w: number, h: number) {
+  private commitShapeElement(
+    type: ElementData["type"],
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ) {
     const store = useCanvasStore.getState();
     const id = nanoid(10);
     const z = this.getNextZIndex();
 
     const elementMap = new Y.Map<unknown>();
-    elementMap.set('id', id);
-    elementMap.set('type', type);
-    elementMap.set('x', Math.round(x));
-    elementMap.set('y', Math.round(y));
-    elementMap.set('w', Math.round(w));
-    elementMap.set('h', Math.round(h));
-    elementMap.set('rotation', 0);
-    elementMap.set('z', z);
-    elementMap.set('createdBy', this.userId);
-    elementMap.set('style', {
+    elementMap.set("id", id);
+    elementMap.set("type", type);
+    elementMap.set("x", Math.round(x));
+    elementMap.set("y", Math.round(y));
+    elementMap.set("w", Math.round(w));
+    elementMap.set("h", Math.round(h));
+    elementMap.set("rotation", 0);
+    elementMap.set("z", z);
+    elementMap.set("createdBy", this.userId);
+    elementMap.set("style", {
       fill: store.fillColor,
       stroke: store.strokeColor,
       strokeWidth: store.strokeWidth,
@@ -561,18 +560,18 @@ export class CanvasEngine {
     }
 
     const elementMap = new Y.Map<unknown>();
-    elementMap.set('id', id);
-    elementMap.set('type', 'freehand');
-    elementMap.set('x', Math.round(minX));
-    elementMap.set('y', Math.round(minY));
-    elementMap.set('w', Math.round(maxX - minX));
-    elementMap.set('h', Math.round(maxY - minY));
-    elementMap.set('rotation', 0);
-    elementMap.set('z', z);
-    elementMap.set('points', points);
-    elementMap.set('createdBy', this.userId);
-    elementMap.set('style', {
-      fill: 'transparent',
+    elementMap.set("id", id);
+    elementMap.set("type", "freehand");
+    elementMap.set("x", Math.round(minX));
+    elementMap.set("y", Math.round(minY));
+    elementMap.set("w", Math.round(maxX - minX));
+    elementMap.set("h", Math.round(maxY - minY));
+    elementMap.set("rotation", 0);
+    elementMap.set("z", z);
+    elementMap.set("points", points);
+    elementMap.set("createdBy", this.userId);
+    elementMap.set("style", {
+      fill: "transparent",
       stroke: store.strokeColor,
       strokeWidth: store.strokeWidth,
       opacity: store.opacity,
@@ -590,19 +589,19 @@ export class CanvasEngine {
     const id = nanoid(10);
     const z = this.getNextZIndex();
     const elementMap = new Y.Map<unknown>();
-    elementMap.set('id', id);
-    elementMap.set('type', 'sticky');
-    elementMap.set('x', Math.round(worldPt.x));
-    elementMap.set('y', Math.round(worldPt.y));
-    elementMap.set('w', 180);
-    elementMap.set('h', 160);
-    elementMap.set('rotation', 0);
-    elementMap.set('z', z);
-    elementMap.set('text', 'New Sticky Note\nDouble click to edit');
-    elementMap.set('createdBy', this.userId);
-    elementMap.set('style', {
-      fill: '#fef08a',
-      stroke: 'rgba(0,0,0,0.1)',
+    elementMap.set("id", id);
+    elementMap.set("type", "sticky");
+    elementMap.set("x", Math.round(worldPt.x));
+    elementMap.set("y", Math.round(worldPt.y));
+    elementMap.set("w", 180);
+    elementMap.set("h", 160);
+    elementMap.set("rotation", 0);
+    elementMap.set("z", z);
+    elementMap.set("text", "New Sticky Note\nDouble click to edit");
+    elementMap.set("createdBy", this.userId);
+    elementMap.set("style", {
+      fill: "#fef08a",
+      stroke: "rgba(0,0,0,0.1)",
       strokeWidth: 1,
       opacity: 1,
     });
@@ -619,19 +618,19 @@ export class CanvasEngine {
     const id = nanoid(10);
     const z = this.getNextZIndex();
     const elementMap = new Y.Map<unknown>();
-    elementMap.set('id', id);
-    elementMap.set('type', 'text');
-    elementMap.set('x', Math.round(worldPt.x));
-    elementMap.set('y', Math.round(worldPt.y));
-    elementMap.set('w', 120);
-    elementMap.set('h', 30);
-    elementMap.set('rotation', 0);
-    elementMap.set('z', z);
-    elementMap.set('text', 'Text Element');
-    elementMap.set('createdBy', this.userId);
-    elementMap.set('style', {
-      fill: 'transparent',
-      stroke: '#0f172a',
+    elementMap.set("id", id);
+    elementMap.set("type", "text");
+    elementMap.set("x", Math.round(worldPt.x));
+    elementMap.set("y", Math.round(worldPt.y));
+    elementMap.set("w", 120);
+    elementMap.set("h", 30);
+    elementMap.set("rotation", 0);
+    elementMap.set("z", z);
+    elementMap.set("text", "Text Element");
+    elementMap.set("createdBy", this.userId);
+    elementMap.set("style", {
+      fill: "transparent",
+      stroke: "#0f172a",
       strokeWidth: 1,
       opacity: 1,
     });
@@ -696,7 +695,7 @@ export class CanvasEngine {
   }
 
   public broadcastViewport() {
-    this.provider.awareness.setLocalStateField('viewport', {
+    this.provider.awareness.setLocalStateField("viewport", {
       pan: this.viewport.pan,
       zoom: this.viewport.zoom,
     });
@@ -705,10 +704,10 @@ export class CanvasEngine {
   destroy() {
     this.isDestroyed = true;
     if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
-    window.removeEventListener('resize', this.handleResize);
-    window.removeEventListener('pointermove', this.onPointerMove);
-    window.removeEventListener('pointerup', this.onPointerUp);
-    window.removeEventListener('keydown', this.onKeyDown);
+    window.removeEventListener("resize", this.handleResize);
+    window.removeEventListener("pointermove", this.onPointerMove);
+    window.removeEventListener("pointerup", this.onPointerUp);
+    window.removeEventListener("keydown", this.onKeyDown);
     this.undoManager.destroy();
   }
 }

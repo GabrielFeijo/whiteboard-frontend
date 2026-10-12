@@ -1,7 +1,6 @@
 import * as Y from 'yjs';
 import { z } from 'zod';
 
-/** Modelo de dados do documento CRDT. Doc §6.1. */
 export const ELEMENT_TYPES = [
   'rect',
   'ellipse',
@@ -33,17 +32,16 @@ export const ElementDataSchema = z.object({
   w: finite.min(0).max(1e5),
   h: finite.min(0).max(1e5),
   rotation: finite,
-  z: z.string().min(1).max(64), // chave de fractional indexing
+  z: z.string().min(1).max(64),
   style: ElementStyleSchema,
-  text: z.string().max(10_000).optional(), // Y.Text no documento vivo
-  points: z.array(finite).max(20_000).optional(), // [x0,y0,p0,x1,y1,p1,...]
+  text: z.string().max(10_000).optional(),
+  points: z.array(finite).max(20_000).optional(),
   parentId: z.string().max(64).optional(),
   assetId: z.string().max(64).optional(),
   createdBy: z.string().min(1).max(64),
 });
 export type ElementData = z.infer<typeof ElementDataSchema>;
 
-/** Estado de presença (awareness). Doc §8.1. Efêmero; não persiste. */
 export const PresenceStateSchema = z.object({
   user: z.object({
     id: z.string(),
@@ -58,11 +56,10 @@ export const PresenceStateSchema = z.object({
 });
 export type PresenceState = z.infer<typeof PresenceStateSchema>;
 
-/** Raízes compartilhadas do Y.Doc. */
 export function getDocRoots(doc: Y.Doc) {
   return {
-    elements: doc.getMap<Y.Map<unknown>>('elements'), // id -> Y.Map
-    meta: doc.getMap('meta'), // schemaVersion, nome
+    elements: doc.getMap<Y.Map<unknown>>('elements'),
+    meta: doc.getMap('meta'),
     comments: doc.getArray('comments'),
   };
 }
