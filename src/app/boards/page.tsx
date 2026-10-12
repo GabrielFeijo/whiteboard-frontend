@@ -1,96 +1,79 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuthStore } from '../../store/auth-store';
-import { apiFetch } from '../../lib/api/client';
-import { ShareModal } from '../../components/share-modal';
-import { Role } from '../../shared';
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useAuthStore } from "../../store/auth-store";
+import {
+  BoardItem,
+  useBoardsQuery,
+  useCreateBoardMutation,
+  useDeleteBoardMutation,
+  useDuplicateBoardMutation,
+} from "../../hooks/use-boards";
+import { ShareModal } from "../../components/share-modal";
 
-interface BoardItem {
-  id: string;
-  title: string;
-  createdAt: string;
-  updatedAt: string;
-  role: Role;
-  memberCount: number;
-}
+const createBoardSchema = z.object({
+  title: z.string().trim().min(1, "Board title is required").max(100, "Title is too long"),
+});
+
+type CreateBoardFormData = z.infer<typeof createBoardSchema>;
 
 export default function BoardsPage() {
   const router = useRouter();
   const { user, isInitialized, init, logout } = useAuthStore();
-  const [boards, setBoards] = useState<BoardItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [newTitle, setNewTitle] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [sharingBoard, setSharingBoard] = useState<BoardItem | null>(null);
+
+  const { data, isLoading } = useBoardsQuery();
+  const boards = data?.items || [];
+
+  const createMutation = useCreateBoardMutation();
+  const duplicateMutation = useDuplicateBoardMutation();
+  const deleteMutation = useDeleteBoardMutation();
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<CreateBoardFormData>({
+    resolver: zodResolver(createBoardSchema),
+    defaultValues: { title: "" },
+  });
 
   useEffect(() => {
     init();
   }, [init]);
 
-  const reloadBoards = async () => {
-    try {
-      const res = await apiFetch<{ items: BoardItem[] }>('/boards');
-      setBoards(res.items);
-    } catch {
-      // Handled by client
-    }
-  };
-
   useEffect(() => {
-    if (!isInitialized) return;
-    if (!user) {
-      router.push('/login');
-      return;
+    if (isInitialized && !user) {
+      router.push("/login");
     }
-    let ignore = false;
-    apiFetch<{ items: BoardItem[] }>('/boards')
-      .then((res) => {
-        if (!ignore) {
-          setBoards(res.items);
-          setLoading(false);
-        }
-      })
-      .catch(() => {
-        if (!ignore) setLoading(false);
-      });
-    return () => {
-      ignore = true;
-    };
   }, [isInitialized, user, router]);
 
-  const handleCreateBoard = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim()) return;
-    try {
-      const created = await apiFetch<BoardItem>('/boards', {
-        method: 'POST',
-        body: JSON.stringify({ title: newTitle.trim() }),
-      });
-      setNewTitle('');
-      setIsCreating(false);
-      router.push(`/board/${created.id}`);
-    } catch {
-      // Show error
-    }
+  const onSubmitCreate = async (formData: CreateBoardFormData) => {
+    const created = await createMutation.mutateAsync({ title: formData.title });
+    reset();
+    setIsCreating(false);
+    router.push(`/board/${created.id}`);
   };
 
   const handleDuplicate = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    await apiFetch(`/boards/${id}/duplicate`, { method: 'POST' });
-    reloadBoards();
+    await duplicateMutation.mutateAsync(id);
   };
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('Are you sure you want to delete this board?')) {
-      await apiFetch(`/boards/${id}`, { method: 'DELETE' });
-      setBoards(boards.filter((b) => b.id !== id));
+    if (confirm("Are you sure you want to delete this board?")) {
+      await deleteMutation.mutateAsync(id);
     }
   };
 
-  if (!isInitialized || (!user && loading)) {
+  if (!isInitialized || (!user && isLoading)) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-zinc-500">
         Loading boards...
@@ -99,74 +82,87 @@ export default function BoardsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      {/* Navbar */}
-      <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-zinc-200 bg-white px-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white font-bold shadow">
-            W
-          </div>
-          <span className="text-lg font-bold tracking-tight">Whiteboard Studio</span>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <p className="text-sm font-medium">{user?.name}</p>
-            <p className="text-xs text-zinc-500">{user?.email}</p>
-          </div>
-          <button
-            onClick={() => logout().then(() => router.push('/login'))}
-            className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-          >
-            Sign Out
-          </button>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="mx-auto max-w-6xl px-6 py-8">
-        <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-zinc-50 px-4 py-8 dark:bg-zinc-950 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Your Whiteboards</h1>
-            <p className="text-sm text-zinc-500">Create, collaborate, and organize your ideas</p>
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+              My Whiteboards
+            </h1>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              Create, organize, and collaborate on your team boards.
+            </p>
           </div>
 
-          <button
-            onClick={() => setIsCreating(true)}
-            className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
-          >
-            + New Board
-          </button>
-        </div>
-
-        {/* Create Modal */}
-        {isCreating && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-              <h2 className="text-lg font-semibold">Create New Board</h2>
-              <form onSubmit={handleCreateBoard} className="mt-4 space-y-4">
-                <input
-                  type="text"
-                  autoFocus
-                  required
-                  placeholder="Board Title (e.g. Sprint Roadmap)"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-zinc-700 dark:bg-zinc-800"
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">
+              Signed in as{" "}
+              <strong className="text-zinc-800 dark:text-zinc-200">{user?.name}</strong>
+            </span>
+            <button
+              onClick={() => logout()}
+              className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900"
+            >
+              Sign out
+            </button>
+            <button
+              onClick={() => setIsCreating(true)}
+              className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow transition hover:bg-indigo-500"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
                 />
+              </svg>
+              New Board
+            </button>
+          </div>
+        </header>
+
+        {isCreating && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+              <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+                Create New Whiteboard
+              </h2>
+              <p className="mt-1 text-xs text-zinc-500">
+                Give your whiteboard a descriptive title.
+              </p>
+              <form onSubmit={handleSubmit(onSubmitCreate)} className="mt-4 space-y-4">
+                <div>
+                  <input
+                    type="text"
+                    {...register("title")}
+                    autoFocus
+                    placeholder="e.g. System Architecture Diagram"
+                    className="w-full rounded-xl border border-zinc-300 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                  />
+                  {errors.title && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                      {errors.title.message}
+                    </p>
+                  )}
+                </div>
                 <div className="flex justify-end gap-2">
                   <button
                     type="button"
-                    onClick={() => setIsCreating(false)}
-                    className="rounded-lg px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    onClick={() => {
+                      reset();
+                      setIsCreating(false);
+                    }}
+                    className="rounded-xl px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                    disabled={createMutation.isPending}
+                    className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
                   >
-                    Create
+                    {createMutation.isPending ? "Creating..." : "Create Whiteboard"}
                   </button>
                 </div>
               </form>
@@ -174,9 +170,8 @@ export default function BoardsPage() {
           </div>
         )}
 
-        {/* Boards Grid */}
         <div className="mt-8">
-          {loading ? (
+          {isLoading ? (
             <p className="text-sm text-zinc-400">Loading your boards...</p>
           ) : boards.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-300 py-16 dark:border-zinc-800">
@@ -224,19 +219,44 @@ export default function BoardsPage() {
 
                     <div className="flex items-center gap-1">
                       <button
-                        title="Duplicate"
                         onClick={(e) => handleDuplicate(board.id, e)}
-                        className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800"
+                        title="Duplicate"
+                        className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                       >
-                        ❐
-                      </button>
-                      {board.role === 'OWNER' && (
-                        <button
-                          title="Delete"
-                          onClick={(e) => handleDelete(board.id, e)}
-                          className="rounded-md p-1.5 text-zinc-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
                         >
-                          🗑
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                          />
+                        </svg>
+                      </button>
+
+                      {board.role === "OWNER" && (
+                        <button
+                          onClick={(e) => handleDelete(board.id, e)}
+                          title="Delete"
+                          className="rounded-md p-1.5 text-zinc-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                        >
+                          <svg
+                            className="h-4 w-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
                         </button>
                       )}
                     </div>
@@ -246,14 +266,13 @@ export default function BoardsPage() {
             </div>
           )}
         </div>
-      </main>
+      </div>
 
-      {/* Share Modal */}
       {sharingBoard && (
         <ShareModal
+          isOpen={Boolean(sharingBoard)}
           boardId={sharingBoard.id}
           boardTitle={sharingBoard.title}
-          isOpen={true}
           onClose={() => setSharingBoard(null)}
         />
       )}
