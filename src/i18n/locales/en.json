@@ -69,6 +69,9 @@
     "titleRequired": "Board title is required",
     "titleTooLong": "Title is too long",
     "confirmDelete": "Are you sure you want to delete this board?",
+    "confirmDeleteTitle": "Are you absolutely sure?",
+    "confirmDeleteDescription": "This action cannot be undone. This will permanently delete your whiteboard and remove your data from our servers.",
+    "confirmDeleteAction": "Yes, delete board",
     "share": "Share",
     "roles": {
       "owner": "OWNER",
@@ -172,7 +175,22 @@
     "expired": "Expired",
     "revoke": "Revoke",
     "revoking": "Revoking...",
+    "shareByLink": "Share via Link",
+    "shareByEmail": "Invite via Email",
+    "emailPlaceholder": "email@example.com",
+    "inviteButton": "Invite",
+    "invitingButton": "Inviting...",
+    "userNotFound": "User not found with this email.",
+    "memberAdded": "Collaborator invited successfully!",
+    "membersTitle": "Board Members",
+    "loadingMembers": "Loading members...",
+    "noMembers": "No other members invited yet.",
+    "removeMember": "Remove",
+    "confirmRemoveMemberTitle": "Remove Member",
+    "confirmRemoveMemberDescription": "Are you sure you want to remove this member from the board? Their access will be revoked immediately.",
+    "confirmRemoveMemberAction": "Yes, remove member",
     "roles": {
+      "OWNER": "Owner",
       "VIEWER": "Can view",
       "EDITOR": "Can edit"
     }
@@ -196,6 +214,9 @@
     "loading": "Loading versions...",
     "noSnapshots": "No historical snapshots captured yet. Snapshots are auto-created every 5 minutes during activity.",
     "confirmRestore": "Are you sure you want to restore this version? Current unsaved changes will be archived.",
+    "confirmRestoreTitle": "Are you absolutely sure?",
+    "confirmRestoreDescription": "This action will replace the current whiteboard elements with this historical snapshot.",
+    "confirmRestoreAction": "Yes, restore version",
     "restore": "Restore",
     "restoring": "Restoring...",
     "close": "Close"

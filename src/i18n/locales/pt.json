@@ -69,6 +69,9 @@
     "titleRequired": "O título do quadro é obrigatório",
     "titleTooLong": "O título é muito longo",
     "confirmDelete": "Tem certeza de que deseja excluir este quadro?",
+    "confirmDeleteTitle": "Tem certeza absoluta?",
+    "confirmDeleteDescription": "Esta ação não pode ser desfeita. Isso excluirá permanentemente o seu quadro e removerá todos os dados dos nossos servidores.",
+    "confirmDeleteAction": "Sim, excluir quadro",
     "share": "Compartilhar",
     "roles": {
       "owner": "PROPRIETÁRIO",
@@ -172,7 +175,22 @@
     "expired": "Expirado",
     "revoke": "Revogar",
     "revoking": "Revogando...",
+    "shareByLink": "Compartilhar por Link",
+    "shareByEmail": "Convidar por E-mail",
+    "emailPlaceholder": "email@exemplo.com",
+    "inviteButton": "Convidar",
+    "invitingButton": "Convidando...",
+    "userNotFound": "Usuário não encontrado com este e-mail.",
+    "memberAdded": "Colaborador convidado com sucesso!",
+    "membersTitle": "Membros do Quadro",
+    "loadingMembers": "Carregando membros...",
+    "noMembers": "Nenhum outro membro convidado ainda.",
+    "removeMember": "Remover",
+    "confirmRemoveMemberTitle": "Remover Membro",
+    "confirmRemoveMemberDescription": "Tem certeza de que deseja remover este membro do quadro? O acesso deste usuário será revogado.",
+    "confirmRemoveMemberAction": "Sim, remover membro",
     "roles": {
+      "OWNER": "Proprietário",
       "VIEWER": "Pode visualizar",
       "EDITOR": "Pode editar"
     }
@@ -196,6 +214,9 @@
     "loading": "Carregando versões...",
     "noSnapshots": "Nenhum ponto histórico capturado ainda. Snapshots são gerados automaticamente a cada 5 minutos de atividade.",
     "confirmRestore": "Tem certeza de que deseja restaurar esta versão? Alterações recentes não salvas serão arquivadas.",
+    "confirmRestoreTitle": "Tem certeza que deseja restaurar?",
+    "confirmRestoreDescription": "Esta ação substituirá os elementos atuais do quadro pelos dados desta versão anterior.",
+    "confirmRestoreAction": "Sim, restaurar versão",
     "restore": "Restaurar",
     "restoring": "Restaurando...",
     "close": "Fechar"

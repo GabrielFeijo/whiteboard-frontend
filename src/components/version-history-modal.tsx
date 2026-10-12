@@ -1,10 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Role } from "../shared";
 import { useSnapshotsQuery, useRestoreSnapshotMutation } from "../hooks/use-snapshots";
 import { getApiErrorMessage } from "../lib/api/axios-client";
 import { useI18n } from "../i18n";
+import { ConfirmDialog } from "./ui/alert-dialog";
 
 interface VersionHistoryModalProps {
   boardId: string;
@@ -24,13 +25,17 @@ export function VersionHistoryModal({
   const restoreMutation = useRestoreSnapshotMutation(boardId);
 
   const canRestore = userRole === "OWNER" || userRole === "EDITOR";
+  const [restoringSnapshotId, setRestoringSnapshotId] = useState<string | null>(null);
 
-  const handleRestore = async (snapshotId: string) => {
-    if (!confirm(t("versionHistory.confirmRestore"))) {
-      return;
-    }
+  const handleRestore = (snapshotId: string) => {
+    setRestoringSnapshotId(snapshotId);
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!restoringSnapshotId) return;
     try {
-      await restoreMutation.mutateAsync(snapshotId);
+      await restoreMutation.mutateAsync(restoringSnapshotId);
+      setRestoringSnapshotId(null);
       if (onRestored) {
         onRestored();
       } else {
@@ -111,6 +116,20 @@ export function VersionHistoryModal({
           </button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(restoringSnapshotId)}
+        onOpenChange={(open) => {
+          if (!open) setRestoringSnapshotId(null);
+        }}
+        title={t("versionHistory.confirmRestoreTitle")}
+        description={t("versionHistory.confirmRestoreDescription")}
+        cancelText={t("common.cancel")}
+        confirmText={t("versionHistory.confirmRestoreAction")}
+        variant="primary"
+        isLoading={restoreMutation.isPending}
+        onConfirm={handleConfirmRestore}
+      />
     </div>
   );
 }

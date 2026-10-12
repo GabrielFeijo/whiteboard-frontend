@@ -14,6 +14,7 @@ import {
   useDuplicateBoardMutation,
 } from "../../hooks/use-boards";
 import { ShareModal } from "../../components/share-modal";
+import { ConfirmDialog } from "../../components/ui/alert-dialog";
 import { useI18n } from "../../i18n";
 import { LanguageSwitcher } from "../../components/language-switcher";
 
@@ -23,6 +24,7 @@ export default function BoardsPage() {
   const { t } = useI18n();
   const [isCreating, setIsCreating] = useState(false);
   const [sharingBoard, setSharingBoard] = useState<BoardItem | null>(null);
+  const [deletingBoardId, setDeletingBoardId] = useState<string | null>(null);
 
   const { data, isLoading } = useBoardsQuery();
   const boards = data?.items || [];
@@ -77,11 +79,15 @@ export default function BoardsPage() {
     await duplicateMutation.mutateAsync(id);
   };
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
+  const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm(t("dashboard.confirmDelete"))) {
-      await deleteMutation.mutateAsync(id);
-    }
+    setDeletingBoardId(id);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingBoardId) return;
+    await deleteMutation.mutateAsync(deletingBoardId);
+    setDeletingBoardId(null);
   };
 
   const getRoleLabel = (role: string) => {
@@ -301,6 +307,20 @@ export default function BoardsPage() {
           onClose={() => setSharingBoard(null)}
         />
       )}
+
+      <ConfirmDialog
+        open={Boolean(deletingBoardId)}
+        onOpenChange={(open) => {
+          if (!open) setDeletingBoardId(null);
+        }}
+        title={t("dashboard.confirmDeleteTitle")}
+        description={t("dashboard.confirmDeleteDescription")}
+        cancelText={t("common.cancel")}
+        confirmText={t("dashboard.confirmDeleteAction")}
+        variant="destructive"
+        isLoading={deleteMutation.isPending}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }
