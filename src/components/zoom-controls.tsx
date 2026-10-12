@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useCanvasStore } from "../store/canvas-store";
+import { useI18n } from "../i18n";
 
 interface ZoomControlsProps {
   onZoomIn?: () => void;
@@ -11,6 +12,7 @@ interface ZoomControlsProps {
 
 export function ZoomControls({ onZoomIn, onZoomOut, onResetZoom }: ZoomControlsProps) {
   const { zoom, setZoom, resetViewport } = useCanvasStore();
+  const { t } = useI18n();
 
   const handleZoomIn = () => {
     if (onZoomIn) {
@@ -40,7 +42,7 @@ export function ZoomControls({ onZoomIn, onZoomOut, onResetZoom }: ZoomControlsP
     <div className="flex items-center gap-1 rounded-2xl border border-zinc-200/80 bg-white/95 px-2 py-1 shadow-lg backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-900/95">
       <button
         onClick={handleZoomOut}
-        title="Zoom Out (-)"
+        title={t("boardStudio.zoomOut")}
         className="flex h-8 w-8 items-center justify-center rounded-xl text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
       >
         <svg
@@ -56,7 +58,7 @@ export function ZoomControls({ onZoomIn, onZoomOut, onResetZoom }: ZoomControlsP
 
       <button
         onClick={handleReset}
-        title="Reset Zoom to 100%"
+        title={t("boardStudio.resetZoom")}
         className="min-w-14 px-1.5 py-1 text-center text-xs font-semibold text-zinc-700 transition hover:text-indigo-600 dark:text-zinc-300 dark:hover:text-indigo-400"
       >
         {Math.round(zoom * 100)}%
@@ -64,7 +66,7 @@ export function ZoomControls({ onZoomIn, onZoomOut, onResetZoom }: ZoomControlsP
 
       <button
         onClick={handleZoomIn}
-        title="Zoom In (+)"
+        title={t("boardStudio.zoomIn")}
         className="flex h-8 w-8 items-center justify-center rounded-xl text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
       >
         <svg

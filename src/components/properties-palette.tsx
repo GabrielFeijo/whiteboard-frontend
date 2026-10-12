@@ -3,12 +3,14 @@
 import React, { useState } from "react";
 import { useCanvasStore } from "../store/canvas-store";
 import { CanvasEngine } from "../canvas/canvas-engine";
+import { useI18n } from "../i18n";
 
 interface PropertiesPaletteProps {
   engine?: CanvasEngine | null;
 }
 
 export function PropertiesPalette({ engine }: PropertiesPaletteProps) {
+  const { t } = useI18n();
   const {
     strokeColor,
     setStrokeColor,
@@ -45,14 +47,13 @@ export function PropertiesPalette({ engine }: PropertiesPaletteProps) {
 
   const fillColors = [
     "transparent",
-    "#ffffff",
     "#fee2e2",
     "#fef3c7",
     "#d1fae5",
     "#dbeafe",
     "#ede9fe",
     "#fce7f3",
-    "#fef08a",
+    "#ffffff",
   ];
 
   const strokeWidths = [1, 2, 4, 8];
@@ -93,23 +94,23 @@ export function PropertiesPalette({ engine }: PropertiesPaletteProps) {
   const getElementTypeName = (type?: string) => {
     switch (type) {
       case "rect":
-        return "Retângulo";
+        return t("properties.elementTypes.rect");
       case "ellipse":
-        return "Elipse";
+        return t("properties.elementTypes.ellipse");
       case "diamond":
-        return "Losango";
+        return t("properties.elementTypes.diamond");
       case "line":
-        return "Linha";
+        return t("properties.elementTypes.line");
       case "arrow":
-        return "Seta";
+        return t("properties.elementTypes.arrow");
       case "sticky":
-        return "Nota Adesiva";
+        return t("properties.elementTypes.sticky");
       case "text":
-        return "Texto";
+        return t("properties.elementTypes.text");
       case "freehand":
-        return "Desenho";
+        return t("properties.elementTypes.freehand");
       default:
-        return "Elemento";
+        return t("properties.elementTypes.element");
     }
   };
 
@@ -119,18 +120,20 @@ export function PropertiesPalette({ engine }: PropertiesPaletteProps) {
         <div>
           <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
             {selectedIds.length === 0
-              ? "Estilo Padrão"
+              ? t("properties.defaultStyle")
               : selectedIds.length === 1
                 ? getElementTypeName(primaryElement?.type)
-                : `${selectedIds.length} selecionados`}
+                : t("properties.selectedCount", { count: selectedIds.length })}
           </span>
           <p className="text-[10px] text-zinc-400">
-            {selectedIds.length === 0 ? "Para novos elementos" : "Editar elemento ativo"}
+            {selectedIds.length === 0
+              ? t("properties.forNewElements")
+              : t("properties.editActiveElement")}
           </p>
         </div>
         {selectedIds.length > 0 && (
           <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300">
-            Editando
+            {t("properties.editingBadge")}
           </span>
         )}
       </div>
@@ -138,12 +141,12 @@ export function PropertiesPalette({ engine }: PropertiesPaletteProps) {
       {isTextual && selectedIds.length > 0 && (
         <div>
           <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-            Texto do Elemento
+            {t("properties.textContent")}
           </label>
           <textarea
             value={textValue}
             onChange={(e) => handleTextChange(e.target.value)}
-            placeholder="Digite o texto..."
+            placeholder={t("properties.typeTextPlaceholder")}
             className="mt-1 w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2 text-xs text-zinc-900 outline-none focus:border-indigo-500 focus:bg-white dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 resize-y min-h-[55px]"
           />
         </div>
@@ -151,7 +154,7 @@ export function PropertiesPalette({ engine }: PropertiesPaletteProps) {
 
       <div>
         <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-          Cor do Traço / Borda
+          {t("properties.strokeColor")}
         </label>
         <div className="mt-1.5 flex flex-wrap gap-1.5 items-center">
           {strokeColors.map((color) => (
@@ -172,7 +175,7 @@ export function PropertiesPalette({ engine }: PropertiesPaletteProps) {
             value={strokeColor}
             onChange={(e) => handleStrokeChange(e.target.value)}
             className="h-6 w-6 cursor-pointer rounded border-0 bg-transparent p-0"
-            title="Cor personalizada"
+            title={t("properties.customColor")}
           />
         </div>
       </div>
@@ -180,7 +183,7 @@ export function PropertiesPalette({ engine }: PropertiesPaletteProps) {
       {hasFill && (
         <div>
           <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-            Cor de Fundo / Preenchimento
+            {t("properties.fillColor")}
           </label>
           <div className="mt-1.5 flex flex-wrap gap-1.5 items-center">
             {fillColors.map((color) => {
@@ -196,7 +199,7 @@ export function PropertiesPalette({ engine }: PropertiesPaletteProps) {
                       : "border-zinc-300 dark:border-zinc-700"
                   }`}
                   style={{ backgroundColor: isTransparent ? "#ffffff" : color }}
-                  title={isTransparent ? "Transparente" : color}
+                  title={isTransparent ? t("properties.transparent") : color}
                 >
                   {isTransparent && <span className="text-[10px] text-red-500 font-bold">∅</span>}
                 </button>
@@ -207,7 +210,7 @@ export function PropertiesPalette({ engine }: PropertiesPaletteProps) {
               value={fillColor === "transparent" ? "#ffffff" : fillColor}
               onChange={(e) => handleFillChange(e.target.value)}
               className="h-6 w-6 cursor-pointer rounded border-0 bg-transparent p-0"
-              title="Cor de preenchimento personalizada"
+              title={t("properties.customFillColor")}
             />
           </div>
         </div>
@@ -215,7 +218,7 @@ export function PropertiesPalette({ engine }: PropertiesPaletteProps) {
 
       <div>
         <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-          Espessura da Linha
+          {t("properties.strokeWidth")}
         </label>
         <div className="mt-1.5 flex gap-1.5">
           {strokeWidths.map((w) => (
@@ -224,7 +227,7 @@ export function PropertiesPalette({ engine }: PropertiesPaletteProps) {
               onClick={() => handleWidthChange(w)}
               className={`flex-1 rounded-lg py-1 text-xs font-semibold transition ${
                 strokeWidth === w
-                  ? "bg-indigo-600 text-white shadow-sm"
+                  ? "bg-indigo-600 text-white shadow-xs"
                   : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
               }`}
             >
@@ -236,7 +239,7 @@ export function PropertiesPalette({ engine }: PropertiesPaletteProps) {
 
       <div>
         <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-          <span>Opacidade</span>
+          <span>{t("properties.opacity")}</span>
           <span>{Math.round(opacity * 100)}%</span>
         </div>
         <input
@@ -256,40 +259,40 @@ export function PropertiesPalette({ engine }: PropertiesPaletteProps) {
             <button
               onClick={() => engine?.duplicateSelected()}
               className="flex items-center justify-center gap-1 rounded-lg bg-zinc-100 py-1.5 text-[11px] font-semibold text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-              title="Duplicar elemento (Ctrl+D)"
+              title={t("properties.duplicate")}
             >
               <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
               </svg>
-              <span>Duplicar</span>
+              <span>{t("common.duplicate")}</span>
             </button>
 
             <button
               onClick={() => engine?.deleteSelected()}
               className="flex items-center justify-center gap-1 rounded-lg bg-red-50 py-1.5 text-[11px] font-semibold text-red-600 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-950/70"
-              title="Excluir elemento (Delete / Backspace)"
+              title={t("properties.delete")}
             >
               <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
               </svg>
-              <span>Excluir</span>
+              <span>{t("common.delete")}</span>
             </button>
 
             <button
               onClick={() => engine?.bringSelectedToFront()}
               className="flex items-center justify-center gap-1 rounded-lg bg-zinc-100 py-1 text-[10px] font-semibold text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-              title="Trazer para frente"
+              title={t("properties.bringToFront")}
             >
-              <span>Trazer p/ Frente</span>
+              <span>{t("properties.bringToFront")}</span>
             </button>
 
             <button
               onClick={() => engine?.sendSelectedToBack()}
               className="flex items-center justify-center gap-1 rounded-lg bg-zinc-100 py-1 text-[10px] font-semibold text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-              title="Enviar para trás"
+              title={t("properties.sendToBack")}
             >
-              <span>Enviar p/ Trás</span>
+              <span>{t("properties.sendToBack")}</span>
             </button>
           </div>
         </div>

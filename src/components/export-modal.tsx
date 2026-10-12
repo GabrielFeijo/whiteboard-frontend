@@ -5,6 +5,7 @@ import * as Y from "yjs";
 import DOMPurify from "dompurify";
 import { ElementData, getDocRoots } from "../shared";
 import { renderElement } from "../canvas/renderers/element-renderer";
+import { useI18n } from "../i18n";
 
 interface ExportModalProps {
   doc: Y.Doc;
@@ -13,6 +14,7 @@ interface ExportModalProps {
 }
 
 export function ExportModal({ doc, boardTitle, onClose }: ExportModalProps) {
+  const { t } = useI18n();
   const [isExporting, setIsExporting] = useState(false);
 
   const getElements = (): ElementData[] => {
@@ -154,9 +156,11 @@ export function ExportModal({ doc, boardTitle, onClose }: ExportModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Export Whiteboard</h2>
+        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+          {t("exportModal.title")}
+        </h2>
         <p className="mt-1 text-xs text-zinc-500">
-          Export the canvas elements as a high-resolution PNG image or vector SVG.
+          {t("exportModal.subtitle")}
         </p>
 
         <div className="mt-6 flex flex-col gap-3">
@@ -167,10 +171,10 @@ export function ExportModal({ doc, boardTitle, onClose }: ExportModalProps) {
           >
             <div>
               <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                PNG Image (2x High-Res)
+                {t("exportModal.pngTitle")}
               </p>
               <p className="text-xs text-zinc-500">
-                Best for sharing on messaging apps, slides or documents.
+                {t("exportModal.pngDescription")}
               </p>
             </div>
             <span className="text-xs font-bold text-indigo-600">.png</span>
@@ -183,10 +187,10 @@ export function ExportModal({ doc, boardTitle, onClose }: ExportModalProps) {
           >
             <div>
               <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                SVG Vector (Sanitized)
+                {t("exportModal.svgTitle")}
               </p>
               <p className="text-xs text-zinc-500">
-                Scalable vector graphic with XSS sanitization.
+                {t("exportModal.svgDescription")}
               </p>
             </div>
             <span className="text-xs font-bold text-indigo-600">.svg</span>
@@ -198,7 +202,7 @@ export function ExportModal({ doc, boardTitle, onClose }: ExportModalProps) {
             onClick={onClose}
             className="rounded-xl px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
         </div>
       </div>

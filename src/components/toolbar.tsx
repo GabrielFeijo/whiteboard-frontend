@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Tool, useCanvasStore } from "../store/canvas-store";
+import { useI18n } from "../i18n";
 
 interface ToolbarProps {
   onUndo?: () => void;
@@ -13,11 +14,12 @@ interface ToolbarProps {
 
 export function Toolbar({ onUndo, onRedo, canUndo, canRedo, readOnly }: ToolbarProps) {
   const { activeTool, setActiveTool } = useCanvasStore();
+  const { t } = useI18n();
 
   const tools: { id: Tool; label: string; icon: React.ReactNode; shortcut: string }[] = [
     {
       id: "select",
-      label: "Select (V)",
+      label: t("toolbar.select"),
       shortcut: "V",
       icon: (
         <svg
@@ -33,7 +35,7 @@ export function Toolbar({ onUndo, onRedo, canUndo, canRedo, readOnly }: ToolbarP
     },
     {
       id: "hand",
-      label: "Hand / Pan (H)",
+      label: t("toolbar.hand"),
       shortcut: "H",
       icon: (
         <svg
@@ -49,7 +51,7 @@ export function Toolbar({ onUndo, onRedo, canUndo, canRedo, readOnly }: ToolbarP
     },
     {
       id: "rect",
-      label: "Rectangle (R)",
+      label: t("toolbar.rect"),
       shortcut: "R",
       icon: (
         <svg
@@ -65,7 +67,7 @@ export function Toolbar({ onUndo, onRedo, canUndo, canRedo, readOnly }: ToolbarP
     },
     {
       id: "ellipse",
-      label: "Ellipse (O)",
+      label: t("toolbar.ellipse"),
       shortcut: "O",
       icon: (
         <svg
@@ -81,7 +83,7 @@ export function Toolbar({ onUndo, onRedo, canUndo, canRedo, readOnly }: ToolbarP
     },
     {
       id: "diamond",
-      label: "Diamond (D)",
+      label: t("toolbar.diamond"),
       shortcut: "D",
       icon: (
         <svg
@@ -97,7 +99,7 @@ export function Toolbar({ onUndo, onRedo, canUndo, canRedo, readOnly }: ToolbarP
     },
     {
       id: "arrow",
-      label: "Arrow (A)",
+      label: t("toolbar.arrow"),
       shortcut: "A",
       icon: (
         <svg
@@ -113,7 +115,7 @@ export function Toolbar({ onUndo, onRedo, canUndo, canRedo, readOnly }: ToolbarP
     },
     {
       id: "line",
-      label: "Line (L)",
+      label: t("toolbar.line"),
       shortcut: "L",
       icon: (
         <svg
@@ -129,7 +131,7 @@ export function Toolbar({ onUndo, onRedo, canUndo, canRedo, readOnly }: ToolbarP
     },
     {
       id: "freehand",
-      label: "Pencil (P)",
+      label: t("toolbar.freehand"),
       shortcut: "P",
       icon: (
         <svg
@@ -145,7 +147,7 @@ export function Toolbar({ onUndo, onRedo, canUndo, canRedo, readOnly }: ToolbarP
     },
     {
       id: "sticky",
-      label: "Sticky Note (S)",
+      label: t("toolbar.sticky"),
       shortcut: "S",
       icon: (
         <svg
@@ -164,7 +166,7 @@ export function Toolbar({ onUndo, onRedo, canUndo, canRedo, readOnly }: ToolbarP
     },
     {
       id: "text",
-      label: "Text (T)",
+      label: t("toolbar.text"),
       shortcut: "T",
       icon: (
         <svg
@@ -182,7 +184,7 @@ export function Toolbar({ onUndo, onRedo, canUndo, canRedo, readOnly }: ToolbarP
     },
     {
       id: "eraser",
-      label: "Eraser (E)",
+      label: t("toolbar.eraser"),
       shortcut: "E",
       icon: (
         <svg
@@ -213,7 +215,7 @@ export function Toolbar({ onUndo, onRedo, canUndo, canRedo, readOnly }: ToolbarP
             onClick={() => setActiveTool(t.id)}
             className={`relative flex h-9 w-9 items-center justify-center rounded-xl transition ${
               isActive
-                ? "bg-indigo-600 text-white shadow-sm"
+                ? "bg-indigo-600 text-white shadow-xs"
                 : isDisabled
                   ? "cursor-not-allowed opacity-40 text-zinc-400"
                   : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
@@ -227,7 +229,7 @@ export function Toolbar({ onUndo, onRedo, canUndo, canRedo, readOnly }: ToolbarP
       <div className="mx-1 h-6 w-px bg-zinc-200 dark:bg-zinc-800" />
 
       <button
-        title="Undo (Ctrl+Z)"
+        title={t("toolbar.undo")}
         disabled={!canUndo || readOnly}
         onClick={onUndo}
         className="flex h-9 w-9 items-center justify-center rounded-xl text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-zinc-800"
@@ -245,7 +247,7 @@ export function Toolbar({ onUndo, onRedo, canUndo, canRedo, readOnly }: ToolbarP
       </button>
 
       <button
-        title="Redo (Ctrl+Y / Ctrl+Shift+Z)"
+        title={t("toolbar.redo")}
         disabled={!canRedo || readOnly}
         onClick={onRedo}
         className="flex h-9 w-9 items-center justify-center rounded-xl text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-zinc-800"

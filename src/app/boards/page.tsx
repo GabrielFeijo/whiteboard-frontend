@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,16 +14,13 @@ import {
   useDuplicateBoardMutation,
 } from "../../hooks/use-boards";
 import { ShareModal } from "../../components/share-modal";
-
-const createBoardSchema = z.object({
-  title: z.string().trim().min(1, "Board title is required").max(100, "Title is too long"),
-});
-
-type CreateBoardFormData = z.infer<typeof createBoardSchema>;
+import { useI18n } from "../../i18n";
+import { LanguageSwitcher } from "../../components/language-switcher";
 
 export default function BoardsPage() {
   const router = useRouter();
   const { user, isInitialized, init, logout } = useAuthStore();
+  const { t } = useI18n();
   const [isCreating, setIsCreating] = useState(false);
   const [sharingBoard, setSharingBoard] = useState<BoardItem | null>(null);
 
@@ -33,6 +30,20 @@ export default function BoardsPage() {
   const createMutation = useCreateBoardMutation();
   const duplicateMutation = useDuplicateBoardMutation();
   const deleteMutation = useDeleteBoardMutation();
+
+  const createBoardSchema = useMemo(
+    () =>
+      z.object({
+        title: z
+          .string()
+          .trim()
+          .min(1, t("dashboard.titleRequired"))
+          .max(100, t("dashboard.titleTooLong")),
+      }),
+    [t],
+  );
+
+  type CreateBoardFormData = z.infer<typeof createBoardSchema>;
 
   const {
     register,
@@ -68,15 +79,27 @@ export default function BoardsPage() {
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm("Are you sure you want to delete this board?")) {
+    if (confirm(t("dashboard.confirmDelete"))) {
       await deleteMutation.mutateAsync(id);
+    }
+  };
+
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case "OWNER":
+        return t("dashboard.roles.owner");
+      case "EDITOR":
+        return t("dashboard.roles.editor");
+      case "VIEWER":
+      default:
+        return t("dashboard.roles.viewer");
     }
   };
 
   if (!isInitialized || (!user && isLoading)) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-zinc-500">
-        Loading boards...
+        {t("dashboard.loading")}
       </div>
     );
   }
@@ -87,27 +110,29 @@ export default function BoardsPage() {
         <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-              My Whiteboards
+              {t("dashboard.title")}
             </h1>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Create, organize, and collaborate on your team boards.
+              {t("dashboard.subtitle")}
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <LanguageSwitcher />
+
             <span className="text-xs text-zinc-500 dark:text-zinc-400">
-              Signed in as{" "}
+              {t("nav.signedInAs")}{" "}
               <strong className="text-zinc-800 dark:text-zinc-200">{user?.name}</strong>
             </span>
             <button
               onClick={() => logout()}
               className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900"
             >
-              Sign out
+              {t("common.signOut")}
             </button>
             <button
               onClick={() => setIsCreating(true)}
-              className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow transition hover:bg-indigo-500"
+              className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-xs transition hover:bg-indigo-500"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
@@ -117,7 +142,7 @@ export default function BoardsPage() {
                   d="M12 4v16m8-8H4"
                 />
               </svg>
-              New Board
+              {t("nav.newBoard")}
             </button>
           </div>
         </header>
@@ -126,10 +151,10 @@ export default function BoardsPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
             <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
               <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-                Create New Whiteboard
+                {t("dashboard.createNewBoard")}
               </h2>
               <p className="mt-1 text-xs text-zinc-500">
-                Give your whiteboard a descriptive title.
+                {t("dashboard.createModalSubtitle")}
               </p>
               <form onSubmit={handleSubmit(onSubmitCreate)} className="mt-4 space-y-4">
                 <div>
@@ -137,7 +162,7 @@ export default function BoardsPage() {
                     type="text"
                     {...register("title")}
                     autoFocus
-                    placeholder="e.g. System Architecture Diagram"
+                    placeholder={t("dashboard.boardTitlePlaceholder")}
                     className="w-full rounded-xl border border-zinc-300 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                   />
                   {errors.title && (
@@ -155,14 +180,14 @@ export default function BoardsPage() {
                     }}
                     className="rounded-xl px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </button>
                   <button
                     type="submit"
                     disabled={createMutation.isPending}
                     className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
                   >
-                    {createMutation.isPending ? "Creating..." : "Create Whiteboard"}
+                    {createMutation.isPending ? t("dashboard.creatingButton") : t("dashboard.createButton")}
                   </button>
                 </div>
               </form>
@@ -172,15 +197,15 @@ export default function BoardsPage() {
 
         <div className="mt-8">
           {isLoading ? (
-            <p className="text-sm text-zinc-400">Loading your boards...</p>
+            <p className="text-sm text-zinc-400">{t("dashboard.loading")}</p>
           ) : boards.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-300 py-16 dark:border-zinc-800">
-              <p className="text-zinc-500">No boards yet.</p>
+              <p className="text-zinc-500">{t("dashboard.noBoards")}</p>
               <button
                 onClick={() => setIsCreating(true)}
                 className="mt-3 text-sm font-medium text-indigo-600 hover:underline"
               >
-                Create your first whiteboard
+                {t("dashboard.createFirst")}
               </button>
             </div>
           ) : (
@@ -189,15 +214,15 @@ export default function BoardsPage() {
                 <div
                   key={board.id}
                   onClick={() => router.push(`/board/${board.id}`)}
-                  className="group relative flex cursor-pointer flex-col justify-between rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-indigo-400 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-indigo-500"
+                  className="group relative flex cursor-pointer flex-col justify-between rounded-2xl border border-zinc-200 bg-white p-5 shadow-xs transition hover:border-indigo-400 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-indigo-500"
                 >
                   <div>
                     <div className="flex items-center justify-between">
                       <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                        {board.role}
+                        {getRoleLabel(board.role)}
                       </span>
                       <span className="text-xs text-zinc-400">
-                        {new Date(board.updatedAt).toLocaleDateString()}
+                        {new Date(board.updatedAt).toLocaleDateString(t("common.dateLocale"))}
                       </span>
                     </div>
 
@@ -214,13 +239,13 @@ export default function BoardsPage() {
                       }}
                       className="rounded-md px-2.5 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                     >
-                      Share
+                      {t("dashboard.share")}
                     </button>
 
                     <div className="flex items-center gap-1">
                       <button
                         onClick={(e) => handleDuplicate(board.id, e)}
-                        title="Duplicate"
+                        title={t("common.duplicate")}
                         className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                       >
                         <svg
@@ -241,7 +266,7 @@ export default function BoardsPage() {
                       {board.role === "OWNER" && (
                         <button
                           onClick={(e) => handleDelete(board.id, e)}
-                          title="Delete"
+                          title={t("common.delete")}
                           className="rounded-md p-1.5 text-zinc-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                         >
                           <svg

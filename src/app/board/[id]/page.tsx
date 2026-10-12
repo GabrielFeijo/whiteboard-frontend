@@ -15,6 +15,8 @@ import { ConnectionBadge } from "../../../components/connection-status";
 import { ShareModal } from "../../../components/share-modal";
 import { ExportModal } from "../../../components/export-modal";
 import { VersionHistoryModal } from "../../../components/version-history-modal";
+import { useI18n } from "../../../i18n";
+import { LanguageSwitcher } from "../../../components/language-switcher";
 
 const AVATAR_COLORS = [
   "#ef4444",
@@ -42,6 +44,7 @@ function BoardStudioInner() {
   const router = useRouter();
   const boardId = params.id as string;
   const linkToken = searchParams.get("token") || undefined;
+  const { t } = useI18n();
 
   const { user, isInitialized, init } = useAuthStore();
   const { data: board, isLoading: isBoardLoading, error: boardError } = useBoardQuery(
@@ -78,7 +81,7 @@ function BoardStudioInner() {
 
     sync.awareness.setLocalStateField("user", {
       id: user?.id || "guest",
-      name: user?.name || "Guest User",
+      name: user?.name || t("collaborators.guestUser"),
       email: user?.email,
       color: localColor,
       role: board.role,
@@ -92,7 +95,7 @@ function BoardStudioInner() {
       sync.destroy();
       setProvider(null);
     };
-  }, [boardId, isInitialized, user, linkToken, localColor, board]);
+  }, [boardId, isInitialized, user, linkToken, localColor, board, t]);
 
   useEffect(() => {
     if (
@@ -150,7 +153,7 @@ function BoardStudioInner() {
       <div className="flex h-screen w-screen items-center justify-center bg-slate-50 dark:bg-zinc-950">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-          <p className="text-sm font-medium text-zinc-500">Connecting to whiteboard...</p>
+          <p className="text-sm font-medium text-zinc-500">{t("boardStudio.loading")}</p>
         </div>
       </div>
     );
@@ -160,15 +163,15 @@ function BoardStudioInner() {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-slate-50 dark:bg-zinc-950 p-4">
         <div className="max-w-md rounded-2xl border border-red-200 bg-white p-6 text-center shadow-lg dark:border-red-900/50 dark:bg-zinc-900">
-          <h2 className="text-base font-bold text-red-600 dark:text-red-400">Connection Error</h2>
+          <h2 className="text-base font-bold text-red-600 dark:text-red-400">{t("common.error")}</h2>
           <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
-            {boardError ? (boardError as Error).message : "Could not join board workspace."}
+            {boardError ? (boardError as Error).message : t("boardStudio.loading")}
           </p>
           <button
             onClick={() => router.push("/boards")}
             className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500"
           >
-            Back to Dashboard
+            {t("boardStudio.backToBoards")}
           </button>
         </div>
       </div>
@@ -189,7 +192,7 @@ function BoardStudioInner() {
         <div className="flex items-center gap-3 pointer-events-auto rounded-2xl border border-zinc-200/80 bg-white/95 px-3.5 py-1.5 shadow-sm backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-900/95">
           <button
             onClick={() => router.push("/boards")}
-            title="Back to boards"
+            title={t("boardStudio.backToBoards")}
             className="rounded-lg p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
           >
             <svg
@@ -211,7 +214,7 @@ function BoardStudioInner() {
 
           {isReadOnly && (
             <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-              Read-Only
+              {t("boardStudio.readOnly")}
             </span>
           )}
         </div>
@@ -235,10 +238,12 @@ function BoardStudioInner() {
             onFollowUser={(targetId) => setFollowingClientId(targetId)}
           />
 
+          <LanguageSwitcher variant="compact" />
+
           <div className="flex items-center gap-1 rounded-2xl border border-zinc-200/80 bg-white/95 p-1 shadow-sm backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-900/95">
             <button
               onClick={() => setShowHistoryModal(true)}
-              title="Version History"
+              title={t("boardStudio.versionHistory")}
               className="rounded-xl p-1.5 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
               <svg
@@ -255,7 +260,7 @@ function BoardStudioInner() {
 
             <button
               onClick={() => setShowExportModal(true)}
-              title="Export Canvas (PNG / SVG)"
+              title={t("boardStudio.exportCanvas")}
               className="rounded-xl p-1.5 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
               <svg
@@ -283,7 +288,7 @@ function BoardStudioInner() {
                 >
                   <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13" />
                 </svg>
-                <span>Share</span>
+                <span>{t("boardStudio.share")}</span>
               </button>
             )}
           </div>
@@ -296,7 +301,7 @@ function BoardStudioInner() {
             <button
               onClick={() => setShowProperties(!isPropertiesOpen)}
               className="flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-200/80 bg-white/95 text-zinc-600 shadow-md backdrop-blur-md hover:bg-zinc-100 dark:border-zinc-800/80 dark:bg-zinc-900/95 dark:text-zinc-300"
-              title="Toggle Style Palette"
+              title={t("boardStudio.toggleProperties")}
             >
               <svg
                 className="h-4 w-4"
