@@ -4,7 +4,7 @@ import { generateKeyBetween } from "fractional-indexing";
 import { ElementData, getDocRoots, Role } from "../shared";
 
 export type ElementStyle = ElementData["style"];
-import { Viewport } from "./viewport";
+import { Point, Viewport } from "./viewport";
 import { SpatialIndex } from "./spatial-index";
 import { renderElement } from "./renderers/element-renderer";
 import { drawFreehand } from "./renderers/freehand-renderer";
@@ -12,6 +12,14 @@ import { measureTextDimensions } from "./renderers/text-renderer";
 import { Tool, useCanvasStore } from "../store/canvas-store";
 import { LocalUndoManager, LOCAL_ORIGIN } from "../collab/undo-manager";
 import { SyncProvider } from "../collab/sync-provider";
+import {
+  calculateResizedBounds,
+  getElementHandles,
+  getHandleAt,
+  isPointInElement,
+  ResizeHandleType,
+  scaleFreehandPoints,
+} from "./resize-helper";
 
 export class CanvasEngine {
   readonly viewport = new Viewport();
@@ -27,12 +35,20 @@ export class CanvasEngine {
   private isDestroyed = false;
 
   private isPointerDown = false;
-  private dragMode: "none" | "pan" | "draw" | "move" | "selectBox" = "none";
+  private dragMode: "none" | "pan" | "draw" | "move" | "selectBox" | "resize" = "none";
   private startPoint = { x: 0, y: 0 };
   private currentPoint = { x: 0, y: 0 };
   private freehandDraft: number[] = [];
   private moveInitialPositions = new Map<string, { x: number; y: number }>();
   private selectBox: { x: number; y: number; w: number; h: number } | null = null;
+  private resizeInfo: {
+    handle: ResizeHandleType;
+    elementId: string;
+    initialBounds: { x: number; y: number; w: number; h: number };
+    initialPoints?: number[];
+    startWorldPt: { x: number; y: number };
+  } | null = null;
+  private storeUnsub: (() => void) | null = null;
   private elementsObserver: Parameters<Y.Map<unknown>["observeDeep"]>[0] | null = null;
   private providerUnsub: (() => void) | null = null;
   private docUpdateHandler: (() => void) | null = null;
@@ -124,9 +140,21 @@ export class CanvasEngine {
     this.overlayCanvas.addEventListener("pointerdown", this.onPointerDown);
     window.addEventListener("pointermove", this.onPointerMove);
     window.addEventListener("pointerup", this.onPointerUp);
+    this.overlayCanvas.addEventListener("pointerleave", this.onPointerLeave);
     this.overlayCanvas.addEventListener("wheel", this.onWheel, { passive: false });
     this.overlayCanvas.addEventListener("dblclick", this.onDoubleClick);
     window.addEventListener("keydown", this.onKeyDown);
+
+    this.storeUnsub = useCanvasStore.subscribe((state, prevState) => {
+      if (
+        state.activeTool !== prevState.activeTool ||
+        state.selectedIds !== prevState.selectedIds
+      ) {
+        const screenPt = this.viewport.worldToScreen(this.currentPoint);
+        this.updateHoverCursor(screenPt, this.currentPoint);
+        this.isDirty = true;
+      }
+    });
   }
 
   private handleResize = () => {
@@ -237,32 +265,29 @@ export class CanvasEngine {
           const el = map.toJSON() as ElementData;
           this.overlayCtx.strokeStyle = "#4f46e5";
           this.overlayCtx.lineWidth = 1.5 / this.viewport.zoom;
-          this.overlayCtx.strokeRect(el.x - 4, el.y - 4, el.w + 8, el.h + 8);
+          this.overlayCtx.strokeRect(el.x, el.y, el.w, el.h);
 
-          const handleSize = 6 / this.viewport.zoom;
-          this.overlayCtx.fillStyle = "#ffffff";
-          this.overlayCtx.strokeStyle = "#4f46e5";
-          this.overlayCtx.lineWidth = 1.5 / this.viewport.zoom;
-          const corners = [
-            { x: el.x - 4, y: el.y - 4 },
-            { x: el.x + el.w + 4, y: el.y - 4 },
-            { x: el.x + el.w + 4, y: el.y + el.h + 4 },
-            { x: el.x - 4, y: el.y + el.h + 4 },
-          ];
-          corners.forEach((c) => {
-            this.overlayCtx.fillRect(
-              c.x - handleSize / 2,
-              c.y - handleSize / 2,
-              handleSize,
-              handleSize,
-            );
-            this.overlayCtx.strokeRect(
-              c.x - handleSize / 2,
-              c.y - handleSize / 2,
-              handleSize,
-              handleSize,
-            );
-          });
+          if (store.selectedIds.length === 1) {
+            const handleSize = 8 / this.viewport.zoom;
+            this.overlayCtx.fillStyle = "#ffffff";
+            this.overlayCtx.strokeStyle = "#4f46e5";
+            this.overlayCtx.lineWidth = 1.5 / this.viewport.zoom;
+            const handles = getElementHandles(el);
+            handles.forEach((h) => {
+              this.overlayCtx.fillRect(
+                h.x - handleSize / 2,
+                h.y - handleSize / 2,
+                handleSize,
+                handleSize,
+              );
+              this.overlayCtx.strokeRect(
+                h.x - handleSize / 2,
+                h.y - handleSize / 2,
+                handleSize,
+                handleSize,
+              );
+            });
+          }
         }
       });
     }
@@ -352,7 +377,8 @@ export class CanvasEngine {
   private onPointerDown = (e: PointerEvent) => {
     this.isPointerDown = true;
     const store = useCanvasStore.getState();
-    const screenPt = { x: e.offsetX, y: e.offsetY };
+    const rect = this.overlayCanvas.getBoundingClientRect();
+    const screenPt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     const worldPt = this.viewport.screenToWorld(screenPt);
 
     this.startPoint = worldPt;
@@ -360,12 +386,35 @@ export class CanvasEngine {
 
     if (e.button === 1 || store.activeTool === "hand") {
       this.dragMode = "pan";
+      this.setCursor("grabbing");
       return;
     }
 
     if (this.role === "VIEWER") return;
 
     if (store.activeTool === "select") {
+      if (store.selectedIds.length === 1) {
+        const selectedId = store.selectedIds[0];
+        const roots = getDocRoots(this.doc);
+        const map = roots.elements.get(selectedId);
+        if (map) {
+          const el = map.toJSON() as ElementData;
+          const handle = getHandleAt(screenPt, el, this.viewport);
+          if (handle) {
+            this.dragMode = "resize";
+            this.resizeInfo = {
+              handle: handle.type,
+              elementId: el.id,
+              initialBounds: { x: el.x, y: el.y, w: el.w, h: el.h },
+              initialPoints: el.points ? [...el.points] : undefined,
+              startWorldPt: worldPt,
+            };
+            this.setCursor(handle.cursor);
+            return;
+          }
+        }
+      }
+
       const hitId = this.hitTest(worldPt);
       if (hitId) {
         const isAlreadySelected = store.selectedIds.includes(hitId);
@@ -380,6 +429,7 @@ export class CanvasEngine {
         store.setSelectedIds(newSelected);
         this.syncStoreWithSelection(newSelected);
         this.dragMode = "move";
+        this.setCursor("move");
 
         const roots = getDocRoots(this.doc);
         this.moveInitialPositions.clear();
@@ -396,6 +446,7 @@ export class CanvasEngine {
         if (!e.shiftKey) store.setSelectedIds([]);
         this.dragMode = "selectBox";
         this.selectBox = { x: worldPt.x, y: worldPt.y, w: 0, h: 0 };
+        this.setCursor("default");
       }
     } else if (store.activeTool === "eraser") {
       const hitId = this.hitTest(worldPt);
@@ -433,7 +484,10 @@ export class CanvasEngine {
 
     this.provider.awareness.setLocalStateField("cursor", { x: worldPt.x, y: worldPt.y });
 
-    if (!this.isPointerDown) return;
+    if (!this.isPointerDown) {
+      this.updateHoverCursor(screenPt, worldPt);
+      return;
+    }
 
     if (this.dragMode === "pan") {
       const dx = e.movementX;
@@ -442,6 +496,46 @@ export class CanvasEngine {
       this.viewport.pan.y += dy;
       useCanvasStore.getState().setPan({ ...this.viewport.pan });
       this.isDirty = true;
+      return;
+    }
+
+    if (this.dragMode === "resize" && this.resizeInfo) {
+      const roots = getDocRoots(this.doc);
+      const map = roots.elements.get(this.resizeInfo.elementId);
+      if (map) {
+        const dx = worldPt.x - this.resizeInfo.startWorldPt.x;
+        const dy = worldPt.y - this.resizeInfo.startWorldPt.y;
+        const type = map.get("type") as string;
+        const minSize = type === "sticky" ? 40 : 10;
+
+        const newBounds = calculateResizedBounds({
+          handle: this.resizeInfo.handle,
+          initialBounds: this.resizeInfo.initialBounds,
+          dx,
+          dy,
+          minWidth: minSize,
+          minHeight: minSize,
+          keepAspectRatio: e.shiftKey,
+        });
+
+        this.doc.transact(() => {
+          map.set("x", newBounds.x);
+          map.set("y", newBounds.y);
+          map.set("w", newBounds.w);
+          map.set("h", newBounds.h);
+
+          if (type === "freehand" && this.resizeInfo?.initialPoints) {
+            const scaled = scaleFreehandPoints(
+              this.resizeInfo.initialPoints,
+              this.resizeInfo.initialBounds,
+              newBounds,
+            );
+            map.set("points", scaled);
+          }
+        }, LOCAL_ORIGIN);
+
+        this.isDirty = true;
+      }
       return;
     }
 
@@ -474,10 +568,13 @@ export class CanvasEngine {
     }
   };
 
-  private onPointerUp = () => {
+  private onPointerUp = (e: PointerEvent) => {
     if (!this.isPointerDown) return;
     this.isPointerDown = false;
     const store = useCanvasStore.getState();
+    const rect = this.overlayCanvas.getBoundingClientRect();
+    const screenPt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    const worldPt = this.viewport.screenToWorld(screenPt);
 
     if (this.dragMode === "draw") {
       if (store.activeTool === "freehand") {
@@ -511,9 +608,61 @@ export class CanvasEngine {
       this.selectBox = null;
     } else if (this.dragMode === "move") {
       this.undoManager.stopCapturing();
+    } else if (this.dragMode === "resize") {
+      this.undoManager.stopCapturing();
+      this.resizeInfo = null;
     }
 
     this.dragMode = "none";
+    this.updateHoverCursor(screenPt, worldPt);
+  };
+
+  private onPointerLeave = () => {
+    if (!this.isPointerDown) {
+      this.setCursor("default");
+    }
+  };
+
+  private updateHoverCursor(screenPt: Point, worldPt: Point) {
+    if (this.role === "VIEWER") {
+      this.setCursor("default");
+      return;
+    }
+
+    const store = useCanvasStore.getState();
+
+    if (store.activeTool === "select") {
+      if (store.selectedIds.length === 1) {
+        const selectedId = store.selectedIds[0];
+        const roots = getDocRoots(this.doc);
+        const map = roots.elements.get(selectedId);
+        if (map) {
+          const el = map.toJSON() as ElementData;
+          const handle = getHandleAt(screenPt, el, this.viewport);
+          if (handle) {
+            this.setCursor(handle.cursor);
+            return;
+          }
+        }
+      }
+
+      const hitId = this.hitTest(worldPt);
+      if (hitId) {
+        this.setCursor(store.selectedIds.includes(hitId) ? "move" : "pointer");
+        return;
+      }
+      this.setCursor("default");
+    } else if (store.activeTool === "hand") {
+      this.setCursor("grab");
+    } else {
+      this.setCursor("crosshair");
+    }
+  }
+
+  private setCursor(cursor: string) {
+    if (this.overlayCanvas.style.cursor !== cursor) {
+      this.overlayCanvas.style.cursor = cursor;
+    }
   };
 
   private onWheel = (e: WheelEvent) => {
@@ -597,7 +746,29 @@ export class CanvasEngine {
       maxX: worldPt.x,
       maxY: worldPt.y,
     });
-    return hits[hits.length - 1] || null;
+    if (hits.length === 0) return null;
+
+    const roots = getDocRoots(this.doc);
+    const candidateElements: ElementData[] = [];
+
+    for (const id of hits) {
+      const map = roots.elements.get(id);
+      if (map) {
+        candidateElements.push(map.toJSON() as ElementData);
+      }
+    }
+
+    if (candidateElements.length === 0) return null;
+
+    candidateElements.sort((a, b) => ((b.z || "") > (a.z || "") ? 1 : (b.z || "") < (a.z || "") ? -1 : 0));
+
+    for (const el of candidateElements) {
+      if (isPointInElement(worldPt, el)) {
+        return el.id;
+      }
+    }
+
+    return candidateElements[0].id;
   }
 
   private getNextZIndex(): string {
@@ -1037,9 +1208,14 @@ export class CanvasEngine {
     this.overlayCanvas.removeEventListener("pointerdown", this.onPointerDown);
     window.removeEventListener("pointermove", this.onPointerMove);
     window.removeEventListener("pointerup", this.onPointerUp);
+    this.overlayCanvas.removeEventListener("pointerleave", this.onPointerLeave);
     this.overlayCanvas.removeEventListener("wheel", this.onWheel);
     this.overlayCanvas.removeEventListener("dblclick", this.onDoubleClick);
     window.removeEventListener("keydown", this.onKeyDown);
+    if (this.storeUnsub) {
+      this.storeUnsub();
+      this.storeUnsub = null;
+    }
     if (this.elementsObserver) {
       const roots = getDocRoots(this.doc);
       roots.elements.unobserveDeep(this.elementsObserver);

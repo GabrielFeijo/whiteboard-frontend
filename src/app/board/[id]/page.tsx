@@ -194,7 +194,7 @@ function BoardStudioInner() {
       <div ref={containerRef} className="absolute inset-0 h-full w-full">
         <canvas ref={bgCanvasRef} className="absolute inset-0 pointer-events-none" />
         <canvas ref={contentCanvasRef} className="absolute inset-0 pointer-events-none" />
-        <canvas ref={overlayCanvasRef} className="absolute inset-0 cursor-crosshair touch-none" />
+        <canvas ref={overlayCanvasRef} className="absolute inset-0 touch-none" />
       </div>
 
       <header className="absolute top-3 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
