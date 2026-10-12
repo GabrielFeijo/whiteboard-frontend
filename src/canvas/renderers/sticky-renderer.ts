@@ -1,6 +1,10 @@
 import { ElementData } from "../../shared";
 
-export function drawSticky(ctx: CanvasRenderingContext2D, el: ElementData) {
+export function drawSticky(
+  ctx: CanvasRenderingContext2D,
+  el: ElementData,
+  placeholder = "Note...",
+) {
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,0.12)";
   ctx.shadowBlur = 10;
@@ -22,7 +26,7 @@ export function drawSticky(ctx: CanvasRenderingContext2D, el: ElementData) {
 
   if (!text) {
     ctx.fillStyle = "#94a3b8";
-    ctx.fillText("Nota...", el.x + 12, el.y + 12, el.w - 24);
+    ctx.fillText(placeholder, el.x + 12, el.y + 12, el.w - 24);
   } else {
     ctx.fillStyle = "#1e293b";
     const lines = text.split("\n");
