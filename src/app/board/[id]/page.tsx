@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "../../../store/auth-store";
+import { useCanvasStore } from "../../../store/canvas-store";
 import { useBoardQuery } from "../../../hooks/use-boards";
 import { SyncProvider } from "../../../collab/sync-provider";
 import { CanvasEngine } from "../../../canvas/canvas-engine";
@@ -52,6 +53,8 @@ function BoardStudioInner() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showProperties, setShowProperties] = useState(true);
+  const selectedIds = useCanvasStore((state) => state.selectedIds);
+  const isPropertiesOpen = showProperties || selectedIds.length > 0;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const bgCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -291,7 +294,7 @@ function BoardStudioInner() {
         <div className="absolute left-4 top-18 z-20">
           <div className="flex items-center gap-1">
             <button
-              onClick={() => setShowProperties(!showProperties)}
+              onClick={() => setShowProperties(!isPropertiesOpen)}
               className="flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-200/80 bg-white/95 text-zinc-600 shadow-md backdrop-blur-md hover:bg-zinc-100 dark:border-zinc-800/80 dark:bg-zinc-900/95 dark:text-zinc-300"
               title="Toggle Style Palette"
             >
@@ -306,9 +309,9 @@ function BoardStudioInner() {
               </svg>
             </button>
           </div>
-          {showProperties && (
+          {isPropertiesOpen && (
             <div className="mt-2">
-              <PropertiesPalette />
+              <PropertiesPalette engine={engine} />
             </div>
           )}
         </div>

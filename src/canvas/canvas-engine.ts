@@ -2,11 +2,13 @@ import * as Y from "yjs";
 import { nanoid } from "nanoid";
 import { generateKeyBetween } from "fractional-indexing";
 import { ElementData, getDocRoots, Role } from "../shared";
+
+export type ElementStyle = ElementData["style"];
 import { Viewport } from "./viewport";
 import { SpatialIndex } from "./spatial-index";
 import { renderElement } from "./renderers/element-renderer";
 import { drawFreehand } from "./renderers/freehand-renderer";
-import { useCanvasStore } from "../store/canvas-store";
+import { Tool, useCanvasStore } from "../store/canvas-store";
 import { LocalUndoManager, LOCAL_ORIGIN } from "../collab/undo-manager";
 import { SyncProvider } from "../collab/sync-provider";
 
@@ -33,6 +35,7 @@ export class CanvasEngine {
   private elementsObserver: Parameters<Y.Map<unknown>["observeDeep"]>[0] | null = null;
   private providerUnsub: (() => void) | null = null;
   private docUpdateHandler: (() => void) | null = null;
+  private activeTextarea: HTMLTextAreaElement | null = null;
 
   constructor(
     private readonly container: HTMLDivElement,
@@ -122,6 +125,7 @@ export class CanvasEngine {
     window.addEventListener("pointermove", this.onPointerMove);
     window.addEventListener("pointerup", this.onPointerUp);
     this.overlayCanvas.addEventListener("wheel", this.onWheel, { passive: false });
+    this.overlayCanvas.addEventListener("dblclick", this.onDoubleClick);
     window.addEventListener("keydown", this.onKeyDown);
   }
 
@@ -234,6 +238,31 @@ export class CanvasEngine {
           this.overlayCtx.strokeStyle = "#4f46e5";
           this.overlayCtx.lineWidth = 1.5 / this.viewport.zoom;
           this.overlayCtx.strokeRect(el.x - 4, el.y - 4, el.w + 8, el.h + 8);
+
+          const handleSize = 6 / this.viewport.zoom;
+          this.overlayCtx.fillStyle = "#ffffff";
+          this.overlayCtx.strokeStyle = "#4f46e5";
+          this.overlayCtx.lineWidth = 1.5 / this.viewport.zoom;
+          const corners = [
+            { x: el.x - 4, y: el.y - 4 },
+            { x: el.x + el.w + 4, y: el.y - 4 },
+            { x: el.x + el.w + 4, y: el.y + el.h + 4 },
+            { x: el.x - 4, y: el.y + el.h + 4 },
+          ];
+          corners.forEach((c) => {
+            this.overlayCtx.fillRect(
+              c.x - handleSize / 2,
+              c.y - handleSize / 2,
+              handleSize,
+              handleSize,
+            );
+            this.overlayCtx.strokeRect(
+              c.x - handleSize / 2,
+              c.y - handleSize / 2,
+              handleSize,
+              handleSize,
+            );
+          });
         }
       });
     }
@@ -349,6 +378,7 @@ export class CanvasEngine {
             : [hitId];
 
         store.setSelectedIds(newSelected);
+        this.syncStoreWithSelection(newSelected);
         this.dragMode = "move";
 
         const roots = getDocRoots(this.doc);
@@ -367,6 +397,20 @@ export class CanvasEngine {
         this.dragMode = "selectBox";
         this.selectBox = { x: worldPt.x, y: worldPt.y, w: 0, h: 0 };
       }
+    } else if (store.activeTool === "eraser") {
+      const hitId = this.hitTest(worldPt);
+      if (hitId) {
+        const roots = getDocRoots(this.doc);
+        this.doc.transact(() => {
+          roots.elements.delete(hitId);
+          this.spatialIndex.remove(hitId);
+        }, LOCAL_ORIGIN);
+        if (store.selectedIds.includes(hitId)) {
+          store.setSelectedIds(store.selectedIds.filter((id) => id !== hitId));
+        }
+        this.isDirty = true;
+      }
+      return;
     } else if (store.activeTool === "freehand") {
       this.dragMode = "draw";
       this.freehandDraft = [worldPt.x, worldPt.y, e.pressure || 0.5];
@@ -463,6 +507,7 @@ export class CanvasEngine {
         maxY: this.selectBox.y + this.selectBox.h,
       });
       store.setSelectedIds(found);
+      this.syncStoreWithSelection(found);
       this.selectBox = null;
     } else if (this.dragMode === "move") {
       this.undoManager.stopCapturing();
@@ -497,27 +542,51 @@ export class CanvasEngine {
   };
 
   private onKeyDown = (e: KeyboardEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (
+      target?.tagName === "INPUT" ||
+      target?.tagName === "TEXTAREA" ||
+      target?.isContentEditable
+    ) {
+      return;
+    }
+
     const store = useCanvasStore.getState();
 
     if ((e.key === "Delete" || e.key === "Backspace") && store.selectedIds.length > 0) {
       if (this.role === "VIEWER") return;
-      const roots = getDocRoots(this.doc);
-      this.doc.transact(() => {
-        store.selectedIds.forEach((id) => {
-          roots.elements.delete(id);
-          this.spatialIndex.remove(id);
-        });
-      }, LOCAL_ORIGIN);
-      store.setSelectedIds([]);
-      this.isDirty = true;
+      this.deleteSelected();
+    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d" && store.selectedIds.length > 0) {
+      e.preventDefault();
+      this.duplicateSelected();
     } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
       if (e.shiftKey) {
         this.undoManager.redo();
       } else {
         this.undoManager.undo();
       }
+      this.isDirty = true;
     } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
       this.undoManager.redo();
+      this.isDirty = true;
+    } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+      const toolMap: Record<string, Tool> = {
+        v: "select",
+        h: "hand",
+        r: "rect",
+        o: "ellipse",
+        d: "diamond",
+        l: "line",
+        a: "arrow",
+        p: "freehand",
+        s: "sticky",
+        t: "text",
+        e: "eraser",
+      };
+      const key = e.key.toLowerCase();
+      if (toolMap[key]) {
+        store.setActiveTool(toolMap[key]);
+      }
     }
   };
 
@@ -735,14 +804,286 @@ export class CanvasEngine {
     });
   }
 
+  public updateSelectedStyle(styleUpdates: Partial<ElementStyle>) {
+    if (this.role === "VIEWER") return;
+    const store = useCanvasStore.getState();
+    if (store.selectedIds.length === 0) return;
+
+    const roots = getDocRoots(this.doc);
+    this.doc.transact(() => {
+      store.selectedIds.forEach((id) => {
+        const map = roots.elements.get(id);
+        if (map) {
+          const currentStyle = (map.get("style") as ElementStyle) || {
+            fill: "transparent",
+            stroke: "#0f172a",
+            strokeWidth: 2,
+            opacity: 1,
+          };
+          map.set("style", {
+            ...currentStyle,
+            ...styleUpdates,
+          });
+        }
+      });
+    }, LOCAL_ORIGIN);
+    this.isDirty = true;
+  }
+
+  public updateSelectedText(text: string) {
+    if (this.role === "VIEWER") return;
+    const store = useCanvasStore.getState();
+    if (store.selectedIds.length === 0) return;
+
+    const roots = getDocRoots(this.doc);
+    this.doc.transact(() => {
+      store.selectedIds.forEach((id) => {
+        const map = roots.elements.get(id);
+        if (map) {
+          map.set("text", text);
+        }
+      });
+    }, LOCAL_ORIGIN);
+    this.isDirty = true;
+  }
+
+  public deleteSelected() {
+    if (this.role === "VIEWER") return;
+    const store = useCanvasStore.getState();
+    if (store.selectedIds.length === 0) return;
+
+    const roots = getDocRoots(this.doc);
+    this.doc.transact(() => {
+      store.selectedIds.forEach((id) => {
+        roots.elements.delete(id);
+        this.spatialIndex.remove(id);
+      });
+    }, LOCAL_ORIGIN);
+    store.setSelectedIds([]);
+    this.isDirty = true;
+  }
+
+  public duplicateSelected() {
+    if (this.role === "VIEWER") return;
+    const store = useCanvasStore.getState();
+    if (store.selectedIds.length === 0) return;
+
+    const roots = getDocRoots(this.doc);
+    const newSelectedIds: string[] = [];
+
+    this.doc.transact(() => {
+      store.selectedIds.forEach((id) => {
+        const map = roots.elements.get(id);
+        if (map) {
+          const data = map.toJSON() as ElementData;
+          const newId = nanoid(10);
+          const newZ = this.getNextZIndex();
+          const newMap = new Y.Map<unknown>();
+          newMap.set("id", newId);
+          newMap.set("type", data.type);
+          newMap.set("x", data.x + 20);
+          newMap.set("y", data.y + 20);
+          newMap.set("w", data.w);
+          newMap.set("h", data.h);
+          newMap.set("rotation", data.rotation || 0);
+          newMap.set("z", newZ);
+          newMap.set("createdBy", this.userId);
+          newMap.set("style", { ...data.style });
+          if (data.text !== undefined) newMap.set("text", data.text);
+          if (data.points !== undefined) {
+            const shifted = data.points.map((pt, i) => (i % 3 === 2 ? pt : pt + 20));
+            newMap.set("points", shifted);
+          }
+
+          roots.elements.set(newId, newMap);
+          this.spatialIndex.insert(newId, data.x + 20, data.y + 20, data.w, data.h);
+          newSelectedIds.push(newId);
+        }
+      });
+    }, LOCAL_ORIGIN);
+
+    if (newSelectedIds.length > 0) {
+      store.setSelectedIds(newSelectedIds);
+      this.syncStoreWithSelection(newSelectedIds);
+    }
+    this.isDirty = true;
+  }
+
+  public bringSelectedToFront() {
+    if (this.role === "VIEWER") return;
+    const store = useCanvasStore.getState();
+    if (store.selectedIds.length === 0) return;
+
+    const roots = getDocRoots(this.doc);
+    let highest = "a0";
+    roots.elements.forEach((map) => {
+      const z = map.get("z") as string;
+      if (z && z > highest) highest = z;
+    });
+
+    this.doc.transact(() => {
+      store.selectedIds.forEach((id) => {
+        const map = roots.elements.get(id);
+        if (map) {
+          highest = generateKeyBetween(highest, null);
+          map.set("z", highest);
+        }
+      });
+    }, LOCAL_ORIGIN);
+    this.isDirty = true;
+  }
+
+  public sendSelectedToBack() {
+    if (this.role === "VIEWER") return;
+    const store = useCanvasStore.getState();
+    if (store.selectedIds.length === 0) return;
+
+    const roots = getDocRoots(this.doc);
+    let lowest = "a0";
+    roots.elements.forEach((map) => {
+      const z = map.get("z") as string;
+      if (z && (!lowest || z < lowest)) lowest = z;
+    });
+
+    this.doc.transact(() => {
+      store.selectedIds.forEach((id) => {
+        const map = roots.elements.get(id);
+        if (map) {
+          lowest = generateKeyBetween(null, lowest);
+          map.set("z", lowest);
+        }
+      });
+    }, LOCAL_ORIGIN);
+    this.isDirty = true;
+  }
+
+  public getSelectedElements(): ElementData[] {
+    const store = useCanvasStore.getState();
+    if (store.selectedIds.length === 0) return [];
+
+    const roots = getDocRoots(this.doc);
+    const elements: ElementData[] = [];
+    store.selectedIds.forEach((id) => {
+      const map = roots.elements.get(id);
+      if (map) {
+        elements.push(map.toJSON() as ElementData);
+      }
+    });
+    return elements;
+  }
+
+  private syncStoreWithSelection(selectedIds: string[]) {
+    if (selectedIds.length === 0) return;
+    const store = useCanvasStore.getState();
+    const roots = getDocRoots(this.doc);
+    const map = roots.elements.get(selectedIds[0]);
+    if (map) {
+      const data = map.toJSON() as ElementData;
+      if (data && data.style) {
+        if (data.style.stroke) store.setStrokeColor(data.style.stroke);
+        if (data.style.fill) store.setFillColor(data.style.fill);
+        if (data.style.strokeWidth) store.setStrokeWidth(data.style.strokeWidth);
+        if (data.style.opacity !== undefined) store.setOpacity(data.style.opacity);
+      }
+    }
+  }
+
+  private onDoubleClick = (e: MouseEvent) => {
+    if (this.role === "VIEWER") return;
+    const worldPt = this.viewport.screenToWorld({ x: e.offsetX, y: e.offsetY });
+    const hitId = this.hitTest(worldPt);
+    if (!hitId) return;
+
+    const roots = getDocRoots(this.doc);
+    const map = roots.elements.get(hitId);
+    if (!map) return;
+
+    const el = map.toJSON() as ElementData;
+    if (el.type === "sticky" || el.type === "text") {
+      this.startInlineTextEdit(hitId, el);
+    }
+  };
+
+  private startInlineTextEdit(id: string, el: ElementData) {
+    if (this.activeTextarea) {
+      this.finishInlineTextEdit();
+    }
+
+    const screenPos = this.viewport.worldToScreen({ x: el.x, y: el.y });
+    const zoom = this.viewport.zoom;
+
+    const textarea = document.createElement("textarea");
+    textarea.value = el.text || "";
+    textarea.style.position = "absolute";
+    textarea.style.left = `${screenPos.x}px`;
+    textarea.style.top = `${screenPos.y}px`;
+    textarea.style.width = `${Math.max(el.w * zoom, 120)}px`;
+    textarea.style.height = `${Math.max(el.h * zoom, 40)}px`;
+    textarea.style.zIndex = "35";
+    textarea.style.padding = el.type === "sticky" ? `${12 * zoom}px` : "2px";
+    textarea.style.background = el.type === "sticky" ? (el.style.fill || "#fef08a") : "rgba(255, 255, 255, 0.95)";
+    textarea.style.color = el.type === "sticky" ? "#1e293b" : (el.style.stroke || "#000000");
+    textarea.style.font = el.type === "sticky" ? `${14 * zoom}px Inter, sans-serif` : `${16 * zoom}px Inter, sans-serif`;
+    textarea.style.lineHeight = el.type === "sticky" ? `${20 * zoom}px` : `${22 * zoom}px`;
+    textarea.style.border = "2px solid #6366f1";
+    textarea.style.borderRadius = el.type === "sticky" ? "4px" : "2px";
+    textarea.style.outline = "none";
+    textarea.style.boxShadow = "0 8px 24px rgba(0,0,0,0.18)";
+    textarea.style.resize = "none";
+
+    const commitChange = () => {
+      const roots = getDocRoots(this.doc);
+      const map = roots.elements.get(id);
+      if (map) {
+        this.doc.transact(() => {
+          map.set("text", textarea.value);
+        }, LOCAL_ORIGIN);
+        this.isDirty = true;
+      }
+    };
+
+    textarea.addEventListener("input", commitChange);
+
+    textarea.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        this.finishInlineTextEdit();
+      } else if (e.key === "Enter" && !e.shiftKey && el.type === "text") {
+        e.preventDefault();
+        this.finishInlineTextEdit();
+      }
+    });
+
+    textarea.addEventListener("blur", () => {
+      this.finishInlineTextEdit();
+    });
+
+    this.container.appendChild(textarea);
+    this.activeTextarea = textarea;
+    textarea.focus();
+    textarea.select();
+  }
+
+  private finishInlineTextEdit() {
+    if (this.activeTextarea) {
+      if (this.activeTextarea.parentElement) {
+        this.activeTextarea.parentElement.removeChild(this.activeTextarea);
+      }
+      this.activeTextarea = null;
+      this.isDirty = true;
+    }
+  }
+
   destroy() {
     this.isDestroyed = true;
+    this.finishInlineTextEdit();
     if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
     window.removeEventListener("resize", this.handleResize);
     this.overlayCanvas.removeEventListener("pointerdown", this.onPointerDown);
     window.removeEventListener("pointermove", this.onPointerMove);
     window.removeEventListener("pointerup", this.onPointerUp);
     this.overlayCanvas.removeEventListener("wheel", this.onWheel);
+    this.overlayCanvas.removeEventListener("dblclick", this.onDoubleClick);
     window.removeEventListener("keydown", this.onKeyDown);
     if (this.elementsObserver) {
       const roots = getDocRoots(this.doc);
