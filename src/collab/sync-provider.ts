@@ -172,6 +172,15 @@ export class SyncProvider {
     if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
     this.listeners.clear();
     if (this.ws) {
+      if (this.ws.readyState === WebSocket.OPEN) {
+        try {
+          awarenessProtocol.removeAwarenessStates(
+            this.awareness,
+            [this.doc.clientID],
+            "destroy",
+          );
+        } catch {}
+      }
       this.ws.close();
       this.ws = null;
     }

@@ -70,22 +70,20 @@ function BoardStudioInner() {
 
   const localColor = getUserColor(user?.id);
 
+  const boardRole = board?.role;
+  const userName =
+    user?.name || (user?.email ? user.email.split("@")[0] : t("collaborators.guestUser"));
+  const userId = user?.id || "guest";
+  const userEmail = user?.email;
+
   useEffect(() => {
     init();
   }, [init]);
 
   useEffect(() => {
-    if (!isInitialized || !boardId || !board) return;
+    if (!isInitialized || !boardId) return;
 
     const sync = new SyncProvider(boardId, linkToken);
-
-    sync.awareness.setLocalStateField("user", {
-      id: user?.id || "guest",
-      name: user?.name || t("collaborators.guestUser"),
-      email: user?.email,
-      color: localColor,
-      role: board.role,
-    });
 
     queueMicrotask(() => {
       setProvider(sync);
@@ -95,12 +93,24 @@ function BoardStudioInner() {
       sync.destroy();
       setProvider(null);
     };
-  }, [boardId, isInitialized, user, linkToken, localColor, board, t]);
+  }, [boardId, isInitialized, linkToken]);
+
+  useEffect(() => {
+    if (!provider || !boardRole) return;
+
+    provider.awareness.setLocalStateField("user", {
+      id: userId,
+      name: userName,
+      email: userEmail,
+      color: localColor,
+      role: boardRole,
+    });
+  }, [provider, boardRole, userId, userName, userEmail, localColor]);
 
   useEffect(() => {
     if (
       !provider ||
-      !board ||
+      !boardRole ||
       !containerRef.current ||
       !bgCanvasRef.current ||
       !contentCanvasRef.current ||
@@ -116,8 +126,8 @@ function BoardStudioInner() {
       overlayCanvasRef.current,
       provider.doc,
       provider,
-      board.role,
-      user?.id || "guest",
+      boardRole,
+      userId,
     );
 
     canvasEngine.broadcastViewport();
@@ -127,7 +137,7 @@ function BoardStudioInner() {
       canvasEngine.destroy();
       setEngine(null);
     };
-  }, [provider, board, user?.id]);
+  }, [provider, boardRole, userId]);
 
   useEffect(() => {
     if (!provider || !engine || followingClientId === null) return;
