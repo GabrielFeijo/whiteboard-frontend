@@ -56,7 +56,9 @@ function getInitialLocale(): Locale {
     if (browserLang && browserLang.startsWith("en")) {
       return "en";
     }
-  } catch {}
+  } catch (err) {
+    console.warn("Failed to read locale from localStorage:", err);
+  }
   return "pt";
 }
 
@@ -72,7 +74,9 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.setItem(STORAGE_KEY, newLocale);
       document.documentElement.lang = dictionaries[newLocale].common.dateLocale;
-    } catch {}
+    } catch (err) {
+      console.warn("Failed to save locale to localStorage:", err);
+    }
   }, []);
 
   const t = useCallback(

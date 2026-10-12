@@ -41,7 +41,9 @@ export function VersionHistoryModal({
       } else {
         window.location.reload();
       }
-    } catch {}
+    } catch (err) {
+      console.error("Failed to restore board snapshot:", err);
+    }
   };
 
   return (

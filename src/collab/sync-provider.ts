@@ -179,7 +179,9 @@ export class SyncProvider {
             [this.doc.clientID],
             "destroy",
           );
-        } catch {}
+        } catch (err) {
+          console.warn("Failed to remove awareness states during destroy:", err);
+        }
       }
       this.ws.close();
       this.ws = null;
