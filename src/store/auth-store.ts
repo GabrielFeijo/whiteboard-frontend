@@ -82,7 +82,8 @@ export const useAuthStore = create<AuthState>()(
         try {
           const token = get().refreshToken;
           await api.post<{ success: boolean }>("/auth/logout", { refreshToken: token });
-        } catch {
+        } catch (error) {
+          console.error("Failed to execute logout on server:", error);
         } finally {
           set({
             user: null,
@@ -107,7 +108,8 @@ export const useAuthStore = create<AuthState>()(
             isInitialized: true,
           });
           return true;
-        } catch {
+        } catch (error) {
+          console.warn("Failed to refresh session:", error);
           set({
             user: null,
             accessToken: null,
@@ -120,7 +122,7 @@ export const useAuthStore = create<AuthState>()(
 
       init: async () => {
         if (get().isInitialized && get().accessToken) return;
-        if (!get().accessToken && get().refreshToken) {
+        if (!get().accessToken && (get().refreshToken || get().user)) {
           set({ isLoading: true });
           await get().refreshSession();
           set({ isLoading: false });
@@ -137,7 +139,6 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
