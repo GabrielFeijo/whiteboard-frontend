@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { apiFetch } from '../lib/api/client';
+import { create } from "zustand";
+import { api } from "../lib/api/client";
 
 export interface User {
   id: string;
@@ -34,11 +34,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (email, password) => {
     set({ isLoading: true });
     try {
-      const res = await apiFetch<AuthResponse>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
+      const res = await api.post<AuthResponse>("/auth/login", { email, password });
+      set({
+        user: res.data.user,
+        accessToken: res.data.accessToken,
+        isLoading: false,
+        isInitialized: true,
       });
-      set({ user: res.user, accessToken: res.accessToken, isLoading: false, isInitialized: true });
     } catch (err) {
       set({ isLoading: false });
       throw err;
@@ -48,11 +50,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   register: async (email, password, name) => {
     set({ isLoading: true });
     try {
-      const res = await apiFetch<AuthResponse>('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({ email, password, name }),
+      const res = await api.post<AuthResponse>("/auth/register", { email, password, name });
+      set({
+        user: res.data.user,
+        accessToken: res.data.accessToken,
+        isLoading: false,
+        isInitialized: true,
       });
-      set({ user: res.user, accessToken: res.accessToken, isLoading: false, isInitialized: true });
     } catch (err) {
       set({ isLoading: false });
       throw err;
@@ -62,9 +66,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: async () => {
     set({ isLoading: true });
     try {
-      await apiFetch<{ success: boolean }>('/auth/logout', { method: 'POST' });
+      await api.post<{ success: boolean }>("/auth/logout");
     } catch {
-      // Ignore network errors on logout
     } finally {
       set({ user: null, accessToken: null, isLoading: false });
     }
@@ -72,8 +75,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   refreshSession: async () => {
     try {
-      const res = await apiFetch<AuthResponse>('/auth/refresh', { method: 'POST' });
-      set({ user: res.user, accessToken: res.accessToken, isInitialized: true });
+      const res = await api.post<AuthResponse>("/auth/refresh");
+      set({ user: res.data.user, accessToken: res.data.accessToken, isInitialized: true });
       return true;
     } catch {
       set({ user: null, accessToken: null, isInitialized: true });
