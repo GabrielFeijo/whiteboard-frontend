@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "../../../store/auth-store";
 import { useCanvasStore } from "../../../store/canvas-store";
 import { useBoardQuery } from "../../../hooks/use-boards";
@@ -44,12 +45,19 @@ function BoardStudioInner() {
   const boardId = params.id as string;
   const linkToken = searchParams.get("token") || undefined;
   const { t } = useI18n();
+  const queryClient = useQueryClient();
 
   const { user, isInitialized, init } = useAuthStore();
   const { data: board, isLoading: isBoardLoading, error: boardError } = useBoardQuery(
     boardId,
     linkToken,
   );
+
+  useEffect(() => {
+    if (board && linkToken && user?.id) {
+      queryClient.invalidateQueries({ queryKey: ["boards"] });
+    }
+  }, [board, linkToken, user?.id, queryClient]);
 
   const [showShareModal, setShowShareModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);

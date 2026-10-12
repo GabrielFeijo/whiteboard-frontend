@@ -51,7 +51,6 @@ export function useBoardsQuery(cursor?: string, limit = 20) {
 export function useBoardQuery(boardId: string, token?: string, enabled = true) {
   const userId = useAuthStore((s) => s.user?.id);
   const isInitialized = useAuthStore((s) => s.isInitialized);
-  const queryClient = useQueryClient();
 
   return useQuery({
     queryKey: ["board", boardId, token, userId],
@@ -59,9 +58,6 @@ export function useBoardQuery(boardId: string, token?: string, enabled = true) {
       const response = await api.get<BoardDetail>(`/boards/${boardId}`, {
         params: token ? { token } : undefined,
       });
-      if (token && userId) {
-        queryClient.invalidateQueries({ queryKey: ["boards"] });
-      }
       return response.data;
     },
     enabled: Boolean(boardId) && isInitialized && enabled,
