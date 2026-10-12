@@ -2,8 +2,6 @@ import * as Y from "yjs";
 import { nanoid } from "nanoid";
 import { generateKeyBetween } from "fractional-indexing";
 import { ElementData, getDocRoots, Role } from "../shared";
-
-export type ElementStyle = ElementData["style"];
 import { Point, Viewport } from "./viewport";
 import { SpatialIndex } from "./spatial-index";
 import { renderElement } from "./renderers/element-renderer";
@@ -12,19 +10,28 @@ import { measureTextDimensions } from "./renderers/text-renderer";
 import { Tool, useCanvasStore } from "../store/canvas-store";
 import { LocalUndoManager, LOCAL_ORIGIN } from "../collab/undo-manager";
 import { SyncProvider } from "../collab/sync-provider";
+import { getElementHandles, isPointInElement } from "./resize-helper";
+import { CanvasEventEmitter } from "./canvas-events";
 import {
-  calculateResizedBounds,
-  getElementHandles,
-  getHandleAt,
-  isPointInElement,
-  ResizeHandleType,
-  scaleFreehandPoints,
-} from "./resize-helper";
+  CanvasHost,
+  CanvasTool,
+  EraserTool,
+  FreehandTool,
+  HandTool,
+  SelectTool,
+  ShapeTool,
+  StickyTool,
+  TextTool,
+} from "./tools";
+import { YjsElementAdapter } from "./yjs-element-adapter";
 
-export class CanvasEngine {
+export type ElementStyle = ElementData["style"];
+
+export class CanvasEngine implements CanvasHost {
   readonly viewport = new Viewport();
   readonly spatialIndex = new SpatialIndex();
   readonly undoManager: LocalUndoManager;
+  readonly events = new CanvasEventEmitter();
 
   private bgCtx!: CanvasRenderingContext2D;
   private contentCtx!: CanvasRenderingContext2D;
@@ -33,21 +40,20 @@ export class CanvasEngine {
   private isDirty = true;
   private animFrameId: number | null = null;
   private isDestroyed = false;
-
   private isPointerDown = false;
-  private dragMode: "none" | "pan" | "draw" | "move" | "selectBox" | "resize" = "none";
-  private startPoint = { x: 0, y: 0 };
   private currentPoint = { x: 0, y: 0 };
-  private freehandDraft: number[] = [];
-  private moveInitialPositions = new Map<string, { x: number; y: number }>();
+
+  private tools: Map<Tool, CanvasTool>;
   private selectBox: { x: number; y: number; w: number; h: number } | null = null;
-  private resizeInfo: {
-    handle: ResizeHandleType;
-    elementId: string;
-    initialBounds: { x: number; y: number; w: number; h: number };
-    initialPoints?: number[];
-    startWorldPt: { x: number; y: number };
+  private freehandDraft: number[] = [];
+  private shapeDraft: {
+    type: ElementData["type"];
+    x: number;
+    y: number;
+    w: number;
+    h: number;
   } | null = null;
+
   private storeUnsub: (() => void) | null = null;
   private elementsObserver: Parameters<Y.Map<unknown>["observeDeep"]>[0] | null = null;
   private providerUnsub: (() => void) | null = null;
@@ -58,10 +64,10 @@ export class CanvasEngine {
     private readonly bgCanvas: HTMLCanvasElement,
     private readonly contentCanvas: HTMLCanvasElement,
     private readonly overlayCanvas: HTMLCanvasElement,
-    private readonly doc: Y.Doc,
+    readonly doc: Y.Doc,
     private readonly provider: SyncProvider,
-    private readonly role: Role,
-    private readonly userId: string,
+    readonly role: Role,
+    readonly userId: string,
   ) {
     this.undoManager = new LocalUndoManager(doc);
 
@@ -75,23 +81,72 @@ export class CanvasEngine {
     this.contentCtx = contentCtx;
     this.overlayCtx = overlayCtx;
 
+    this.tools = new Map<Tool, CanvasTool>([
+      ["select", new SelectTool(this)],
+      ["hand", new HandTool(this)],
+      ["rect", new ShapeTool("rect", this)],
+      ["ellipse", new ShapeTool("ellipse", this)],
+      ["diamond", new ShapeTool("diamond", this)],
+      ["line", new ShapeTool("line", this)],
+      ["arrow", new ShapeTool("arrow", this)],
+      ["freehand", new FreehandTool(this)],
+      ["sticky", new StickyTool(this)],
+      ["text", new TextTool(this)],
+      ["eraser", new EraserTool(this)],
+    ]);
+
     this.resizeCanvases();
     this.setupListeners();
     this.indexExistingElements();
     this.startRenderLoop();
   }
 
-  private indexExistingElements() {
+  setDirty(): void {
+    this.isDirty = true;
+  }
+
+  setSelectBox(box: { x: number; y: number; w: number; h: number } | null): void {
+    this.selectBox = box;
+  }
+
+  getSelectBox(): { x: number; y: number; w: number; h: number } | null {
+    return this.selectBox;
+  }
+
+  setFreehandDraft(draft: number[]): void {
+    this.freehandDraft = draft;
+  }
+
+  getFreehandDraft(): number[] {
+    return this.freehandDraft;
+  }
+
+  setShapeDraft(
+    draft: { type: ElementData["type"]; x: number; y: number; w: number; h: number } | null,
+  ): void {
+    this.shapeDraft = draft;
+  }
+
+  getShapeDraft(): { type: ElementData["type"]; x: number; y: number; w: number; h: number } | null {
+    return this.shapeDraft;
+  }
+
+  private getActiveTool(): CanvasTool {
+    const activeToolId = useCanvasStore.getState().activeTool;
+    return this.tools.get(activeToolId) ?? this.tools.get("select")!;
+  }
+
+  private indexExistingElements(): void {
     const roots = getDocRoots(this.doc);
     roots.elements.forEach((map, id) => {
-      const data = map.toJSON() as ElementData;
+      const data = YjsElementAdapter.toElementData(map);
       if (data) {
         this.spatialIndex.insert(id, data.x, data.y, data.w, data.h);
       }
     });
   }
 
-  private setupListeners() {
+  private setupListeners(): void {
     const roots = getDocRoots(this.doc);
     this.elementsObserver = (events) => {
       events.forEach((event) => {
@@ -103,8 +158,8 @@ export class CanvasEngine {
             } else {
               const childMap = roots.elements.get(key);
               if (childMap) {
-                const data = childMap.toJSON() as ElementData;
-                const elementId = (data && data.id) || key;
+                const data = YjsElementAdapter.toElementData(childMap);
+                const elementId = data?.id || key;
                 if (data && elementId) {
                   this.spatialIndex.insert(elementId, data.x, data.y, data.w, data.h);
                 }
@@ -113,8 +168,8 @@ export class CanvasEngine {
           });
         } else {
           const target = event.target as Y.Map<unknown>;
-          const data = target.toJSON() as ElementData;
-          if (data && data.id) {
+          const data = YjsElementAdapter.toElementData(target);
+          if (data?.id) {
             this.spatialIndex.insert(data.id, data.x, data.y, data.w, data.h);
           }
         }
@@ -136,7 +191,6 @@ export class CanvasEngine {
     this.doc.on("update", this.docUpdateHandler);
 
     window.addEventListener("resize", this.handleResize);
-
     this.overlayCanvas.addEventListener("pointerdown", this.onPointerDown);
     window.addEventListener("pointermove", this.onPointerMove);
     window.addEventListener("pointerup", this.onPointerUp);
@@ -162,7 +216,7 @@ export class CanvasEngine {
     this.isDirty = true;
   };
 
-  private resizeCanvases() {
+  private resizeCanvases(): void {
     const dpr = window.devicePixelRatio || 1;
     const width = this.container.clientWidth;
     const height = this.container.clientHeight;
@@ -177,7 +231,7 @@ export class CanvasEngine {
     });
   }
 
-  private startRenderLoop() {
+  private startRenderLoop(): void {
     const render = () => {
       if (this.isDestroyed) return;
 
@@ -193,7 +247,7 @@ export class CanvasEngine {
     this.animFrameId = requestAnimationFrame(render);
   }
 
-  private renderBackground() {
+  private renderBackground(): void {
     const w = this.container.clientWidth;
     const h = this.container.clientHeight;
     this.bgCtx.clearRect(0, 0, w, h);
@@ -215,7 +269,7 @@ export class CanvasEngine {
     this.bgCtx.fill();
   }
 
-  private renderContent() {
+  private renderContent(): void {
     const w = this.container.clientWidth;
     const h = this.container.clientHeight;
     this.contentCtx.clearRect(0, 0, w, h);
@@ -233,7 +287,8 @@ export class CanvasEngine {
     visibleIds.forEach((id) => {
       const map = roots.elements.get(id);
       if (map) {
-        elements.push(map.toJSON() as ElementData);
+        const data = YjsElementAdapter.toElementData(map);
+        if (data) elements.push(data);
       }
     });
 
@@ -246,7 +301,7 @@ export class CanvasEngine {
     this.contentCtx.restore();
   }
 
-  private renderOverlay() {
+  private renderOverlay(): void {
     const w = this.container.clientWidth;
     const h = this.container.clientHeight;
     this.overlayCtx.clearRect(0, 0, w, h);
@@ -262,31 +317,33 @@ export class CanvasEngine {
       store.selectedIds.forEach((id) => {
         const map = roots.elements.get(id);
         if (map) {
-          const el = map.toJSON() as ElementData;
-          this.overlayCtx.strokeStyle = "#4f46e5";
-          this.overlayCtx.lineWidth = 1.5 / this.viewport.zoom;
-          this.overlayCtx.strokeRect(el.x, el.y, el.w, el.h);
-
-          if (store.selectedIds.length === 1) {
-            const handleSize = 8 / this.viewport.zoom;
-            this.overlayCtx.fillStyle = "#ffffff";
+          const el = YjsElementAdapter.toElementData(map);
+          if (el) {
             this.overlayCtx.strokeStyle = "#4f46e5";
             this.overlayCtx.lineWidth = 1.5 / this.viewport.zoom;
-            const handles = getElementHandles(el);
-            handles.forEach((h) => {
-              this.overlayCtx.fillRect(
-                h.x - handleSize / 2,
-                h.y - handleSize / 2,
-                handleSize,
-                handleSize,
-              );
-              this.overlayCtx.strokeRect(
-                h.x - handleSize / 2,
-                h.y - handleSize / 2,
-                handleSize,
-                handleSize,
-              );
-            });
+            this.overlayCtx.strokeRect(el.x, el.y, el.w, el.h);
+
+            if (store.selectedIds.length === 1) {
+              const handleSize = 8 / this.viewport.zoom;
+              this.overlayCtx.fillStyle = "#ffffff";
+              this.overlayCtx.strokeStyle = "#4f46e5";
+              this.overlayCtx.lineWidth = 1.5 / this.viewport.zoom;
+              const handles = getElementHandles(el);
+              handles.forEach((handle) => {
+                this.overlayCtx.fillRect(
+                  handle.x - handleSize / 2,
+                  handle.y - handleSize / 2,
+                  handleSize,
+                  handleSize,
+                );
+                this.overlayCtx.strokeRect(
+                  handle.x - handleSize / 2,
+                  handle.y - handleSize / 2,
+                  handleSize,
+                  handleSize,
+                );
+              });
+            }
           }
         }
       });
@@ -310,29 +367,21 @@ export class CanvasEngine {
       );
     }
 
-    if (this.dragMode === "draw" && store.activeTool !== "freehand") {
-      const previewEl: ElementData = {
-        id: "preview",
-        type: store.activeTool as ElementData["type"],
-        x: Math.min(this.startPoint.x, this.currentPoint.x),
-        y: Math.min(this.startPoint.y, this.currentPoint.y),
-        w: Math.abs(this.currentPoint.x - this.startPoint.x),
-        h: Math.abs(this.currentPoint.y - this.startPoint.y),
-        rotation: 0,
-        z: "preview",
-        style: {
-          fill: store.fillColor,
-          stroke: store.strokeColor,
-          strokeWidth: store.strokeWidth,
-          opacity: store.opacity,
-        },
-        createdBy: this.userId,
-      };
-      renderElement(this.overlayCtx, previewEl);
+    if (this.shapeDraft) {
+      this.overlayCtx.strokeStyle = "#4f46e5";
+      this.overlayCtx.lineWidth = 1.5 / this.viewport.zoom;
+      this.overlayCtx.setLineDash([4 / this.viewport.zoom, 4 / this.viewport.zoom]);
+      this.overlayCtx.strokeRect(
+        this.shapeDraft.x,
+        this.shapeDraft.y,
+        this.shapeDraft.w,
+        this.shapeDraft.h,
+      );
+      this.overlayCtx.setLineDash([]);
     }
 
-    if (this.freehandDraft.length >= 2) {
-      drawFreehand(this.overlayCtx, {
+    if (this.freehandDraft.length >= 6) {
+      const draftEl: ElementData = {
         id: "draft",
         type: "freehand",
         x: 0,
@@ -340,143 +389,89 @@ export class CanvasEngine {
         w: 0,
         h: 0,
         rotation: 0,
-        z: "draft",
-        points: this.freehandDraft,
+        z: "a0",
         style: {
           fill: "transparent",
           stroke: store.strokeColor,
           strokeWidth: store.strokeWidth,
-          opacity: 1,
+          opacity: store.opacity,
         },
+        points: this.freehandDraft,
         createdBy: this.userId,
-      });
+      };
+      drawFreehand(this.overlayCtx, draftEl);
     }
 
-    const states = this.provider.awareness.getStates();
-    states.forEach((state, clientId) => {
-      if (clientId === this.doc.clientID || !state.cursor) return;
-      const { x, y } = state.cursor;
-      const user = state.user || { name: "Collaborator", color: "#6366f1" };
-
-      this.overlayCtx.fillStyle = user.color || "#6366f1";
-      this.overlayCtx.beginPath();
-      this.overlayCtx.moveTo(x, y);
-      this.overlayCtx.lineTo(x + 12 / this.viewport.zoom, y + 16 / this.viewport.zoom);
-      this.overlayCtx.lineTo(x + 4 / this.viewport.zoom, y + 16 / this.viewport.zoom);
-      this.overlayCtx.closePath();
-      this.overlayCtx.fill();
-
-      this.overlayCtx.fillStyle = user.color || "#6366f1";
-      this.overlayCtx.font = `${Math.max(11 / this.viewport.zoom, 8)}px sans-serif`;
-      this.overlayCtx.fillText(user.name, x + 12 / this.viewport.zoom, y + 24 / this.viewport.zoom);
-    });
+    this.renderRemoteCursors();
 
     this.overlayCtx.restore();
   }
 
-  private onPointerDown = (e: PointerEvent) => {
+  private renderRemoteCursors(): void {
+    const states = this.provider.awareness.getStates();
+    const localClientId = this.doc.clientID;
+
+    states.forEach((state, clientId) => {
+      if (clientId === localClientId || !state.cursor) return;
+
+      const { x, y } = state.cursor;
+      const user = state.user || { name: "Guest", color: "#6366f1" };
+      const color = user.color || "#6366f1";
+      const name = user.name || "Guest";
+
+      this.overlayCtx.save();
+      this.overlayCtx.translate(x, y);
+
+      this.overlayCtx.fillStyle = color;
+      this.overlayCtx.beginPath();
+      this.overlayCtx.moveTo(0, 0);
+      this.overlayCtx.lineTo(0, 16 / this.viewport.zoom);
+      this.overlayCtx.lineTo(4 / this.viewport.zoom, 12 / this.viewport.zoom);
+      this.overlayCtx.lineTo(9 / this.viewport.zoom, 21 / this.viewport.zoom);
+      this.overlayCtx.lineTo(12 / this.viewport.zoom, 19 / this.viewport.zoom);
+      this.overlayCtx.lineTo(7 / this.viewport.zoom, 11 / this.viewport.zoom);
+      this.overlayCtx.lineTo(13 / this.viewport.zoom, 10 / this.viewport.zoom);
+      this.overlayCtx.closePath();
+      this.overlayCtx.fill();
+
+      this.overlayCtx.font = `${11 / this.viewport.zoom}px Inter, sans-serif`;
+      const textWidth = this.overlayCtx.measureText(name).width;
+      const pad = 4 / this.viewport.zoom;
+
+      this.overlayCtx.fillStyle = color;
+      this.overlayCtx.beginPath();
+      this.overlayCtx.roundRect(
+        12 / this.viewport.zoom,
+        14 / this.viewport.zoom,
+        textWidth + pad * 2,
+        16 / this.viewport.zoom,
+        4 / this.viewport.zoom,
+      );
+      this.overlayCtx.fill();
+
+      this.overlayCtx.fillStyle = "#ffffff";
+      this.overlayCtx.fillText(
+        name,
+        12 / this.viewport.zoom + pad,
+        14 / this.viewport.zoom + 12 / this.viewport.zoom,
+      );
+
+      this.overlayCtx.restore();
+    });
+  }
+
+  private onPointerDown = (e: PointerEvent): void => {
     this.isPointerDown = true;
-    const store = useCanvasStore.getState();
     const rect = this.overlayCanvas.getBoundingClientRect();
     const screenPt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     const worldPt = this.viewport.screenToWorld(screenPt);
-
-    this.startPoint = worldPt;
     this.currentPoint = worldPt;
 
-    if (e.button === 1 || store.activeTool === "hand") {
-      this.dragMode = "pan";
-      this.setCursor("grabbing");
-      return;
-    }
-
-    if (this.role === "VIEWER") return;
-
-    if (store.activeTool === "select") {
-      if (store.selectedIds.length === 1) {
-        const selectedId = store.selectedIds[0];
-        const roots = getDocRoots(this.doc);
-        const map = roots.elements.get(selectedId);
-        if (map) {
-          const el = map.toJSON() as ElementData;
-          const handle = getHandleAt(screenPt, el, this.viewport);
-          if (handle) {
-            this.dragMode = "resize";
-            this.resizeInfo = {
-              handle: handle.type,
-              elementId: el.id,
-              initialBounds: { x: el.x, y: el.y, w: el.w, h: el.h },
-              initialPoints: el.points ? [...el.points] : undefined,
-              startWorldPt: worldPt,
-            };
-            this.setCursor(handle.cursor);
-            return;
-          }
-        }
-      }
-
-      const hitId = this.hitTest(worldPt);
-      if (hitId) {
-        const isAlreadySelected = store.selectedIds.includes(hitId);
-        const newSelected = e.shiftKey
-          ? isAlreadySelected
-            ? store.selectedIds.filter((id) => id !== hitId)
-            : [...store.selectedIds, hitId]
-          : isAlreadySelected
-            ? store.selectedIds
-            : [hitId];
-
-        store.setSelectedIds(newSelected);
-        this.syncStoreWithSelection(newSelected);
-        this.dragMode = "move";
-        this.setCursor("move");
-
-        const roots = getDocRoots(this.doc);
-        this.moveInitialPositions.clear();
-        newSelected.forEach((id) => {
-          const map = roots.elements.get(id);
-          if (map) {
-            this.moveInitialPositions.set(id, {
-              x: map.get("x") as number,
-              y: map.get("y") as number,
-            });
-          }
-        });
-      } else {
-        if (!e.shiftKey) store.setSelectedIds([]);
-        this.dragMode = "selectBox";
-        this.selectBox = { x: worldPt.x, y: worldPt.y, w: 0, h: 0 };
-        this.setCursor("default");
-      }
-    } else if (store.activeTool === "eraser") {
-      const hitId = this.hitTest(worldPt);
-      if (hitId) {
-        const roots = getDocRoots(this.doc);
-        this.doc.transact(() => {
-          roots.elements.delete(hitId);
-          this.spatialIndex.remove(hitId);
-        }, LOCAL_ORIGIN);
-        if (store.selectedIds.includes(hitId)) {
-          store.setSelectedIds(store.selectedIds.filter((id) => id !== hitId));
-        }
-        this.isDirty = true;
-      }
-      return;
-    } else if (store.activeTool === "freehand") {
-      this.dragMode = "draw";
-      this.freehandDraft = [worldPt.x, worldPt.y, e.pressure || 0.5];
-    } else if (store.activeTool === "sticky") {
-      this.createStickyNote(worldPt);
-      store.setActiveTool("select");
-    } else if (store.activeTool === "text") {
-      this.createTextElement(worldPt);
-      store.setActiveTool("select");
-    } else {
-      this.dragMode = "draw";
-    }
+    const ctx = { worldPt, screenPt, event: e, isPointerDown: true };
+    this.getActiveTool().onPointerDown(ctx);
   };
 
-  private onPointerMove = (e: PointerEvent) => {
+  private onPointerMove = (e: PointerEvent): void => {
     const rect = this.overlayCanvas.getBoundingClientRect();
     const screenPt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     const worldPt = this.viewport.screenToWorld(screenPt);
@@ -484,218 +479,106 @@ export class CanvasEngine {
 
     this.provider.awareness.setLocalStateField("cursor", { x: worldPt.x, y: worldPt.y });
 
+    const ctx = { worldPt, screenPt, event: e, isPointerDown: this.isPointerDown };
+
     if (!this.isPointerDown) {
       this.updateHoverCursor(screenPt, worldPt);
       return;
     }
 
-    if (this.dragMode === "pan") {
-      const dx = e.movementX;
-      const dy = e.movementY;
-      this.viewport.pan.x += dx;
-      this.viewport.pan.y += dy;
-      useCanvasStore.getState().setPan({ ...this.viewport.pan });
-      this.isDirty = true;
-      return;
-    }
-
-    if (this.dragMode === "resize" && this.resizeInfo) {
-      const roots = getDocRoots(this.doc);
-      const map = roots.elements.get(this.resizeInfo.elementId);
-      if (map) {
-        const dx = worldPt.x - this.resizeInfo.startWorldPt.x;
-        const dy = worldPt.y - this.resizeInfo.startWorldPt.y;
-        const type = map.get("type") as string;
-        const minSize = type === "sticky" ? 40 : 10;
-
-        const newBounds = calculateResizedBounds({
-          handle: this.resizeInfo.handle,
-          initialBounds: this.resizeInfo.initialBounds,
-          dx,
-          dy,
-          minWidth: minSize,
-          minHeight: minSize,
-          keepAspectRatio: e.shiftKey,
-        });
-
-        this.doc.transact(() => {
-          map.set("x", newBounds.x);
-          map.set("y", newBounds.y);
-          map.set("w", newBounds.w);
-          map.set("h", newBounds.h);
-
-          if (type === "freehand" && this.resizeInfo?.initialPoints) {
-            const scaled = scaleFreehandPoints(
-              this.resizeInfo.initialPoints,
-              this.resizeInfo.initialBounds,
-              newBounds,
-            );
-            map.set("points", scaled);
-          }
-        }, LOCAL_ORIGIN);
-
-        this.isDirty = true;
-      }
-      return;
-    }
-
-    if (this.dragMode === "move") {
-      const dx = worldPt.x - this.startPoint.x;
-      const dy = worldPt.y - this.startPoint.y;
-      const roots = getDocRoots(this.doc);
-
-      this.doc.transact(() => {
-        this.moveInitialPositions.forEach((initial, id) => {
-          const map = roots.elements.get(id);
-          if (map) {
-            map.set("x", Math.round(initial.x + dx));
-            map.set("y", Math.round(initial.y + dy));
-          }
-        });
-      }, LOCAL_ORIGIN);
-    } else if (this.dragMode === "selectBox") {
-      this.selectBox = {
-        x: Math.min(this.startPoint.x, worldPt.x),
-        y: Math.min(this.startPoint.y, worldPt.y),
-        w: Math.abs(worldPt.x - this.startPoint.x),
-        h: Math.abs(worldPt.y - this.startPoint.y),
-      };
-    } else if (this.dragMode === "draw") {
-      const store = useCanvasStore.getState();
-      if (store.activeTool === "freehand") {
-        this.freehandDraft.push(worldPt.x, worldPt.y, e.pressure || 0.5);
-      }
-    }
+    this.getActiveTool().onPointerMove(ctx);
   };
 
-  private onPointerUp = (e: PointerEvent) => {
+  private onPointerUp = (e: PointerEvent): void => {
     if (!this.isPointerDown) return;
     this.isPointerDown = false;
-    const store = useCanvasStore.getState();
+
     const rect = this.overlayCanvas.getBoundingClientRect();
     const screenPt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     const worldPt = this.viewport.screenToWorld(screenPt);
 
-    if (this.dragMode === "draw") {
-      if (store.activeTool === "freehand") {
-        if (this.freehandDraft.length >= 6) {
-          this.commitFreehandElement(this.freehandDraft);
-        }
-        this.freehandDraft = [];
-      } else {
-        const w = Math.abs(this.currentPoint.x - this.startPoint.x);
-        const h = Math.abs(this.currentPoint.y - this.startPoint.y);
-        if (w > 5 || h > 5) {
-          this.commitShapeElement(
-            store.activeTool as ElementData["type"],
-            Math.min(this.startPoint.x, this.currentPoint.x),
-            Math.min(this.startPoint.y, this.currentPoint.y),
-            w,
-            h,
-          );
-          store.setActiveTool("select");
-        }
-      }
-    } else if (this.dragMode === "selectBox" && this.selectBox) {
-      const found = this.spatialIndex.search({
-        minX: this.selectBox.x,
-        minY: this.selectBox.y,
-        maxX: this.selectBox.x + this.selectBox.w,
-        maxY: this.selectBox.y + this.selectBox.h,
-      });
-      store.setSelectedIds(found);
-      this.syncStoreWithSelection(found);
-      this.selectBox = null;
-    } else if (this.dragMode === "move") {
-      this.undoManager.stopCapturing();
-    } else if (this.dragMode === "resize") {
-      this.undoManager.stopCapturing();
-      this.resizeInfo = null;
-    }
-
-    this.dragMode = "none";
+    const ctx = { worldPt, screenPt, event: e, isPointerDown: false };
+    this.getActiveTool().onPointerUp(ctx);
     this.updateHoverCursor(screenPt, worldPt);
   };
 
-  private onPointerLeave = () => {
+  private onPointerLeave = (): void => {
     if (!this.isPointerDown) {
       this.setCursor("default");
     }
   };
 
-  private updateHoverCursor(screenPt: Point, worldPt: Point) {
-    if (this.role === "VIEWER") {
-      this.setCursor("default");
-      return;
-    }
-
-    const store = useCanvasStore.getState();
-
-    if (store.activeTool === "select") {
-      if (store.selectedIds.length === 1) {
-        const selectedId = store.selectedIds[0];
-        const roots = getDocRoots(this.doc);
-        const map = roots.elements.get(selectedId);
-        if (map) {
-          const el = map.toJSON() as ElementData;
-          const handle = getHandleAt(screenPt, el, this.viewport);
-          if (handle) {
-            this.setCursor(handle.cursor);
-            return;
-          }
-        }
-      }
-
-      const hitId = this.hitTest(worldPt);
-      if (hitId) {
-        this.setCursor(store.selectedIds.includes(hitId) ? "move" : "pointer");
-        return;
-      }
-      this.setCursor("default");
-    } else if (store.activeTool === "hand") {
-      this.setCursor("grab");
-    } else {
-      this.setCursor("crosshair");
-    }
+  private updateHoverCursor(screenPt: Point, worldPt: Point): void {
+    const ctx = {
+      worldPt,
+      screenPt,
+      event: new PointerEvent("pointermove"),
+      isPointerDown: this.isPointerDown,
+    };
+    const cursor = this.getActiveTool().getCursor(ctx);
+    this.setCursor(cursor);
   }
 
-  private setCursor(cursor: string) {
+  private setCursor(cursor: string): void {
     if (this.overlayCanvas.style.cursor !== cursor) {
       this.overlayCanvas.style.cursor = cursor;
     }
-  };
+  }
 
-  private onWheel = (e: WheelEvent) => {
+  private onWheel = (e: WheelEvent): void => {
     e.preventDefault();
+
     if (e.ctrlKey || e.metaKey) {
-      const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+      const zoomFactor = Math.pow(0.995, e.deltaY);
       const newZoom = Math.min(Math.max(this.viewport.zoom * zoomFactor, 0.1), 5.0);
 
-      const mouseX = e.offsetX;
-      const mouseY = e.offsetY;
+      const rect = this.overlayCanvas.getBoundingClientRect();
+      const mouseScreen = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
       this.viewport.pan.x =
-        mouseX - (mouseX - this.viewport.pan.x) * (newZoom / this.viewport.zoom);
+        mouseScreen.x - (mouseScreen.x - this.viewport.pan.x) * (newZoom / this.viewport.zoom);
       this.viewport.pan.y =
-        mouseY - (mouseY - this.viewport.pan.y) * (newZoom / this.viewport.zoom);
+        mouseScreen.y - (mouseScreen.y - this.viewport.pan.y) * (newZoom / this.viewport.zoom);
       this.viewport.zoom = newZoom;
 
-      const store = useCanvasStore.getState();
-      store.setZoom(newZoom);
-      store.setPan({ ...this.viewport.pan });
+      useCanvasStore.getState().setZoom(newZoom);
+      useCanvasStore.getState().setPan({ ...this.viewport.pan });
     } else {
       this.viewport.pan.x -= e.deltaX;
       this.viewport.pan.y -= e.deltaY;
       useCanvasStore.getState().setPan({ ...this.viewport.pan });
     }
+
+    this.broadcastViewport();
     this.isDirty = true;
   };
 
-  private onKeyDown = (e: KeyboardEvent) => {
+  private onDoubleClick = (e: MouseEvent): void => {
+    if (this.role === "VIEWER") return;
+    const worldPt = this.viewport.screenToWorld({ x: e.offsetX, y: e.offsetY });
+    const hitId = this.hitTest(worldPt);
+    if (!hitId) return;
+
+    const roots = getDocRoots(this.doc);
+    const map = roots.elements.get(hitId);
+    if (!map) return;
+
+    const el = YjsElementAdapter.toElementData(map);
+    if (el?.type === "sticky" || el?.type === "text") {
+      const store = useCanvasStore.getState();
+      store.setSelectedIds([hitId]);
+      this.syncStoreWithSelection([hitId]);
+      this.events.emit("focusTextInput", { elementId: hitId });
+    }
+  };
+
+  private onKeyDown = (e: KeyboardEvent): void => {
     const target = e.target as HTMLElement | null;
     if (
-      target?.tagName === "INPUT" ||
-      target?.tagName === "TEXTAREA" ||
-      target?.isContentEditable
+      target &&
+      (target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable)
     ) {
       return;
     }
@@ -705,7 +588,11 @@ export class CanvasEngine {
     if ((e.key === "Delete" || e.key === "Backspace") && store.selectedIds.length > 0) {
       if (this.role === "VIEWER") return;
       this.deleteSelected();
-    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d" && store.selectedIds.length > 0) {
+    } else if (
+      (e.ctrlKey || e.metaKey) &&
+      e.key.toLowerCase() === "d" &&
+      store.selectedIds.length > 0
+    ) {
       e.preventDefault();
       this.duplicateSelected();
     } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
@@ -739,7 +626,7 @@ export class CanvasEngine {
     }
   };
 
-  private hitTest(worldPt: { x: number; y: number }): string | null {
+  hitTest(worldPt: { x: number; y: number }): string | null {
     const hits = this.spatialIndex.search({
       minX: worldPt.x,
       minY: worldPt.y,
@@ -754,13 +641,16 @@ export class CanvasEngine {
     for (const id of hits) {
       const map = roots.elements.get(id);
       if (map) {
-        candidateElements.push(map.toJSON() as ElementData);
+        const data = YjsElementAdapter.toElementData(map);
+        if (data) candidateElements.push(data);
       }
     }
 
     if (candidateElements.length === 0) return null;
 
-    candidateElements.sort((a, b) => ((b.z || "") > (a.z || "") ? 1 : (b.z || "") < (a.z || "") ? -1 : 0));
+    candidateElements.sort(
+      (a, b) => ((b.z || "") > (a.z || "") ? 1 : (b.z || "") < (a.z || "") ? -1 : 0),
+    );
 
     for (const el of candidateElements) {
       if (isPointInElement(worldPt, el)) {
@@ -771,174 +661,69 @@ export class CanvasEngine {
     return candidateElements[0].id;
   }
 
-  private getNextZIndex(): string {
+  getNextZIndex(): string {
     const roots = getDocRoots(this.doc);
     let highest = "a0";
     roots.elements.forEach((map) => {
-      const z = map.get("z") as string;
-      if (z && z > highest) highest = z;
+      const z = (map.get("z") as string) || "a0";
+      if (z > highest) highest = z;
     });
     return generateKeyBetween(highest, null);
   }
 
-  private commitShapeElement(
-    type: ElementData["type"],
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-  ) {
-    const store = useCanvasStore.getState();
-    const id = nanoid(10);
-    const z = this.getNextZIndex();
-
-    const elementMap = new Y.Map<unknown>();
-    elementMap.set("id", id);
-    elementMap.set("type", type);
-    elementMap.set("x", Math.round(x));
-    elementMap.set("y", Math.round(y));
-    elementMap.set("w", Math.round(w));
-    elementMap.set("h", Math.round(h));
-    elementMap.set("rotation", 0);
-    elementMap.set("z", z);
-    elementMap.set("createdBy", this.userId);
-    elementMap.set("style", {
-      fill: store.fillColor,
-      stroke: store.strokeColor,
-      strokeWidth: store.strokeWidth,
-      opacity: store.opacity,
-    });
+  commitElement(data: ElementData): void {
+    const roots = getDocRoots(this.doc);
+    const elementMap = YjsElementAdapter.createYMap(data);
 
     this.doc.transact(() => {
-      getDocRoots(this.doc).elements.set(id, elementMap);
+      roots.elements.set(data.id, elementMap);
     }, LOCAL_ORIGIN);
 
-    this.spatialIndex.insert(id, x, y, w, h);
+    this.spatialIndex.insert(data.id, data.x, data.y, data.w, data.h);
     this.isDirty = true;
   }
 
-  private commitFreehandElement(points: number[]) {
+  getSelectedElements(): ElementData[] {
     const store = useCanvasStore.getState();
-    const id = nanoid(10);
-    const z = this.getNextZIndex();
+    if (store.selectedIds.length === 0) return [];
 
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    for (let i = 0; i < points.length; i += 3) {
-      minX = Math.min(minX, points[i]);
-      minY = Math.min(minY, points[i + 1]);
-      maxX = Math.max(maxX, points[i]);
-      maxY = Math.max(maxY, points[i + 1]);
+    const roots = getDocRoots(this.doc);
+    const elements: ElementData[] = [];
+    store.selectedIds.forEach((id) => {
+      const map = roots.elements.get(id);
+      if (map) {
+        const data = YjsElementAdapter.toElementData(map);
+        if (data) elements.push(data);
+      }
+    });
+    return elements;
+  }
+
+  syncStoreWithSelection(selectedIds: string[]): void {
+    if (selectedIds.length === 0) return;
+    const store = useCanvasStore.getState();
+    const roots = getDocRoots(this.doc);
+    const map = roots.elements.get(selectedIds[0]);
+    if (map) {
+      const data = YjsElementAdapter.toElementData(map);
+      if (data?.style) {
+        if (data.style.stroke) store.setStrokeColor(data.style.stroke);
+        if (data.style.fill) store.setFillColor(data.style.fill);
+        if (data.style.strokeWidth) store.setStrokeWidth(data.style.strokeWidth);
+        if (data.style.opacity !== undefined) store.setOpacity(data.style.opacity);
+      }
     }
-
-    const elementMap = new Y.Map<unknown>();
-    elementMap.set("id", id);
-    elementMap.set("type", "freehand");
-    elementMap.set("x", Math.round(minX));
-    elementMap.set("y", Math.round(minY));
-    elementMap.set("w", Math.round(maxX - minX));
-    elementMap.set("h", Math.round(maxY - minY));
-    elementMap.set("rotation", 0);
-    elementMap.set("z", z);
-    elementMap.set("points", points);
-    elementMap.set("createdBy", this.userId);
-    elementMap.set("style", {
-      fill: "transparent",
-      stroke: store.strokeColor,
-      strokeWidth: store.strokeWidth,
-      opacity: store.opacity,
-    });
-
-    this.doc.transact(() => {
-      getDocRoots(this.doc).elements.set(id, elementMap);
-    }, LOCAL_ORIGIN);
-
-    this.spatialIndex.insert(id, minX, minY, maxX - minX, maxY - minY);
-    this.isDirty = true;
   }
 
-  private createStickyNote(worldPt: { x: number; y: number }) {
-    const store = useCanvasStore.getState();
-    const id = nanoid(10);
-    const z = this.getNextZIndex();
-    const elementMap = new Y.Map<unknown>();
-    elementMap.set("id", id);
-    elementMap.set("type", "sticky");
-    elementMap.set("x", Math.round(worldPt.x));
-    elementMap.set("y", Math.round(worldPt.y));
-    elementMap.set("w", 180);
-    elementMap.set("h", 160);
-    elementMap.set("rotation", 0);
-    elementMap.set("z", z);
-    elementMap.set("text", "Nota");
-    elementMap.set("createdBy", this.userId);
-    elementMap.set("style", {
-      fill: store.fillColor === "transparent" ? "#fef08a" : store.fillColor || "#fef08a",
-      stroke: "rgba(0,0,0,0.1)",
-      strokeWidth: 1,
-      opacity: 1,
-    });
-
-    this.doc.transact(() => {
-      getDocRoots(this.doc).elements.set(id, elementMap);
-    }, LOCAL_ORIGIN);
-
-    this.spatialIndex.insert(id, worldPt.x, worldPt.y, 180, 160);
-    store.setSelectedIds([id]);
-    this.syncStoreWithSelection([id]);
-    this.isDirty = true;
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent("wb-focus-text-input"));
-    }, 50);
-  }
-
-  private createTextElement(worldPt: { x: number; y: number }) {
-    const store = useCanvasStore.getState();
-    const id = nanoid(10);
-    const z = this.getNextZIndex();
-    const dims = measureTextDimensions("Texto");
-    const elementMap = new Y.Map<unknown>();
-    elementMap.set("id", id);
-    elementMap.set("type", "text");
-    elementMap.set("x", Math.round(worldPt.x));
-    elementMap.set("y", Math.round(worldPt.y));
-    elementMap.set("w", dims.w);
-    elementMap.set("h", dims.h);
-    elementMap.set("rotation", 0);
-    elementMap.set("z", z);
-    elementMap.set("text", "Texto");
-    elementMap.set("createdBy", this.userId);
-    elementMap.set("style", {
-      fill: "transparent",
-      stroke: store.strokeColor || "#0f172a",
-      strokeWidth: 1,
-      opacity: 1,
-    });
-
-    this.doc.transact(() => {
-      getDocRoots(this.doc).elements.set(id, elementMap);
-    }, LOCAL_ORIGIN);
-
-    this.spatialIndex.insert(id, worldPt.x, worldPt.y, dims.w, dims.h);
-    store.setSelectedIds([id]);
-    this.syncStoreWithSelection([id]);
-    this.isDirty = true;
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent("wb-focus-text-input"));
-    }, 50);
-  }
-
-  public zoomIn() {
+  public zoomIn(): void {
     this.zoomTo(Math.min(5.0, this.viewport.zoom * 1.25));
   }
 
-  public zoomOut() {
+  public zoomOut(): void {
     this.zoomTo(Math.max(0.1, this.viewport.zoom * 0.8));
   }
 
-  public resetViewport() {
+  public resetViewport(): void {
     this.viewport.zoom = 1;
     this.viewport.pan = { x: 0, y: 0 };
     useCanvasStore.getState().setZoom(1);
@@ -947,7 +732,7 @@ export class CanvasEngine {
     this.isDirty = true;
   }
 
-  public zoomTo(targetZoom: number) {
+  public zoomTo(targetZoom: number): void {
     const w = this.container.clientWidth || 800;
     const h = this.container.clientHeight || 600;
     const cx = w / 2;
@@ -962,7 +747,7 @@ export class CanvasEngine {
     this.isDirty = true;
   }
 
-  public setViewport(pan: { x: number; y: number }, zoom: number) {
+  public setViewport(pan: { x: number; y: number }, zoom: number): void {
     this.viewport.pan = { ...pan };
     this.viewport.zoom = zoom;
     useCanvasStore.getState().setZoom(zoom);
@@ -971,24 +756,24 @@ export class CanvasEngine {
     this.isDirty = true;
   }
 
-  public undo() {
+  public undo(): void {
     this.undoManager.undo();
     this.isDirty = true;
   }
 
-  public redo() {
+  public redo(): void {
     this.undoManager.redo();
     this.isDirty = true;
   }
 
-  public broadcastViewport() {
+  public broadcastViewport(): void {
     this.provider.awareness.setLocalStateField("viewport", {
       pan: this.viewport.pan,
       zoom: this.viewport.zoom,
     });
   }
 
-  public updateSelectedStyle(styleUpdates: Partial<ElementStyle>) {
+  public updateSelectedStyle(styleUpdates: Partial<ElementStyle>): void {
     if (this.role === "VIEWER") return;
     const store = useCanvasStore.getState();
     if (store.selectedIds.length === 0) return;
@@ -998,23 +783,14 @@ export class CanvasEngine {
       store.selectedIds.forEach((id) => {
         const map = roots.elements.get(id);
         if (map) {
-          const currentStyle = (map.get("style") as ElementStyle) || {
-            fill: "transparent",
-            stroke: "#0f172a",
-            strokeWidth: 2,
-            opacity: 1,
-          };
-          map.set("style", {
-            ...currentStyle,
-            ...styleUpdates,
-          });
+          YjsElementAdapter.updateYMap(map, { style: styleUpdates as ElementData["style"] });
         }
       });
     }, LOCAL_ORIGIN);
     this.isDirty = true;
   }
 
-  public updateSelectedText(text: string) {
+  public updateSelectedText(text: string): void {
     if (this.role === "VIEWER") return;
     const store = useCanvasStore.getState();
     if (store.selectedIds.length === 0) return;
@@ -1028,8 +804,8 @@ export class CanvasEngine {
           const type = map.get("type") as string;
           if (type === "text") {
             const dims = measureTextDimensions(text);
-            const x = map.get("x") as number;
-            const y = map.get("y") as number;
+            const x = (map.get("x") as number) || 0;
+            const y = (map.get("y") as number) || 0;
             map.set("w", dims.w);
             map.set("h", dims.h);
             this.spatialIndex.remove(id);
@@ -1041,7 +817,7 @@ export class CanvasEngine {
     this.isDirty = true;
   }
 
-  public deleteSelected() {
+  public deleteSelected(): void {
     if (this.role === "VIEWER") return;
     const store = useCanvasStore.getState();
     if (store.selectedIds.length === 0) return;
@@ -1057,7 +833,7 @@ export class CanvasEngine {
     this.isDirty = true;
   }
 
-  public duplicateSelected() {
+  public duplicateSelected(): void {
     if (this.role === "VIEWER") return;
     const store = useCanvasStore.getState();
     if (store.selectedIds.length === 0) return;
@@ -1069,29 +845,25 @@ export class CanvasEngine {
       store.selectedIds.forEach((id) => {
         const map = roots.elements.get(id);
         if (map) {
-          const data = map.toJSON() as ElementData;
-          const newId = nanoid(10);
-          const newZ = this.getNextZIndex();
-          const newMap = new Y.Map<unknown>();
-          newMap.set("id", newId);
-          newMap.set("type", data.type);
-          newMap.set("x", data.x + 20);
-          newMap.set("y", data.y + 20);
-          newMap.set("w", data.w);
-          newMap.set("h", data.h);
-          newMap.set("rotation", data.rotation || 0);
-          newMap.set("z", newZ);
-          newMap.set("createdBy", this.userId);
-          newMap.set("style", { ...data.style });
-          if (data.text !== undefined) newMap.set("text", data.text);
-          if (data.points !== undefined) {
-            const shifted = data.points.map((pt, i) => (i % 3 === 2 ? pt : pt + 20));
-            newMap.set("points", shifted);
-          }
+          const data = YjsElementAdapter.toElementData(map);
+          if (data) {
+            const newId = nanoid(10);
+            const newZ = this.getNextZIndex();
+            const duplicated: ElementData = {
+              ...data,
+              id: newId,
+              x: data.x + 20,
+              y: data.y + 20,
+              z: newZ,
+              createdBy: this.userId,
+              points: data.points?.map((pt, i) => (i % 3 === 2 ? pt : pt + 20)),
+            };
 
-          roots.elements.set(newId, newMap);
-          this.spatialIndex.insert(newId, data.x + 20, data.y + 20, data.w, data.h);
-          newSelectedIds.push(newId);
+            const newMap = YjsElementAdapter.createYMap(duplicated);
+            roots.elements.set(newId, newMap);
+            this.spatialIndex.insert(newId, duplicated.x, duplicated.y, duplicated.w, duplicated.h);
+            newSelectedIds.push(newId);
+          }
         }
       });
     }, LOCAL_ORIGIN);
@@ -1103,7 +875,7 @@ export class CanvasEngine {
     this.isDirty = true;
   }
 
-  public bringSelectedToFront() {
+  public bringSelectedToFront(): void {
     if (this.role === "VIEWER") return;
     const store = useCanvasStore.getState();
     if (store.selectedIds.length === 0) return;
@@ -1111,8 +883,8 @@ export class CanvasEngine {
     const roots = getDocRoots(this.doc);
     let highest = "a0";
     roots.elements.forEach((map) => {
-      const z = map.get("z") as string;
-      if (z && z > highest) highest = z;
+      const z = (map.get("z") as string) || "a0";
+      if (z > highest) highest = z;
     });
 
     this.doc.transact(() => {
@@ -1127,7 +899,7 @@ export class CanvasEngine {
     this.isDirty = true;
   }
 
-  public sendSelectedToBack() {
+  public sendSelectedToBack(): void {
     if (this.role === "VIEWER") return;
     const store = useCanvasStore.getState();
     if (store.selectedIds.length === 0) return;
@@ -1135,8 +907,8 @@ export class CanvasEngine {
     const roots = getDocRoots(this.doc);
     let lowest = "a0";
     roots.elements.forEach((map) => {
-      const z = map.get("z") as string;
-      if (z && (!lowest || z < lowest)) lowest = z;
+      const z = (map.get("z") as string) || "a0";
+      if (!lowest || z < lowest) lowest = z;
     });
 
     this.doc.transact(() => {
@@ -1151,57 +923,7 @@ export class CanvasEngine {
     this.isDirty = true;
   }
 
-  public getSelectedElements(): ElementData[] {
-    const store = useCanvasStore.getState();
-    if (store.selectedIds.length === 0) return [];
-
-    const roots = getDocRoots(this.doc);
-    const elements: ElementData[] = [];
-    store.selectedIds.forEach((id) => {
-      const map = roots.elements.get(id);
-      if (map) {
-        elements.push(map.toJSON() as ElementData);
-      }
-    });
-    return elements;
-  }
-
-  private syncStoreWithSelection(selectedIds: string[]) {
-    if (selectedIds.length === 0) return;
-    const store = useCanvasStore.getState();
-    const roots = getDocRoots(this.doc);
-    const map = roots.elements.get(selectedIds[0]);
-    if (map) {
-      const data = map.toJSON() as ElementData;
-      if (data && data.style) {
-        if (data.style.stroke) store.setStrokeColor(data.style.stroke);
-        if (data.style.fill) store.setFillColor(data.style.fill);
-        if (data.style.strokeWidth) store.setStrokeWidth(data.style.strokeWidth);
-        if (data.style.opacity !== undefined) store.setOpacity(data.style.opacity);
-      }
-    }
-  }
-
-  private onDoubleClick = (e: MouseEvent) => {
-    if (this.role === "VIEWER") return;
-    const worldPt = this.viewport.screenToWorld({ x: e.offsetX, y: e.offsetY });
-    const hitId = this.hitTest(worldPt);
-    if (!hitId) return;
-
-    const roots = getDocRoots(this.doc);
-    const map = roots.elements.get(hitId);
-    if (!map) return;
-
-    const el = map.toJSON() as ElementData;
-    if (el.type === "sticky" || el.type === "text") {
-      const store = useCanvasStore.getState();
-      store.setSelectedIds([hitId]);
-      this.syncStoreWithSelection([hitId]);
-      window.dispatchEvent(new CustomEvent("wb-focus-text-input"));
-    }
-  };
-
-  destroy() {
+  destroy(): void {
     this.isDestroyed = true;
     if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
     window.removeEventListener("resize", this.handleResize);
@@ -1226,6 +948,8 @@ export class CanvasEngine {
     if (this.providerUnsub) {
       this.providerUnsub();
     }
+    this.events.clear();
+    this.tools.forEach((tool) => tool.onDeactivate?.());
     this.undoManager.destroy();
   }
 }
