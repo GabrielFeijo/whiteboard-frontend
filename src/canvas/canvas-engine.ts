@@ -30,6 +30,9 @@ export class CanvasEngine {
   private freehandDraft: number[] = [];
   private moveInitialPositions = new Map<string, { x: number; y: number }>();
   private selectBox: { x: number; y: number; w: number; h: number } | null = null;
+  private elementsObserver: Parameters<Y.Map<unknown>["observeDeep"]>[0] | null = null;
+  private providerUnsub: (() => void) | null = null;
+  private docUpdateHandler: (() => void) | null = null;
 
   constructor(
     private readonly container: HTMLDivElement,
@@ -71,16 +74,47 @@ export class CanvasEngine {
 
   private setupListeners() {
     const roots = getDocRoots(this.doc);
-    roots.elements.observeDeep((events) => {
+    this.elementsObserver = (events) => {
       events.forEach((event) => {
-        const target = event.target as Y.Map<unknown>;
-        const data = target.toJSON() as ElementData;
-        if (data && data.id) {
-          this.spatialIndex.insert(data.id, data.x, data.y, data.w, data.h);
+        if (event.target === roots.elements) {
+          const mapEvent = event as Y.YMapEvent<Y.Map<unknown>>;
+          mapEvent.keys.forEach((change, key) => {
+            if (change.action === "delete") {
+              this.spatialIndex.remove(key);
+            } else {
+              const childMap = roots.elements.get(key);
+              if (childMap) {
+                const data = childMap.toJSON() as ElementData;
+                const elementId = (data && data.id) || key;
+                if (data && elementId) {
+                  this.spatialIndex.insert(elementId, data.x, data.y, data.w, data.h);
+                }
+              }
+            }
+          });
+        } else {
+          const target = event.target as Y.Map<unknown>;
+          const data = target.toJSON() as ElementData;
+          if (data && data.id) {
+            this.spatialIndex.insert(data.id, data.x, data.y, data.w, data.h);
+          }
         }
       });
       this.isDirty = true;
+    };
+    roots.elements.observeDeep(this.elementsObserver);
+
+    this.providerUnsub = this.provider.onStatusChange((status) => {
+      if (status === "synced") {
+        this.indexExistingElements();
+        this.isDirty = true;
+      }
     });
+
+    this.docUpdateHandler = () => {
+      this.isDirty = true;
+    };
+    this.doc.on("update", this.docUpdateHandler);
 
     window.addEventListener("resize", this.handleResize);
 
@@ -705,9 +739,21 @@ export class CanvasEngine {
     this.isDestroyed = true;
     if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
     window.removeEventListener("resize", this.handleResize);
+    this.overlayCanvas.removeEventListener("pointerdown", this.onPointerDown);
     window.removeEventListener("pointermove", this.onPointerMove);
     window.removeEventListener("pointerup", this.onPointerUp);
+    this.overlayCanvas.removeEventListener("wheel", this.onWheel);
     window.removeEventListener("keydown", this.onKeyDown);
+    if (this.elementsObserver) {
+      const roots = getDocRoots(this.doc);
+      roots.elements.unobserveDeep(this.elementsObserver);
+    }
+    if (this.docUpdateHandler) {
+      this.doc.off("update", this.docUpdateHandler);
+    }
+    if (this.providerUnsub) {
+      this.providerUnsub();
+    }
     this.undoManager.destroy();
   }
 }
