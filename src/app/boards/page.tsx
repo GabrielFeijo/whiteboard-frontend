@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -17,17 +18,24 @@ import { ShareModal } from "../../components/share-modal";
 import { ConfirmDialog } from "../../components/ui/alert-dialog";
 import { useI18n } from "../../i18n";
 import { LanguageSwitcher } from "../../components/language-switcher";
+import { ThemeToggle } from "../../components/ui/theme-toggle";
+import { Button } from "../../components/ui/button";
+import { Badge } from "../../components/ui/badge";
+import { Input } from "../../components/ui/input";
 
 export default function BoardsPage() {
   const router = useRouter();
   const { user, isInitialized, init, logout } = useAuthStore();
   const { t } = useI18n();
+
   const [isCreating, setIsCreating] = useState(false);
   const [sharingBoard, setSharingBoard] = useState<BoardItem | null>(null);
   const [deletingBoardId, setDeletingBoardId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterRole, setFilterRole] = useState<"ALL" | "OWNER" | "MEMBER">("ALL");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const { data, isLoading } = useBoardsQuery();
-  const boards = data?.items || [];
 
   const createMutation = useCreateBoardMutation();
   const duplicateMutation = useDuplicateBoardMutation();
@@ -67,6 +75,20 @@ export default function BoardsPage() {
     }
   }, [isInitialized, user, router]);
 
+  const filteredBoards = useMemo(() => {
+    const allBoards = data?.items || [];
+    return allBoards.filter((board) => {
+      const matchesSearch = board.title
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase().trim());
+      if (!matchesSearch) return false;
+
+      if (filterRole === "OWNER") return board.role === "OWNER";
+      if (filterRole === "MEMBER") return board.role !== "OWNER";
+      return true;
+    });
+  }, [data?.items, searchQuery, filterRole]);
+
   const onSubmitCreate = async (formData: CreateBoardFormData) => {
     const created = await createMutation.mutateAsync({ title: formData.title });
     reset();
@@ -90,6 +112,18 @@ export default function BoardsPage() {
     setDeletingBoardId(null);
   };
 
+  const getRoleBadgeVariant = (role: string) => {
+    switch (role) {
+      case "OWNER":
+        return "default";
+      case "EDITOR":
+        return "success";
+      case "VIEWER":
+      default:
+        return "neutral";
+    }
+  };
+
   const getRoleLabel = (role: string) => {
     switch (role) {
       case "OWNER":
@@ -104,223 +138,435 @@ export default function BoardsPage() {
 
   if (!isInitialized || (!user && isLoading)) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-zinc-500">
-        {t("dashboard.loading")}
+      <div className="flex min-h-screen items-center justify-center bg-canvas text-sm text-text-muted">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent-primary border-t-transparent" />
+          <p className="text-xs font-medium">{t("dashboard.loading")}</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-4 py-8 dark:bg-zinc-950 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="min-h-screen flex flex-col bg-canvas text-text-primary selection:bg-accent-primary/20 selection:text-accent-primary">
+      <header className="sticky top-0 z-30 border-b border-border-subtle bg-surface/90 backdrop-blur-md">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-85">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-primary text-white shadow-xs">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <path d="M7 7h10M7 12h7M7 17h4" />
+                </svg>
+              </div>
+              <span className="text-sm font-semibold tracking-tight">Whiteboard</span>
+            </Link>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <LanguageSwitcher />
+            <ThemeToggle />
+
+            <div className="h-4 w-px bg-border-strong mx-0.5" />
+
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-subtle border border-accent-primary/30 text-[11px] font-bold text-accent-primary">
+                {user?.name ? user.name.slice(0, 2).toUpperCase() : "U"}
+              </div>
+              <span className="hidden sm:inline text-xs font-medium text-text-secondary">
+                {user?.name}
+              </span>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => logout()}
+              className="text-xs text-text-muted hover:text-text-primary"
+            >
+              {t("common.signOut")}
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+            <h1 className="text-2xl font-bold tracking-tight text-text-primary">
               {t("dashboard.title")}
             </h1>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            <p className="mt-1 text-xs text-text-muted">
               {t("dashboard.subtitle")}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <LanguageSwitcher />
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => setIsCreating(true)}
+            className="self-start sm:self-auto gap-2 shadow-sm font-medium"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>{t("nav.newBoard")}</span>
+          </Button>
+        </div>
 
-            <span className="text-xs text-zinc-500 dark:text-zinc-400">
-              {t("nav.signedInAs")}{" "}
-              <strong className="text-zinc-800 dark:text-zinc-200">{user?.name}</strong>
-            </span>
-            <button
-              onClick={() => logout()}
-              className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900"
-            >
-              {t("common.signOut")}
-            </button>
-            <button
-              onClick={() => setIsCreating(true)}
-              className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-xs transition hover:bg-indigo-500"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-border-subtle">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 sm:w-64">
+              <svg className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-text-muted pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
               </svg>
-              {t("nav.newBoard")}
-            </button>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar por nome..."
+                className="w-full rounded-lg border border-border-strong bg-surface pl-8 pr-3 py-1.5 text-xs text-text-primary placeholder:text-text-muted outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/20 shadow-2xs"
+              />
+            </div>
+
+            <div className="hidden md:flex items-center rounded-lg border border-border-subtle bg-surface p-0.5 shadow-2xs">
+              <button
+                onClick={() => setFilterRole("ALL")}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                  filterRole === "ALL"
+                    ? "bg-surface-raised text-text-primary shadow-2xs border border-border-subtle/80"
+                    : "text-text-muted hover:text-text-primary"
+                }`}
+              >
+                Todos
+              </button>
+              <button
+                onClick={() => setFilterRole("OWNER")}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                  filterRole === "OWNER"
+                    ? "bg-surface-raised text-text-primary shadow-2xs border border-border-subtle/80"
+                    : "text-text-muted hover:text-text-primary"
+                }`}
+              >
+                Meus
+              </button>
+              <button
+                onClick={() => setFilterRole("MEMBER")}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                  filterRole === "MEMBER"
+                    ? "bg-surface-raised text-text-primary shadow-2xs border border-border-subtle/80"
+                    : "text-text-muted hover:text-text-primary"
+                }`}
+              >
+                Compartilhados
+              </button>
+            </div>
           </div>
-        </header>
+
+          <div className="flex items-center justify-end gap-2">
+            <span className="text-xs text-text-muted">
+              {filteredBoards.length} {filteredBoards.length === 1 ? "quadro" : "quadros"}
+            </span>
+
+            <div className="flex items-center rounded-lg border border-border-subtle bg-surface p-0.5 shadow-2xs">
+              <button
+                onClick={() => setViewMode("grid")}
+                title="Visualização em Grade"
+                className={`p-1 rounded-md transition-colors ${
+                  viewMode === "grid"
+                    ? "bg-surface-raised text-text-primary shadow-2xs"
+                    : "text-text-muted hover:text-text-primary"
+                }`}
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="7" height="7" rx="1" />
+                  <rect x="14" y="3" width="7" height="7" rx="1" />
+                  <rect x="14" y="14" width="7" height="7" rx="1" />
+                  <rect x="3" y="14" width="7" height="7" rx="1" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                title="Visualização em Lista"
+                className={`p-1 rounded-md transition-colors ${
+                  viewMode === "list"
+                    ? "bg-surface-raised text-text-primary shadow-2xs"
+                    : "text-text-muted hover:text-text-primary"
+                }`}
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="8" y1="6" x2="21" y2="6" />
+                  <line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="6" x2="3.01" y2="6" />
+                  <line x1="3" y1="12" x2="3.01" y2="12" />
+                  <line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="py-20 text-center text-xs text-text-muted">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-primary border-t-transparent mx-auto mb-2" />
+            {t("dashboard.loading")}
+          </div>
+        ) : filteredBoards.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border-strong bg-surface/50 py-16 px-4 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border-strong bg-surface text-text-muted shadow-xs mb-3">
+              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <path d="M8 12h8M12 8v8" />
+              </svg>
+            </div>
+            <h3 className="text-sm font-semibold text-text-primary">
+              {searchQuery ? "Nenhum quadro encontrado para esta busca" : t("dashboard.noBoards")}
+            </h3>
+            <p className="mt-1 text-xs text-text-muted max-w-sm">
+              {searchQuery
+                ? "Tente buscar com outro termo ou limpe os filtros."
+                : "Crie um novo quadro branco para iniciar seu projeto ou convide sua equipe para colaborar."}
+            </p>
+            {!searchQuery && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setIsCreating(true)}
+                className="mt-4"
+              >
+                {t("dashboard.createFirst")}
+              </Button>
+            )}
+          </div>
+        ) : viewMode === "grid" ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredBoards.map((board) => (
+              <div
+                key={board.id}
+                onClick={() => router.push(`/board/${board.id}`)}
+                className="group relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-xl border border-border-subtle bg-surface p-4 shadow-xs transition-all duration-150 hover:border-accent-primary/60 hover:shadow-md active:scale-[0.99]"
+              >
+                <div>
+                  <div className="relative mb-3 h-28 w-full overflow-hidden rounded-lg border border-border-subtle bg-canvas flex items-center justify-center">
+                    <div
+                      className="absolute inset-0 opacity-40 dark:opacity-20 pointer-events-none"
+                      style={{
+                        backgroundImage: "radial-gradient(circle, currentColor 1px, transparent 1px)",
+                        backgroundSize: "16px 16px",
+                        color: "var(--color-text-muted)",
+                      }}
+                    />
+                    <div className="flex items-center gap-2 opacity-50 transition-transform group-hover:scale-105">
+                      <div className="h-8 w-12 rounded border border-border-strong bg-surface" />
+                      <span className="text-[10px] text-text-muted">➔</span>
+                      <div className="h-8 w-8 rounded-full border border-border-strong bg-accent-subtle" />
+                    </div>
+                  </div>
+
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-text-primary group-hover:text-accent-primary transition-colors truncate">
+                      {board.title}
+                    </h3>
+                    <Badge variant={getRoleBadgeVariant(board.role)}>
+                      {getRoleLabel(board.role)}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between border-t border-border-subtle pt-3 text-xs text-text-muted">
+                  <span>
+                    {new Date(board.updatedAt).toLocaleDateString(t("common.dateLocale"))}
+                  </span>
+
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => setSharingBoard(board)}
+                      title={t("dashboard.share")}
+                      className="rounded-md p-1.5 text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"
+                    >
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13" />
+                      </svg>
+                    </button>
+
+                    <button
+                      onClick={(e) => handleDuplicate(board.id, e)}
+                      title={t("common.duplicate")}
+                      className="rounded-md p-1.5 text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"
+                    >
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </svg>
+                    </button>
+
+                    {board.role === "OWNER" && (
+                      <button
+                        onClick={(e) => handleDelete(board.id, e)}
+                        title={t("common.delete")}
+                        className="rounded-md p-1.5 text-text-muted hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                      >
+                        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-border-subtle bg-surface shadow-xs">
+            <div className="divide-y divide-border-subtle">
+              {filteredBoards.map((board) => (
+                <div
+                  key={board.id}
+                  onClick={() => router.push(`/board/${board.id}`)}
+                  className="group flex cursor-pointer items-center justify-between p-3.5 hover:bg-surface-hover transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-strong bg-canvas text-text-muted">
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-semibold text-text-primary group-hover:text-accent-primary transition-colors truncate">
+                        {board.title}
+                      </h3>
+                      <p className="text-[11px] text-text-muted">
+                        Atualizado em {new Date(board.updatedAt).toLocaleDateString(t("common.dateLocale"))}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                    <Badge variant={getRoleBadgeVariant(board.role)}>
+                      {getRoleLabel(board.role)}
+                    </Badge>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSharingBoard(board)}
+                      className="text-xs"
+                    >
+                      {t("dashboard.share")}
+                    </Button>
+
+                    <button
+                      onClick={(e) => handleDuplicate(board.id, e)}
+                      title={t("common.duplicate")}
+                      className="rounded-md p-1.5 text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"
+                    >
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </svg>
+                    </button>
+
+                    {board.role === "OWNER" && (
+                      <button
+                        onClick={(e) => handleDelete(board.id, e)}
+                        title={t("common.delete")}
+                        className="rounded-md p-1.5 text-text-muted hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                      >
+                        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {isCreating && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-              <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-                {t("dashboard.createNewBoard")}
-              </h2>
-              <p className="mt-1 text-xs text-zinc-500">
-                {t("dashboard.createModalSubtitle")}
-              </p>
-              <form onSubmit={handleSubmit(onSubmitCreate)} className="mt-4 space-y-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+            <div className="w-full max-w-md rounded-2xl border border-border-strong bg-surface p-6 shadow-2xl">
+              <div className="flex items-center justify-between pb-3 border-b border-border-subtle">
                 <div>
-                  <input
-                    type="text"
-                    {...register("title")}
-                    autoFocus
-                    placeholder={t("dashboard.boardTitlePlaceholder")}
-                    className="w-full rounded-xl border border-zinc-300 px-3.5 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-                  />
-                  {errors.title && (
-                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                      {errors.title.message}
-                    </p>
-                  )}
+                  <h2 className="text-base font-bold text-text-primary">
+                    {t("dashboard.createNewBoard")}
+                  </h2>
+                  <p className="mt-0.5 text-xs text-text-muted">
+                    {t("dashboard.createModalSubtitle")}
+                  </p>
                 </div>
-                <div className="flex justify-end gap-2">
-                  <button
+                <button
+                  type="button"
+                  onClick={() => {
+                    reset();
+                    setIsCreating(false);
+                  }}
+                  className="rounded-lg p-1 text-text-muted hover:text-text-primary hover:bg-surface-hover"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmit(onSubmitCreate)} className="mt-4 space-y-4">
+                <Input
+                  id="board-title-input"
+                  autoFocus
+                  placeholder={t("dashboard.boardTitlePlaceholder")}
+                  error={errors.title?.message}
+                  {...register("title")}
+                />
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => {
                       reset();
                       setIsCreating(false);
                     }}
-                    className="rounded-xl px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
                   >
                     {t("common.cancel")}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="submit"
-                    disabled={createMutation.isPending}
-                    className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+                    variant="primary"
+                    size="sm"
+                    isLoading={createMutation.isPending}
                   >
                     {createMutation.isPending ? t("dashboard.creatingButton") : t("dashboard.createButton")}
-                  </button>
+                  </Button>
                 </div>
               </form>
             </div>
           </div>
         )}
 
-        <div className="mt-8">
-          {isLoading ? (
-            <p className="text-sm text-zinc-400">{t("dashboard.loading")}</p>
-          ) : boards.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-300 py-16 dark:border-zinc-800">
-              <p className="text-zinc-500">{t("dashboard.noBoards")}</p>
-              <button
-                onClick={() => setIsCreating(true)}
-                className="mt-3 text-sm font-medium text-indigo-600 hover:underline"
-              >
-                {t("dashboard.createFirst")}
-              </button>
-            </div>
-          ) : (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {boards.map((board) => (
-                <div
-                  key={board.id}
-                  onClick={() => router.push(`/board/${board.id}`)}
-                  className="group relative flex cursor-pointer flex-col justify-between rounded-2xl border border-zinc-200 bg-white p-5 shadow-xs transition hover:border-indigo-400 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-indigo-500"
-                >
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                        {getRoleLabel(board.role)}
-                      </span>
-                      <span className="text-xs text-zinc-400">
-                        {new Date(board.updatedAt).toLocaleDateString(t("common.dateLocale"))}
-                      </span>
-                    </div>
+        {sharingBoard && (
+          <ShareModal
+            isOpen={!!sharingBoard}
+            boardId={sharingBoard.id}
+            boardTitle={sharingBoard.title}
+            onClose={() => setSharingBoard(null)}
+          />
+        )}
 
-                    <h3 className="mt-3 text-base font-semibold text-zinc-900 group-hover:text-indigo-600 dark:text-zinc-100 dark:group-hover:text-indigo-400">
-                      {board.title}
-                    </h3>
-                  </div>
-
-                  <div className="mt-6 flex items-center justify-between pt-3 border-t border-zinc-100 dark:border-zinc-800/80">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSharingBoard(board);
-                      }}
-                      className="rounded-md px-2.5 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                    >
-                      {t("dashboard.share")}
-                    </button>
-
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={(e) => handleDuplicate(board.id, e)}
-                        title={t("common.duplicate")}
-                        className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                      >
-                        <svg
-                          className="h-4 w-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                          />
-                        </svg>
-                      </button>
-
-                      {board.role === "OWNER" && (
-                        <button
-                          onClick={(e) => handleDelete(board.id, e)}
-                          title={t("common.delete")}
-                          className="rounded-md p-1.5 text-zinc-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
-                        >
-                          <svg
-                            className="h-4 w-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {sharingBoard && (
-        <ShareModal
-          isOpen={Boolean(sharingBoard)}
-          boardId={sharingBoard.id}
-          boardTitle={sharingBoard.title}
-          onClose={() => setSharingBoard(null)}
+        <ConfirmDialog
+          isOpen={!!deletingBoardId}
+          title={t("dashboard.confirmDeleteTitle")}
+          description={t("dashboard.confirmDeleteDescription")}
+          confirmLabel={t("dashboard.confirmDeleteAction")}
+          variant="destructive"
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setDeletingBoardId(null)}
         />
-      )}
-
-      <ConfirmDialog
-        open={Boolean(deletingBoardId)}
-        onOpenChange={(open) => {
-          if (!open) setDeletingBoardId(null);
-        }}
-        title={t("dashboard.confirmDeleteTitle")}
-        description={t("dashboard.confirmDeleteDescription")}
-        cancelText={t("common.cancel")}
-        confirmText={t("dashboard.confirmDeleteAction")}
-        variant="destructive"
-        isLoading={deleteMutation.isPending}
-        onConfirm={handleConfirmDelete}
-      />
+      </main>
     </div>
   );
 }
