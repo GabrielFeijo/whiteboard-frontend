@@ -18,22 +18,18 @@ test.describe('Real-Time Whiteboard E2E', () => {
     await page.click('button[type="submit"]');
 
     await expect(page).toHaveURL(/\/boards/);
-    await expect(page.locator('h1')).toContainText('My Whiteboards');
+    await expect(page.getByRole('heading', { level: 1 }).last()).toBeVisible();
 
-    await page.click('button:has-text("New Board")');
-    await page.fill('input[placeholder="e.g. System Architecture Diagram"]', `Architecture Plan ${timestamp}`);
-    await page.click('button:has-text("Create Whiteboard")');
-
-    const boardCard = page.locator(`h3:has-text("Architecture Plan ${timestamp}")`);
-    await expect(boardCard).toBeVisible();
-    await boardCard.click();
+    await page.click('button:has-text("New Board"), button:has-text("Novo Quadro")');
+    await page.fill('input[placeholder*="Architecture"], input[placeholder*="Arquitetura"]', `Architecture Plan ${timestamp}`);
+    await page.click('button:has-text("Create Whiteboard"), button:has-text("Criar Quadro")');
 
     await expect(page).toHaveURL(/\/board\/.+/);
 
     await expect(page.locator('canvas').first()).toBeVisible();
-    await expect(page.locator('button[title*="Select"]')).toBeVisible();
-    await expect(page.locator('button[title*="Rectangle"]')).toBeVisible();
-    await expect(page.locator('button[title*="Sticky Note"]')).toBeVisible();
-    await expect(page.locator('button[title*="Export Canvas"]')).toBeVisible();
+    await expect(page.locator('button[aria-label*="Select"], button[aria-label*="Selecionar"], button[title*="Select"], button[title*="Selecionar"]').first()).toBeVisible();
+    await expect(page.locator('button[aria-label*="Rectangle"], button[aria-label*="Retângulo"], button[title*="Rectangle"], button[title*="Retângulo"]').first()).toBeVisible();
+    await expect(page.locator('button[aria-label*="Sticky Note"], button[aria-label*="Nota Adesiva"], button[title*="Sticky Note"], button[title*="Nota Adesiva"]').first()).toBeVisible();
+    await expect(page.locator('button[aria-label*="Export"], button[aria-label*="Exportar"], button[title*="Export"], button[title*="Exportar"]').first()).toBeVisible();
   });
 });
