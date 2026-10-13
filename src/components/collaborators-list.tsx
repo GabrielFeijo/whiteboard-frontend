@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { SyncProvider } from "../collab/sync-provider";
 import { Role } from "../shared";
 import { useI18n } from "../i18n";
@@ -40,7 +40,7 @@ export function CollaboratorsList({
         list.push({
           clientId,
           name: state.user.name || t("collaborators.anonymous"),
-          color: state.user.color || "#6366f1",
+          color: state.user.color || "#3b82f6",
           role: state.user.role || "VIEWER",
           viewport: state.viewport,
         });
@@ -60,8 +60,8 @@ export function CollaboratorsList({
   if (!provider || collaborators.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-1.5 rounded-full border border-zinc-200/80 bg-white/95 px-2.5 py-1 shadow-xs backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-900/95">
-      <div className="flex -space-x-2 overflow-hidden">
+    <div className="flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface-raised/95 px-2 py-1 shadow-xs backdrop-blur-md">
+      <div className="flex -space-x-1.5 overflow-hidden">
         {collaborators.map((c) => {
           const isMe = c.clientId === provider.doc.clientID;
           const isFollowing = followingClientId === c.clientId;
@@ -90,14 +90,14 @@ export function CollaboratorsList({
                 }
               }}
               title={`${c.name} (${c.role})${actionHint}`}
-              className={`relative flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold text-white transition ring-2 ring-white dark:ring-zinc-900 ${
-                isFollowing ? "scale-110 ring-indigo-500 z-10" : ""
+              className={`relative flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white transition-all ring-1 ring-surface-raised ${
+                isFollowing ? "scale-110 ring-2 ring-accent-primary z-10" : ""
               } ${isMe ? "cursor-default" : "cursor-pointer hover:scale-105"}`}
               style={{ backgroundColor: c.color }}
             >
               {initials}
               {isFollowing && (
-                <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-indigo-600 text-white shadow-xs">
+                <span className="absolute -bottom-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-accent-primary text-white shadow-2xs">
                   <EyeIcon />
                 </span>
               )}
@@ -109,7 +109,7 @@ export function CollaboratorsList({
       {followingClientId && (
         <button
           onClick={() => onFollowUser?.(null)}
-          className="ml-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950 dark:text-indigo-300"
+          className="ml-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-accent-subtle text-accent-primary hover:opacity-80 transition-opacity"
         >
           {t("collaborators.stopFollowing")}
         </button>

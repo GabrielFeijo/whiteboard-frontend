@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Role } from "../shared";
 import { useSnapshotsQuery, useRestoreSnapshotMutation } from "../hooks/use-snapshots";
 import { getApiErrorMessage } from "../lib/api/axios-client";
 import { useI18n } from "../i18n";
 import { ConfirmDialog } from "./ui/alert-dialog";
+import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
 
 interface VersionHistoryModalProps {
   boardId: string;
@@ -47,35 +49,42 @@ export function VersionHistoryModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-            {t("versionHistory.title")}
-          </h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+      <div className="w-full max-w-md rounded-2xl bg-surface p-6 shadow-2xl border border-border-strong">
+        <div className="flex items-center justify-between pb-3 border-b border-border-subtle">
+          <div>
+            <h2 className="text-base font-bold text-text-primary">
+              {t("versionHistory.title")}
+            </h2>
+            <p className="mt-0.5 text-xs text-text-muted">
+              {t("versionHistory.subtitle")}
+            </p>
+          </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+            className="rounded-lg p-1 text-text-muted hover:text-text-primary hover:bg-surface-hover"
           >
-            ✕
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
         </div>
 
-        <p className="mt-1 text-xs text-zinc-500">
-          {t("versionHistory.subtitle")}
-        </p>
-
         {(error || restoreMutation.error) && (
-          <div className="mt-3 rounded-xl bg-red-50 p-3 text-xs text-red-600 dark:bg-red-950/50 dark:text-red-400">
+          <div className="mt-3 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs font-medium text-red-600 dark:text-red-400">
             {getApiErrorMessage(error || restoreMutation.error)}
           </div>
         )}
 
-        <div className="mt-4 max-h-80 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800">
+        <div className="mt-4 max-h-80 overflow-y-auto divide-y divide-border-subtle">
           {isLoading ? (
-            <p className="py-6 text-center text-xs text-zinc-400">{t("versionHistory.loading")}</p>
+            <div className="py-8 text-center text-xs text-text-muted">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-accent-primary border-t-transparent mx-auto mb-2" />
+              {t("versionHistory.loading")}
+            </div>
           ) : snapshots.length === 0 ? (
-            <p className="py-6 text-center text-xs text-zinc-500">
+            <p className="py-8 text-center text-xs text-text-muted">
               {t("versionHistory.noSnapshots")}
             </p>
           ) : (
@@ -83,39 +92,37 @@ export function VersionHistoryModal({
               <div key={snap.id} className="flex items-center justify-between py-3 px-1">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                    <span className="text-xs font-semibold text-text-primary">
                       {t("versionHistory.versionNumber", { version: snap.version })}
                     </span>
-                    <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                    <Badge variant="neutral" className="text-[10px]">
                       {snap.reason}
-                    </span>
+                    </Badge>
                   </div>
-                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                  <p className="text-[11px] text-text-muted mt-0.5">
                     {new Date(snap.createdAt).toLocaleString(t("common.dateLocale"))}
                   </p>
                 </div>
 
                 {canRestore && (
-                  <button
+                  <Button
+                    variant="outline"
+                    size="xs"
                     onClick={() => handleRestore(snap.id)}
                     disabled={restoreMutation.isPending}
-                    className="rounded-lg border border-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-700 transition hover:border-indigo-500 hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
                   >
                     {restoreMutation.isPending ? t("versionHistory.restoring") : t("versionHistory.restore")}
-                  </button>
+                  </Button>
                 )}
               </div>
             ))
           )}
         </div>
 
-        <div className="mt-6 flex justify-end">
-          <button
-            onClick={onClose}
-            className="rounded-xl px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-          >
+        <div className="mt-5 flex justify-end pt-3 border-t border-border-subtle">
+          <Button variant="ghost" size="sm" onClick={onClose}>
             {t("common.close")}
-          </button>
+          </Button>
         </div>
       </div>
 

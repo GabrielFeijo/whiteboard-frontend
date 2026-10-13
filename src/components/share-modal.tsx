@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -17,6 +17,8 @@ import {
 } from "../hooks/use-boards";
 import { useI18n } from "../i18n";
 import { ConfirmDialog } from "./ui/alert-dialog";
+import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
 
 interface ShareModalProps {
   boardId: string;
@@ -129,56 +131,59 @@ export function ShareModal({ boardId, boardTitle, isOpen, onClose }: ShareModalP
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="w-full max-w-lg rounded-2xl border border-border-strong bg-surface p-6 shadow-2xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between pb-3 border-b border-border-subtle">
           <div>
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+            <h2 className="text-base font-bold text-text-primary">
               {t("shareModal.title", { title: boardTitle })}
             </h2>
-            <p className="text-xs text-zinc-500">
+            <p className="mt-0.5 text-xs text-text-muted">
               {t("shareModal.subtitle")}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800"
+            className="rounded-lg p-1 text-text-muted hover:text-text-primary hover:bg-surface-hover"
           >
-            ✕
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
         </div>
 
-        <div className="mt-3 flex gap-2 border-b border-zinc-100 pb-2 dark:border-zinc-800">
+        <div className="mt-3 flex gap-1 rounded-lg border border-border-subtle bg-surface-raised p-1">
           <button
             onClick={() => setActiveTab("link")}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+            className={`flex-1 rounded-md py-1.5 text-xs font-medium transition-colors ${
               activeTab === "link"
-                ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300"
-                : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                ? "bg-surface text-text-primary shadow-2xs border border-border-subtle/80"
+                : "text-text-muted hover:text-text-primary"
             }`}
           >
             {t("shareModal.shareByLink")}
           </button>
           <button
             onClick={() => setActiveTab("email")}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+            className={`flex-1 rounded-md py-1.5 text-xs font-medium transition-colors ${
               activeTab === "email"
-                ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300"
-                : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                ? "bg-surface text-text-primary shadow-2xs border border-border-subtle/80"
+                : "text-text-muted hover:text-text-primary"
             }`}
           >
             {t("shareModal.shareByEmail")}
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto pr-1 mt-3 space-y-4">
+        <div className="flex-1 overflow-y-auto pr-1 mt-4 space-y-4">
           {activeTab === "link" ? (
             <div>
               <form onSubmit={handleSubmitLink(onSubmitLink)} className="flex flex-col gap-2">
-                <div className="flex gap-2">
+                <div className="flex flex-wrap sm:flex-nowrap gap-2">
                   <select
                     {...registerLink("role")}
-                    className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-700 outline-none transition focus:border-indigo-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                    className="rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-xs font-medium text-text-primary outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/20 shadow-2xs"
                   >
                     <option value="VIEWER">{t("shareModal.canView")}</option>
                     <option value="EDITOR">{t("shareModal.canEdit")}</option>
@@ -186,7 +191,7 @@ export function ShareModal({ boardId, boardTitle, isOpen, onClose }: ShareModalP
 
                   <select
                     {...registerLink("expiresHours")}
-                    className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-700 outline-none transition focus:border-indigo-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                    className="rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-xs font-medium text-text-primary outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/20 shadow-2xs"
                   >
                     <option value="">{t("shareModal.neverExpires")}</option>
                     <option value="1">{t("shareModal.oneHour")}</option>
@@ -194,19 +199,21 @@ export function ShareModal({ boardId, boardTitle, isOpen, onClose }: ShareModalP
                     <option value="168">{t("shareModal.sevenDays")}</option>
                   </select>
 
-                  <button
+                  <Button
                     type="submit"
-                    disabled={createMutation.isPending}
-                    className="flex-1 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow transition hover:bg-indigo-500 disabled:opacity-50"
+                    variant="primary"
+                    size="sm"
+                    isLoading={createMutation.isPending}
+                    className="flex-1"
                   >
                     {createMutation.isPending ? t("shareModal.generating") : t("shareModal.createLink")}
-                  </button>
+                  </Button>
                 </div>
               </form>
 
               {createdToken && (
-                <div className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50/50 p-3 dark:border-indigo-900/50 dark:bg-indigo-950/20">
-                  <p className="text-[11px] font-semibold text-indigo-900 dark:text-indigo-300">
+                <div className="mt-3 rounded-xl border border-accent-primary/30 bg-accent-subtle/50 p-3">
+                  <p className="text-[11px] font-semibold text-accent-primary">
                     {t("shareModal.linkCreated")}
                   </p>
                   <div className="mt-2 flex items-center gap-2">
@@ -214,35 +221,37 @@ export function ShareModal({ boardId, boardTitle, isOpen, onClose }: ShareModalP
                       type="text"
                       readOnly
                       value={fullShareUrl}
-                      className="flex-1 rounded-lg border border-indigo-200 bg-white px-2.5 py-1.5 text-xs text-zinc-700 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                      className="flex-1 rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-xs text-text-primary outline-none"
                     />
-                    <button
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="sm"
                       onClick={copyToClipboard}
-                      className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500"
                     >
                       {copied ? t("shareModal.copied") : t("shareModal.copy")}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
 
               <div className="mt-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                <h3 className="text-xs font-semibold text-text-secondary">
                   {t("shareModal.activeLinks")}
                 </h3>
-                <div className="mt-2 max-h-36 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800">
+                <div className="mt-2 max-h-36 overflow-y-auto divide-y divide-border-subtle">
                   {isLinksLoading ? (
-                    <p className="py-2 text-center text-xs text-zinc-400">{t("shareModal.loadingLinks")}</p>
+                    <p className="py-2 text-center text-xs text-text-muted">{t("shareModal.loadingLinks")}</p>
                   ) : links.length === 0 ? (
-                    <p className="py-2 text-center text-xs text-zinc-400">{t("shareModal.noActiveLinks")}</p>
+                    <p className="py-2 text-center text-xs text-text-muted">{t("shareModal.noActiveLinks")}</p>
                   ) : (
                     links.map((link) => (
                       <div key={link.id} className="flex items-center justify-between py-2 text-xs">
                         <div>
-                          <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                          <Badge variant={link.role === "EDITOR" ? "success" : "neutral"}>
                             {t(`shareModal.roles.${link.role}` as "shareModal.roles.VIEWER" | "shareModal.roles.EDITOR")}
-                          </span>
-                          <span className="ml-2 text-zinc-400">
+                          </Badge>
+                          <span className="ml-2 text-text-muted">
                             {link.expiresAt
                               ? t("shareModal.expiresIn", {
                                   time: new Date(link.expiresAt).toLocaleDateString(t("common.dateLocale")),
@@ -250,13 +259,15 @@ export function ShareModal({ boardId, boardTitle, isOpen, onClose }: ShareModalP
                               : t("shareModal.neverExpires")}
                           </span>
                         </div>
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="xs"
                           onClick={() => handleRevoke(link.id)}
                           disabled={revokeMutation.isPending}
-                          className="text-red-600 hover:text-red-700 dark:text-red-400"
+                          className="text-red-500 hover:text-red-600"
                         >
                           {t("shareModal.revoke")}
-                        </button>
+                        </Button>
                       </div>
                     ))
                   )}
@@ -271,66 +282,69 @@ export function ShareModal({ boardId, boardTitle, isOpen, onClose }: ShareModalP
                     type="email"
                     {...registerEmail("email")}
                     placeholder={t("shareModal.emailPlaceholder")}
-                    className="flex-1 rounded-xl border border-zinc-300 px-3 py-2 text-xs outline-none transition focus:border-indigo-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                    className="flex-1 rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-xs text-text-primary outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/20 shadow-2xs"
                   />
                   <select
                     {...registerEmail("role")}
-                    className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-700 outline-none transition focus:border-indigo-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                    className="rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-xs font-medium text-text-primary outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/20 shadow-2xs"
                   >
                     <option value="EDITOR">{t("shareModal.canEdit")}</option>
                     <option value="VIEWER">{t("shareModal.canView")}</option>
                   </select>
-                  <button
+                  <Button
                     type="submit"
-                    disabled={addMemberMutation.isPending}
-                    className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow transition hover:bg-indigo-500 disabled:opacity-50"
+                    variant="primary"
+                    size="sm"
+                    isLoading={addMemberMutation.isPending}
                   >
                     {addMemberMutation.isPending ? t("shareModal.invitingButton") : t("shareModal.inviteButton")}
-                  </button>
+                  </Button>
                 </div>
               </form>
 
               {inviteError && (
-                <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-400">{inviteError}</p>
+                <p className="mt-2 text-xs font-medium text-red-500">{inviteError}</p>
               )}
               {inviteSuccess && (
-                <p className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">{inviteSuccess}</p>
+                <p className="mt-2 text-xs font-medium text-emerald-500">{inviteSuccess}</p>
               )}
             </div>
           )}
 
-          <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+          <div className="pt-3 border-t border-border-subtle">
+            <h3 className="text-xs font-semibold text-text-secondary">
               {t("shareModal.membersTitle")}
             </h3>
-            <div className="mt-2 max-h-40 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800">
+            <div className="mt-2 max-h-40 overflow-y-auto divide-y divide-border-subtle">
               {isMembersLoading ? (
-                <p className="py-2 text-center text-xs text-zinc-400">{t("shareModal.loadingMembers")}</p>
+                <p className="py-2 text-center text-xs text-text-muted">{t("shareModal.loadingMembers")}</p>
               ) : members.length === 0 ? (
-                <p className="py-2 text-center text-xs text-zinc-400">{t("shareModal.noMembers")}</p>
+                <p className="py-2 text-center text-xs text-text-muted">{t("shareModal.noMembers")}</p>
               ) : (
                 members.map((m) => (
                   <div key={m.userId} className="flex items-center justify-between py-2 text-xs">
                     <div>
-                      <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                      <span className="font-medium text-text-primary">
                         {m.user.name}
                       </span>
-                      <span className="ml-1 text-[11px] text-zinc-400">
+                      <span className="ml-1 text-[11px] text-text-muted">
                         ({m.user.email})
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                      <Badge variant={m.role === "OWNER" ? "default" : m.role === "EDITOR" ? "success" : "neutral"}>
                         {t(`shareModal.roles.${m.role}` as "shareModal.roles.VIEWER" | "shareModal.roles.EDITOR" | "shareModal.roles.OWNER")}
-                      </span>
+                      </Badge>
                       {m.role !== "OWNER" && (
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="xs"
                           onClick={() => handleRemoveMember(m.userId)}
                           disabled={removeMemberMutation.isPending}
-                          className="text-red-600 hover:text-red-700 dark:text-red-400"
+                          className="text-red-500 hover:text-red-600"
                         >
                           {t("shareModal.removeMember")}
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -340,13 +354,10 @@ export function ShareModal({ boardId, boardTitle, isOpen, onClose }: ShareModalP
           </div>
         </div>
 
-        <div className="mt-4 flex justify-end pt-2 border-t border-zinc-100 dark:border-zinc-800">
-          <button
-            onClick={onClose}
-            className="rounded-xl px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-          >
+        <div className="mt-4 flex justify-end pt-3 border-t border-border-subtle">
+          <Button variant="ghost" size="sm" onClick={onClose}>
             {t("common.close")}
-          </button>
+          </Button>
         </div>
       </div>
 

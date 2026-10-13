@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import * as Y from "yjs";
 import DOMPurify from "dompurify";
 import { ElementData, getDocRoots } from "../shared";
 import { renderElement } from "../canvas/renderers/element-renderer";
 import { YjsElementAdapter } from "../canvas/yjs-element-adapter";
 import { useI18n } from "../i18n";
+import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
 
 function renderElementToSvg(el: ElementData): string {
   const fill = el.style.fill || "transparent";
@@ -101,41 +103,43 @@ export function ExportModal({ doc, boardTitle, onClose }: ExportModalProps) {
       maxY = Math.max(maxY, el.y + el.h);
     });
 
-    const padding = 40;
-    minX = Math.floor(minX - padding);
-    minY = Math.floor(minY - padding);
-    maxX = Math.ceil(maxX + padding);
-    maxY = Math.ceil(maxY + padding);
-
-    return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
+    const padding = 60;
+    return {
+      minX: minX - padding,
+      minY: minY - padding,
+      maxX: maxX + padding,
+      maxY: maxY + padding,
+      width: Math.max(100, maxX - minX + padding * 2),
+      height: Math.max(100, maxY - minY + padding * 2),
+    };
   };
 
   const handleExportPNG = async () => {
     setIsExporting(true);
     try {
       const elements = getElements();
-      const bounds = computeBoundingBox(elements);
+      const bbox = computeBoundingBox(elements);
 
-      const canvas = document.createElement("canvas");
+      const offscreen = document.createElement("canvas");
       const dpr = 2;
-      canvas.width = bounds.width * dpr;
-      canvas.height = bounds.height * dpr;
+      offscreen.width = bbox.width * dpr;
+      offscreen.height = bbox.height * dpr;
 
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Canvas 2D context not available");
+      const ctx = offscreen.getContext("2d");
+      if (!ctx) return;
+
+      const isDark = document.documentElement.classList.contains("dark");
+      ctx.fillStyle = isDark ? "#09090b" : "#ffffff";
+      ctx.fillRect(0, 0, offscreen.width, offscreen.height);
 
       ctx.scale(dpr, dpr);
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, bounds.width, bounds.height);
+      ctx.translate(-bbox.minX, -bbox.minY);
 
-      ctx.save();
-      ctx.translate(-bounds.minX, -bounds.minY);
       elements.forEach((el) => {
         renderElement(ctx, el);
       });
-      ctx.restore();
 
-      canvas.toBlob((blob) => {
+      offscreen.toBlob((blob) => {
         if (!blob) return;
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -156,17 +160,20 @@ export function ExportModal({ doc, boardTitle, onClose }: ExportModalProps) {
     setIsExporting(true);
     try {
       const elements = getElements();
-      const bounds = computeBoundingBox(elements);
+      const bbox = computeBoundingBox(elements);
 
-      let svgElements = "";
+      let body = "";
       elements.forEach((el) => {
-        svgElements += renderElementToSvg(el);
+        body += renderElementToSvg(el);
       });
 
-      const rawSvg = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}" width="${bounds.width}" height="${bounds.height}">
-  <rect x="${bounds.minX}" y="${bounds.minY}" width="${bounds.width}" height="${bounds.height}" fill="#ffffff" />
-  ${svgElements}
+      const isDark = document.documentElement.classList.contains("dark");
+      const bgColor = isDark ? "#09090b" : "#ffffff";
+
+      const rawSvg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="${bbox.minX} ${bbox.minY} ${bbox.width} ${bbox.height}" width="${bbox.width}" height="${bbox.height}">
+  <rect x="${bbox.minX}" y="${bbox.minY}" width="${bbox.width}" height="${bbox.height}" fill="${bgColor}" />
+  ${body}
 </svg>`;
 
       const cleanSvg = DOMPurify.sanitize(rawSvg, {
@@ -189,56 +196,66 @@ export function ExportModal({ doc, boardTitle, onClose }: ExportModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-          {t("exportModal.title")}
-        </h2>
-        <p className="mt-1 text-xs text-zinc-500">
-          {t("exportModal.subtitle")}
-        </p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+      <div className="w-full max-w-sm rounded-2xl bg-surface p-6 shadow-2xl border border-border-strong">
+        <div className="flex items-center justify-between pb-3 border-b border-border-subtle">
+          <div>
+            <h2 className="text-base font-bold text-text-primary">
+              {t("exportModal.title")}
+            </h2>
+            <p className="mt-0.5 text-xs text-text-muted">
+              {t("exportModal.subtitle")}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1 text-text-muted hover:text-text-primary hover:bg-surface-hover"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
 
-        <div className="mt-6 flex flex-col gap-3">
+        <div className="mt-4 flex flex-col gap-2.5">
           <button
             onClick={handleExportPNG}
             disabled={isExporting}
-            className="flex items-center justify-between rounded-xl border border-zinc-200 p-3.5 text-left transition hover:border-indigo-500 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/60"
+            className="flex items-center justify-between rounded-xl border border-border-subtle p-3.5 text-left transition-all hover:border-accent-primary hover:bg-surface-hover active:scale-[0.99] shadow-2xs"
           >
             <div>
-              <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+              <p className="text-sm font-semibold text-text-primary">
                 {t("exportModal.pngTitle")}
               </p>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-text-muted">
                 {t("exportModal.pngDescription")}
               </p>
             </div>
-            <span className="text-xs font-bold text-indigo-600">.png</span>
+            <Badge variant="default">.png</Badge>
           </button>
 
           <button
             onClick={handleExportSVG}
             disabled={isExporting}
-            className="flex items-center justify-between rounded-xl border border-zinc-200 p-3.5 text-left transition hover:border-indigo-500 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/60"
+            className="flex items-center justify-between rounded-xl border border-border-subtle p-3.5 text-left transition-all hover:border-accent-primary hover:bg-surface-hover active:scale-[0.99] shadow-2xs"
           >
             <div>
-              <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+              <p className="text-sm font-semibold text-text-primary">
                 {t("exportModal.svgTitle")}
               </p>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-text-muted">
                 {t("exportModal.svgDescription")}
               </p>
             </div>
-            <span className="text-xs font-bold text-indigo-600">.svg</span>
+            <Badge variant="default">.svg</Badge>
           </button>
         </div>
 
-        <div className="mt-6 flex justify-end">
-          <button
-            onClick={onClose}
-            className="rounded-xl px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-          >
+        <div className="mt-5 flex justify-end pt-3 border-t border-border-subtle">
+          <Button variant="ghost" size="sm" onClick={onClose}>
             {t("common.cancel")}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

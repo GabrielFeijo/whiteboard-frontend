@@ -256,14 +256,20 @@ export class CanvasEngine implements CanvasHost {
     const pan = this.viewport.pan;
     const gridSize = 24 * zoom;
 
-    this.bgCtx.fillStyle = "#cbd5e1";
+    if (gridSize < 8) return;
+
+    const isDark = document.documentElement.classList.contains("dark");
+    this.bgCtx.fillStyle = isDark
+      ? "rgba(255, 255, 255, 0.07)"
+      : "rgba(15, 23, 42, 0.08)";
+
     const startX = pan.x % gridSize;
     const startY = pan.y % gridSize;
 
     this.bgCtx.beginPath();
     for (let x = startX; x < w; x += gridSize) {
       for (let y = startY; y < h; y += gridSize) {
-        this.bgCtx.rect(x - 0.75, y - 0.75, 1.5, 1.5);
+        this.bgCtx.rect(x - 0.5, y - 0.5, 1, 1);
       }
     }
     this.bgCtx.fill();

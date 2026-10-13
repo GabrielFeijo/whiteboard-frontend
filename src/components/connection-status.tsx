@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import type { ConnectionStatus as ConnectionStatusType } from "../collab/sync-provider";
 import { useI18n } from "../i18n";
 

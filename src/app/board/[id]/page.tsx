@@ -17,16 +17,19 @@ import { ExportModal } from "../../../components/export-modal";
 import { VersionHistoryModal } from "../../../components/version-history-modal";
 import { useI18n } from "../../../i18n";
 import { LanguageSwitcher } from "../../../components/language-switcher";
+import { ThemeToggle } from "../../../components/ui/theme-toggle";
+import { Badge } from "../../../components/ui/badge";
+import { Button } from "../../../components/ui/button";
 
 const AVATAR_COLORS = [
-  "#ef4444",
-  "#f59e0b",
-  "#10b981",
   "#3b82f6",
+  "#10b981",
+  "#f59e0b",
+  "#ef4444",
   "#8b5cf6",
   "#ec4899",
   "#06b6d4",
-  "#84cc16",
+  "#64748b",
 ];
 
 function getUserColor(id?: string) {
@@ -62,7 +65,7 @@ function BoardStudioInner() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [showProperties, setShowProperties] = useState(true);
+  const [showProperties, setShowProperties] = useState(false);
   const selectedIds = useCanvasStore((state) => state.selectedIds);
   const isPropertiesOpen = showProperties || selectedIds.length > 0;
 
@@ -74,6 +77,7 @@ function BoardStudioInner() {
   const [provider, setProvider] = useState<SyncProvider | null>(null);
   const [engine, setEngine] = useState<CanvasEngine | null>(null);
   const [followingClientId, setFollowingClientId] = useState<number | null>(null);
+  const [syncStatus, setSyncStatus] = useState<string>("connecting");
 
   const localColor = getUserColor(user?.id);
 
@@ -92,11 +96,16 @@ function BoardStudioInner() {
 
     const sync = new SyncProvider(boardId, linkToken);
 
+    const unsubStatus = sync.onStatusChange((status) => {
+      setSyncStatus(status);
+    });
+
     queueMicrotask(() => {
       setProvider(sync);
     });
 
     return () => {
+      unsubStatus();
       sync.destroy();
       setProvider(null);
     };
@@ -167,10 +176,10 @@ function BoardStudioInner() {
 
   if (isBoardLoading) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-slate-50 dark:bg-zinc-950">
+      <div className="flex h-screen w-screen items-center justify-center bg-canvas">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-          <p className="text-sm font-medium text-zinc-500">{t("boardStudio.loading")}</p>
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-primary border-t-transparent" />
+          <p className="text-xs font-medium text-text-muted">{t("boardStudio.loading")}</p>
         </div>
       </div>
     );
@@ -178,18 +187,20 @@ function BoardStudioInner() {
 
   if (boardError || !board) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-slate-50 dark:bg-zinc-950 p-4">
-        <div className="max-w-md rounded-2xl border border-red-200 bg-white p-6 text-center shadow-lg dark:border-red-900/50 dark:bg-zinc-900">
-          <h2 className="text-base font-bold text-red-600 dark:text-red-400">{t("common.error")}</h2>
-          <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
+      <div className="flex h-screen w-screen items-center justify-center bg-canvas p-4">
+        <div className="max-w-md rounded-2xl border border-red-500/20 bg-surface p-6 text-center shadow-xl">
+          <h2 className="text-base font-bold text-red-500">{t("common.error")}</h2>
+          <p className="mt-2 text-xs text-text-muted">
             {boardError ? (boardError as Error).message : t("boardStudio.loading")}
           </p>
-          <button
+          <Button
             onClick={() => router.push("/boards")}
-            className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500"
+            variant="primary"
+            size="sm"
+            className="mt-4"
           >
             {t("boardStudio.backToBoards")}
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -198,52 +209,47 @@ function BoardStudioInner() {
   const isReadOnly = board.role === "VIEWER";
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden select-none bg-slate-50 dark:bg-zinc-950">
+    <div className="relative h-screen w-screen overflow-hidden select-none bg-canvas text-text-primary">
       <div ref={containerRef} className="absolute inset-0 h-full w-full">
         <canvas ref={bgCanvasRef} className="absolute inset-0 pointer-events-none" />
         <canvas ref={contentCanvasRef} className="absolute inset-0 pointer-events-none" />
         <canvas ref={overlayCanvasRef} className="absolute inset-0 touch-none" />
       </div>
 
-      <header className="absolute top-3 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
-        <div className="flex items-center gap-3 pointer-events-auto rounded-2xl border border-zinc-200/80 bg-white/95 px-3.5 py-1.5 shadow-sm backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-900/95">
+      <header className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between pointer-events-none">
+        <div className="flex items-center gap-2 pointer-events-auto rounded-xl border border-border-strong bg-surface-raised/95 px-2.5 py-1.5 shadow-md backdrop-blur-md">
           <button
             onClick={() => router.push("/boards")}
             title={t("boardStudio.backToBoards")}
-            className="rounded-lg p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+            className="rounded-lg p-1 text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"
           >
-            <svg
-              className="h-5 w-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
           </button>
 
-          <span className="h-4 w-px bg-zinc-200 dark:bg-zinc-700" />
+          <div className="h-3.5 w-px bg-border-subtle" />
 
-          <h1 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 max-w-48 truncate">
+          <h1 className="text-xs font-semibold text-text-primary max-w-40 sm:max-w-64 truncate">
             {board.title}
           </h1>
 
-          {isReadOnly && (
-            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+          {isReadOnly ? (
+            <Badge variant="warning" className="text-[10px] py-0">
               {t("boardStudio.readOnly")}
-            </span>
+            </Badge>
+          ) : (
+            <span
+              className={`h-2 w-2 rounded-full transition-colors ${
+                syncStatus === "synced"
+                  ? "bg-emerald-500"
+                  : syncStatus === "syncing"
+                    ? "bg-amber-500 animate-pulse"
+                    : "bg-zinc-400"
+              }`}
+              title={`Status: ${syncStatus}`}
+            />
           )}
-        </div>
-
-        <div className="pointer-events-auto">
-          <Toolbar
-            readOnly={isReadOnly}
-            canUndo={!isReadOnly}
-            canRedo={!isReadOnly}
-            onUndo={() => engine?.undo()}
-            onRedo={() => engine?.redo()}
-          />
         </div>
 
         <div className="flex items-center gap-2 pointer-events-auto">
@@ -253,21 +259,18 @@ function BoardStudioInner() {
             onFollowUser={(targetId) => setFollowingClientId(targetId)}
           />
 
-          <LanguageSwitcher variant="compact" />
+          <div className="hidden sm:flex items-center gap-1.5">
+            <LanguageSwitcher />
+            <ThemeToggle />
+          </div>
 
-          <div className="flex items-center gap-1 rounded-2xl border border-zinc-200/80 bg-white/95 p-1 shadow-sm backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-900/95">
+          <div className="flex items-center gap-1 rounded-xl border border-border-strong bg-surface-raised/95 p-1 shadow-md backdrop-blur-md">
             <button
               onClick={() => setShowHistoryModal(true)}
               title={t("boardStudio.versionHistory")}
-              className="rounded-xl p-1.5 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="rounded-lg p-1.5 text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors"
             >
-              <svg
-                className="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 14 14" />
               </svg>
@@ -276,68 +279,65 @@ function BoardStudioInner() {
             <button
               onClick={() => setShowExportModal(true)}
               title={t("boardStudio.exportCanvas")}
-              className="rounded-xl p-1.5 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="rounded-lg p-1.5 text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors"
             >
-              <svg
-                className="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
               </svg>
             </button>
 
             {board.role === "OWNER" && (
-              <button
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={() => setShowShareModal(true)}
-                className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 shadow-sm"
+                className="gap-1.5 text-xs font-semibold"
               >
-                <svg
-                  className="h-3.5 w-3.5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13" />
                 </svg>
                 <span>{t("boardStudio.share")}</span>
-              </button>
+              </Button>
             )}
           </div>
         </div>
       </header>
 
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+        <Toolbar
+          readOnly={isReadOnly}
+          canUndo={!isReadOnly}
+          canRedo={!isReadOnly}
+          onUndo={() => engine?.undo()}
+          onRedo={() => engine?.redo()}
+        />
+      </div>
+
       {!isReadOnly && (
-        <div className="absolute left-4 top-18 z-20">
-          <div className="flex items-center gap-1">
+        <div className="absolute left-3 top-16 z-20 pointer-events-auto">
+          {!isPropertiesOpen && (
             <button
-              onClick={() => setShowProperties(!isPropertiesOpen)}
-              className="flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-200/80 bg-white/95 text-zinc-600 shadow-md backdrop-blur-md hover:bg-zinc-100 dark:border-zinc-800/80 dark:bg-zinc-900/95 dark:text-zinc-300"
+              onClick={() => setShowProperties(true)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-strong bg-surface-raised/95 text-text-secondary shadow-md backdrop-blur-md hover:bg-surface-hover hover:text-text-primary transition-all active:scale-95"
               title={t("boardStudio.toggleProperties")}
             >
-              <svg
-                className="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
             </button>
-          </div>
+          )}
+
           {isPropertiesOpen && (
-            <div className="mt-2">
-              <PropertiesPalette engine={engine} />
-            </div>
+            <PropertiesPalette
+              engine={engine}
+              onClose={() => setShowProperties(false)}
+            />
           )}
         </div>
       )}
 
-      <div className="absolute right-4 bottom-4 z-20">
+      <div className="absolute right-3 bottom-4 z-20 pointer-events-auto">
         <ZoomControls
           onZoomIn={() => engine?.zoomIn()}
           onZoomOut={() => engine?.zoomOut()}
@@ -378,10 +378,10 @@ export default function BoardStudioPage() {
   return (
     <React.Suspense
       fallback={
-        <div className="flex h-screen w-screen items-center justify-center bg-slate-50 dark:bg-zinc-950">
+        <div className="flex h-screen w-screen items-center justify-center bg-canvas">
           <div className="flex flex-col items-center gap-3">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-            <p className="text-sm font-medium text-zinc-500">Loading whiteboard workspace...</p>
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-primary border-t-transparent" />
+            <p className="text-xs font-medium text-text-muted">Loading whiteboard workspace...</p>
           </div>
         </div>
       }
