@@ -13,7 +13,7 @@ export function AlertDialogOverlay({
 }: React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Overlay>) {
   return (
     <AlertDialogPrimitive.Overlay
-      className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 ${className}`}
+      className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-xs transition-opacity duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 ${className}`}
       {...props}
     />
   );
@@ -28,7 +28,7 @@ export function AlertDialogContent({
     <AlertDialogPortal>
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Content
-        className={`fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-zinc-200 bg-white p-6 shadow-2xl transition-all duration-200 dark:border-zinc-800 dark:bg-[#121215] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 ${className}`}
+        className={`fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border-strong bg-surface p-6 shadow-2xl transition-all duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 ${className}`}
         {...props}
       >
         {children}
@@ -43,7 +43,7 @@ export function AlertDialogHeader({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={`flex flex-col text-left ${className}`}
+      className={`flex flex-col text-left space-y-1.5 ${className}`}
       {...props}
     />
   );
@@ -55,7 +55,7 @@ export function AlertDialogFooter({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={`mt-6 flex items-center justify-end gap-3 ${className}`}
+      className={`mt-6 flex items-center justify-end gap-2.5 pt-3 border-t border-border-subtle ${className}`}
       {...props}
     />
   );
@@ -67,7 +67,7 @@ export function AlertDialogTitle({
 }: React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Title>) {
   return (
     <AlertDialogPrimitive.Title
-      className={`text-lg font-bold text-zinc-900 dark:text-zinc-100 ${className}`}
+      className={`text-base font-bold text-text-primary ${className}`}
       {...props}
     />
   );
@@ -79,7 +79,7 @@ export function AlertDialogDescription({
 }: React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Description>) {
   return (
     <AlertDialogPrimitive.Description
-      className={`mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400 ${className}`}
+      className={`text-xs leading-relaxed text-text-muted ${className}`}
       {...props}
     />
   );
@@ -91,7 +91,7 @@ export function AlertDialogAction({
 }: React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action>) {
   return (
     <AlertDialogPrimitive.Action
-      className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition active:scale-[0.98] disabled:opacity-50 ${className}`}
+      className={`inline-flex items-center justify-center rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all active:scale-[0.98] disabled:opacity-50 select-none shadow-xs ${className}`}
       {...props}
     />
   );
@@ -103,19 +103,22 @@ export function AlertDialogCancel({
 }: React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Cancel>) {
   return (
     <AlertDialogPrimitive.Cancel
-      className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 hover:text-zinc-900 active:scale-[0.98] dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 disabled:opacity-50 ${className}`}
+      className={`inline-flex items-center justify-center rounded-lg px-3.5 py-1.5 text-xs font-medium text-text-secondary transition-all hover:bg-surface-hover hover:text-text-primary active:scale-[0.98] disabled:opacity-50 select-none ${className}`}
       {...props}
     />
   );
 }
 
 export interface ConfirmDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open?: boolean;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onCancel?: () => void;
   title: React.ReactNode;
   description: React.ReactNode;
   cancelText?: React.ReactNode;
   confirmText?: React.ReactNode;
+  confirmLabel?: React.ReactNode;
   variant?: "destructive" | "primary";
   isLoading?: boolean;
   onConfirm: () => void | Promise<void>;
@@ -123,29 +126,45 @@ export interface ConfirmDialogProps {
 
 export function ConfirmDialog({
   open,
+  isOpen,
   onOpenChange,
+  onCancel,
   title,
   description,
   cancelText = "Cancel",
   confirmText = "Confirm",
+  confirmLabel,
   variant = "destructive",
   isLoading = false,
   onConfirm,
 }: ConfirmDialogProps) {
+  const isDialogActive = Boolean(open ?? isOpen);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && onCancel) {
+      onCancel();
+    }
+    if (onOpenChange) {
+      onOpenChange(nextOpen);
+    }
+  };
+
   const confirmClasses =
     variant === "destructive"
-      ? "bg-red-600 text-white hover:bg-red-700 dark:bg-[#4a1515] dark:hover:bg-[#5c1b1b] dark:text-red-200 dark:border dark:border-red-900/60"
-      : "bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500";
+      ? "bg-red-600 text-white hover:bg-red-700 active:bg-red-800 border border-red-700/20"
+      : "bg-accent-primary text-white hover:bg-accent-hover active:bg-accent-hover border border-accent-primary/20";
+
+  const resolvedConfirmText = confirmLabel ?? confirmText;
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={isDialogActive} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading}>
+          <AlertDialogCancel disabled={isLoading} onClick={onCancel}>
             {cancelText}
           </AlertDialogCancel>
           <AlertDialogAction
@@ -154,10 +173,10 @@ export function ConfirmDialog({
             onClick={async (e) => {
               e.preventDefault();
               await onConfirm();
-              onOpenChange(false);
+              handleOpenChange(false);
             }}
           >
-            {isLoading ? "..." : confirmText}
+            {isLoading ? "..." : resolvedConfirmText}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

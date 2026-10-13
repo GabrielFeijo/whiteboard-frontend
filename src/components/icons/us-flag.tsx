@@ -1,4 +1,3 @@
-import React from "react";
 import { IconProps } from "./types";
 
 export function USFlagIcon({ className = "h-3.5 w-5 shrink-0 rounded-xs shadow-xs" }: IconProps) {

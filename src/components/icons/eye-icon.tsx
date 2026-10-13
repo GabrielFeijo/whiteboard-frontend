@@ -1,4 +1,3 @@
-import React from "react";
 import { IconProps } from "./types";
 
 export function EyeIcon({ className = "h-2 w-2" }: IconProps) {

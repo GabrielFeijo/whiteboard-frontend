@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import type { ReactNode } from "react";
 import { useI18n, Locale } from "../i18n";
 import { BrazilFlagIcon, USFlagIcon } from "./icons";
 
@@ -9,45 +9,18 @@ interface LanguageSwitcherProps {
   variant?: "pill" | "compact";
 }
 
-const LANGUAGES: { code: Locale; icon: React.ReactNode; label: string }[] = [
+const LANGUAGES: { code: Locale; icon: ReactNode; label: string }[] = [
   { code: "pt", icon: <BrazilFlagIcon />, label: "PT" },
   { code: "en", icon: <USFlagIcon />, label: "EN" },
 ];
 
 export function LanguageSwitcher({ className = "", variant = "pill" }: LanguageSwitcherProps) {
   const { locale, setLocale, t } = useI18n();
-
-  if (variant === "compact") {
-    return (
-      <div
-        className={`flex items-center rounded-xl border border-zinc-200/80 bg-white/95 p-0.5 shadow-xs backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-900/95 ${className}`}
-        title={t("language.selectLanguage")}
-      >
-        {LANGUAGES.map((lang) => {
-          const isActive = locale === lang.code;
-          return (
-            <button
-              key={lang.code}
-              type="button"
-              onClick={() => setLocale(lang.code)}
-              className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold transition ${
-                isActive
-                  ? "bg-indigo-600 text-white shadow-xs"
-                  : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-              }`}
-            >
-              <span className="inline-flex items-center">{lang.icon}</span>
-              <span>{lang.label}</span>
-            </button>
-          );
-        })}
-      </div>
-    );
-  }
+  const isCompact = variant === "compact";
 
   return (
     <div
-      className={`inline-flex items-center gap-1 rounded-xl border border-zinc-200 bg-white p-1 shadow-xs dark:border-zinc-800 dark:bg-zinc-900 ${className}`}
+      className={`inline-flex items-center rounded-lg border border-border-subtle bg-surface p-0.5 shadow-2xs ${className}`}
       title={t("language.selectLanguage")}
     >
       {LANGUAGES.map((lang) => {
@@ -57,14 +30,14 @@ export function LanguageSwitcher({ className = "", variant = "pill" }: LanguageS
             key={lang.code}
             type="button"
             onClick={() => setLocale(lang.code)}
-            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+            className={`flex items-center ${isCompact ? "gap-1 px-1.5 py-0.5 text-[10px]" : "gap-1.5 px-2 py-1 text-xs"} rounded-md font-medium transition-all duration-150 select-none ${
               isActive
-                ? "bg-indigo-600 text-white font-semibold shadow-xs"
-                : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                ? "bg-surface-raised text-text-primary shadow-2xs border border-border-subtle/80"
+                : "text-text-muted hover:text-text-primary hover:bg-surface-hover border border-transparent"
             }`}
           >
-            <span className="inline-flex items-center">{lang.icon}</span>
-            <span>{lang.label}</span>
+            <span className="inline-flex items-center opacity-90">{lang.icon}</span>
+            <span className="font-mono text-[11px]">{lang.label}</span>
           </button>
         );
       })}
