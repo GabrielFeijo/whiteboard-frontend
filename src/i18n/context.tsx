@@ -8,7 +8,7 @@ import React, {
   useMemo,
   useCallback,
 } from "react";
-import { COOKIE_NAMES, getClientCookie, setClientCookie } from "@/lib/cookies/cookie-storage";
+import { COOKIE_NAMES, setClientCookie } from "@/lib/cookies/cookie-storage";
 import { Locale } from "./types";
 import {
   createTranslator,
@@ -29,17 +29,6 @@ function resolveInitialClientLocale(initialLocale?: Locale): Locale {
   if (initialLocale && isValidLocale(initialLocale)) {
     return initialLocale;
   }
-  if (typeof window === "undefined") {
-    return "pt";
-  }
-  const cookieLocale = getClientCookie(COOKIE_NAMES.LOCALE);
-  if (isValidLocale(cookieLocale)) {
-    return cookieLocale;
-  }
-  const browserLang = navigator.language?.toLowerCase() ?? "";
-  if (browserLang.startsWith("en")) {
-    return "en";
-  }
   return "pt";
 }
 
@@ -49,9 +38,15 @@ export interface I18nProviderProps {
 }
 
 export function I18nProvider({ children, initialLocale }: I18nProviderProps) {
+  const [prevInitialLocale, setPrevInitialLocale] = useState(initialLocale);
   const [locale, setLocaleState] = useState<Locale>(() =>
     resolveInitialClientLocale(initialLocale),
   );
+
+  if (initialLocale && isValidLocale(initialLocale) && initialLocale !== prevInitialLocale) {
+    setPrevInitialLocale(initialLocale);
+    setLocaleState(initialLocale);
+  }
 
   useEffect(() => {
     document.documentElement.lang = dictionaries[locale].common.app.dateLocale;

@@ -1,6 +1,9 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppProviders } from "@/providers/app-providers";
+import { getServerI18n } from "@/i18n/server";
+import { getServerTheme } from "@/server/preferences";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -41,6 +44,19 @@ const themeCookieBootstrapScript = `
 })();
 `;
 
+async function DynamicAppProviders({ children }: { children: React.ReactNode }) {
+  const [i18n, theme] = await Promise.all([
+    getServerI18n(),
+    getServerTheme(),
+  ]);
+
+  return (
+    <AppProviders initialLocale={i18n.locale} initialTheme={theme}>
+      {children}
+    </AppProviders>
+  );
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -56,7 +72,9 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeCookieBootstrapScript }} />
       </head>
       <body className="min-h-full flex flex-col font-sans bg-canvas text-text-primary selection:bg-accent-primary/20 selection:text-accent-primary">
-        <AppProviders>{children}</AppProviders>
+        <Suspense fallback={<AppProviders>{children}</AppProviders>}>
+          <DynamicAppProviders>{children}</DynamicAppProviders>
+        </Suspense>
       </body>
     </html>
   );

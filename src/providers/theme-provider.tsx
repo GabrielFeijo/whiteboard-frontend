@@ -11,7 +11,6 @@ import {
 } from "react";
 import {
   COOKIE_NAMES,
-  getClientCookie,
   setClientCookie,
 } from "@/lib/cookies/cookie-storage";
 
@@ -37,10 +36,6 @@ function resolveInitialTheme(initialTheme?: Theme): Theme {
   if (initialTheme && isValidTheme(initialTheme)) {
     return initialTheme;
   }
-  const saved = getClientCookie(COOKIE_NAMES.THEME);
-  if (isValidTheme(saved)) {
-    return saved;
-  }
   return "system";
 }
 
@@ -50,12 +45,18 @@ export interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
+  const [prevInitialTheme, setPrevInitialTheme] = useState(initialTheme);
   const [theme, setThemeState] = useState<Theme>(() =>
     resolveInitialTheme(initialTheme),
   );
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">(() =>
     initialTheme === "dark" ? "dark" : "light",
   );
+
+  if (initialTheme && isValidTheme(initialTheme) && initialTheme !== prevInitialTheme) {
+    setPrevInitialTheme(initialTheme);
+    setThemeState(initialTheme);
+  }
 
   useEffect(() => {
     const root = document.documentElement;

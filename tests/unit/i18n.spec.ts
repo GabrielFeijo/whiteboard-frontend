@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { createTranslator, en, pt } from "@/i18n/translator";
+import { createTranslator, en, pt, isValidLocale } from "@/i18n/translator";
+import { parseAcceptLanguage } from "@/i18n/server";
+import { isValidTheme } from "@/server/preferences";
 
 function getObjectKeyPaths(obj: Record<string, unknown>, prefix = ""): string[] {
   const keys: string[] = [];
@@ -67,5 +69,29 @@ describe("i18n Locales Parity and Completeness", () => {
     expect(tPt("studio.inspector.header.selectedCount", { count: 3 })).toBe(
       "3 selecionados"
     );
+  });
+
+  it("parses accept-language headers and handles quality weights properly", () => {
+    expect(parseAcceptLanguage(undefined)).toBe("pt");
+    expect(parseAcceptLanguage(null)).toBe("pt");
+    expect(parseAcceptLanguage("")).toBe("pt");
+    expect(parseAcceptLanguage("en-US,en;q=0.9")).toBe("en");
+    expect(parseAcceptLanguage("pt-BR,pt;q=0.9,en-US;q=0.8")).toBe("pt");
+    expect(parseAcceptLanguage("en-US;q=0.5,pt-BR;q=0.9")).toBe("pt");
+    expect(parseAcceptLanguage("pt-BR;q=0.4,en;q=0.8")).toBe("en");
+    expect(parseAcceptLanguage("es-ES,es;q=0.9,de;q=0.8")).toBe("pt");
+  });
+
+  it("validates locale and theme inputs correctly", () => {
+    expect(isValidLocale("pt")).toBe(true);
+    expect(isValidLocale("en")).toBe(true);
+    expect(isValidLocale("fr")).toBe(false);
+    expect(isValidLocale(null)).toBe(false);
+
+    expect(isValidTheme("light")).toBe(true);
+    expect(isValidTheme("dark")).toBe(true);
+    expect(isValidTheme("system")).toBe(true);
+    expect(isValidTheme("neon")).toBe(false);
+    expect(isValidTheme(undefined)).toBe(false);
   });
 });
