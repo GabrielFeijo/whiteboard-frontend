@@ -15,19 +15,16 @@ describe("Viewport Coordinate Transformation", () => {
 
   it("handles pan offset during screenToWorld transformation", () => {
     const vp = new Viewport({ x: 50, y: -30 }, 1);
-    // screen - pan => 150 - 50 = 100, 70 - (-30) = 100
     expect(vp.screenToWorld({ x: 150, y: 70 })).toEqual({ x: 100, y: 100 });
   });
 
   it("handles zoom scaling during screenToWorld transformation", () => {
     const vp = new Viewport({ x: 0, y: 0 }, 2);
-    // screen / zoom => 200 / 2 = 100, 400 / 2 = 200
     expect(vp.screenToWorld({ x: 200, y: 400 })).toEqual({ x: 100, y: 200 });
   });
 
   it("combines pan and zoom in screenToWorld", () => {
     const vp = new Viewport({ x: 100, y: 100 }, 0.5);
-    // (screen - pan) / zoom => (300 - 100) / 0.5 = 400
     expect(vp.screenToWorld({ x: 300, y: 200 })).toEqual({ x: 400, y: 200 });
   });
 
@@ -45,8 +42,6 @@ describe("Viewport Coordinate Transformation", () => {
     const vp = new Viewport({ x: 100, y: 50 }, 2);
     const bounds = vp.getVisibleWorldBounds(1000, 600);
 
-    // topLeft: (0 - 100)/2 = -50, (0 - 50)/2 = -25
-    // bottomRight: (1000 - 100)/2 = 450, (600 - 50)/2 = 275
     expect(bounds.minX).toBe(-50);
     expect(bounds.minY).toBe(-25);
     expect(bounds.maxX).toBe(450);

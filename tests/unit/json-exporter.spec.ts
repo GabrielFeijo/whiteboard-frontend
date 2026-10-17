@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import {
   exportBoardAsJson,
@@ -11,10 +11,6 @@ describe("JSON Exporter & Importer Service", () => {
   const originalCreateObjectURL = URL.createObjectURL;
   const originalRevokeObjectURL = URL.revokeObjectURL;
   const originalDocument = (globalThis as Record<string, unknown>).document;
-
-  beforeEach(() => {
-    // Setup clean mock environment for Node
-  });
 
   afterEach(() => {
     URL.createObjectURL = originalCreateObjectURL;

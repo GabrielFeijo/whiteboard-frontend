@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
@@ -20,8 +19,6 @@ interface ShareEmailTabProps {
 
 export function ShareEmailTab({ boardId }: ShareEmailTabProps) {
   const { t } = useI18n();
-  const [inviteError, setInviteError] = useState<string | null>(null);
-  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
 
   const addMemberMutation = useAddBoardMember(boardId);
 
@@ -39,9 +36,6 @@ export function ShareEmailTab({ boardId }: ShareEmailTabProps) {
   });
 
   const onSubmit = (values: InviteEmailFormValues) => {
-    setInviteError(null);
-    setInviteSuccess(null);
-
     addMemberMutation.mutate(
       { email: values.email.trim(), role: values.role },
       {
@@ -49,7 +43,6 @@ export function ShareEmailTab({ boardId }: ShareEmailTabProps) {
           const successMessage = t("shareModal.emailTab.feedback.inviteSent", {
             email: values.email.trim(),
           });
-          setInviteSuccess(successMessage);
           toast.success(successMessage);
           reset({ email: "", role: values.role });
         },
@@ -63,7 +56,6 @@ export function ShareEmailTab({ boardId }: ShareEmailTabProps) {
               errorMessage = msg;
             }
           }
-          setInviteError(errorMessage);
           toast.error(errorMessage);
         },
       }
@@ -102,11 +94,6 @@ export function ShareEmailTab({ boardId }: ShareEmailTabProps) {
           <p className="text-xs font-medium text-red-500">{t("common.validation.invalidEmail")}</p>
         )}
       </form>
-
-      {inviteError && <p className="mt-2 text-xs font-medium text-red-500">{inviteError}</p>}
-      {inviteSuccess && (
-        <p className="mt-2 text-xs font-medium text-emerald-500">{inviteSuccess}</p>
-      )}
     </div>
   );
 }

@@ -16,7 +16,6 @@ export default function ErrorPage({ error, reset }: ErrorProps) {
   const { t } = useI18n();
 
   useEffect(() => {
-    // Log error to an error reporting service if configured
     console.error("Whiteboard runtime error:", error);
   }, [error]);
 

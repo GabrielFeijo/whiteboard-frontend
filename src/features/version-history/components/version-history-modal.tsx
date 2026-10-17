@@ -75,10 +75,10 @@ export function VersionHistoryModal({
           </button>
         </div>
 
-        {(error || restoreMutation.error) && (
+        {error && (
           <div className="mt-3 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs font-medium text-red-600 dark:text-red-400">
             {getApiErrorMessage(
-              error || restoreMutation.error,
+              error,
               t("versionHistory.errors.restoreFailed")
             )}
           </div>

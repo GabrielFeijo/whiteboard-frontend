@@ -41,11 +41,9 @@ export function Minimap({ engine }: MinimapProps) {
 
     ctx.clearRect(0, 0, MINIMAP_WIDTH, MINIMAP_HEIGHT);
 
-    // Background
     ctx.fillStyle = "rgba(0, 0, 0, 0.04)";
     ctx.fillRect(0, 0, MINIMAP_WIDTH, MINIMAP_HEIGHT);
 
-    // Render simplified elements
     for (const el of elements) {
       const ex = (el.x - bbox.minX) * scale + offsetX;
       const ey = (el.y - bbox.minY) * scale + offsetY;
@@ -68,7 +66,6 @@ export function Minimap({ engine }: MinimapProps) {
 
     ctx.globalAlpha = 1;
 
-    // Viewport frame
     const visibleWorld = engine.viewport.getVisibleWorldBounds(
       engine.overlayCanvas.width / (window.devicePixelRatio || 1),
       engine.overlayCanvas.height / (window.devicePixelRatio || 1)
@@ -114,9 +111,7 @@ export function Minimap({ engine }: MinimapProps) {
     isDraggingRef.current = false;
     try {
       (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch {
-      // ignore
-    }
+    } catch {}
   };
 
   const handleMinimapNavigation = (e: React.PointerEvent<HTMLCanvasElement>) => {

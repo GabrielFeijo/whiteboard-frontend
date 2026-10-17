@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,7 +21,6 @@ export function RegisterForm() {
   const router = useRouter();
   const registerUser = useSessionStore((s) => s.register);
   const { t } = useI18n();
-  const [serverError, setServerError] = useState<string | null>(null);
 
   const registerSchema = useMemo(() => createRegisterSchema(t), [t]);
 
@@ -39,14 +38,12 @@ export function RegisterForm() {
   });
 
   const onSubmit = async (data: RegisterFormData) => {
-    setServerError(null);
     try {
       await registerUser(data.email, data.password, data.name);
       router.push("/boards");
       router.refresh();
     } catch (err: unknown) {
       const errorMsg = getApiErrorMessage(err) || t("auth.errors.registerFailed");
-      setServerError(errorMsg);
       toast.error(errorMsg);
     }
   };
@@ -59,24 +56,6 @@ export function RegisterForm() {
       footerLinkText={t("auth.register.signInLink")}
       footerLinkHref="/login"
     >
-      {serverError && (
-        <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs font-medium text-red-600 dark:text-red-400 animate-in fade-in duration-150">
-          <svg
-            className="h-4 w-4 shrink-0 mt-0.5 text-red-500"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
-          <span className="leading-relaxed">{serverError}</span>
-        </div>
-      )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <Input
