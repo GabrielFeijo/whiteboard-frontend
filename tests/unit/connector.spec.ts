@@ -3,6 +3,7 @@ import * as Y from "yjs";
 import {
   findNearestAnchor,
   getAnchorPoint,
+  getNearbyAnchorPoints,
   resolveArrowEndpoints,
 } from "@/canvas/connector-helper";
 import { YjsElementRepository } from "@/canvas/repositories/yjs-element-repository";
@@ -43,6 +44,28 @@ describe("Smart Connectors and Magnetic Arrows", () => {
 
     const tooFar = findNearestAnchor({ x: 0, y: 0 }, [shape], 10);
     expect(tooFar).toBeNull();
+  });
+
+  it("finds the nearest anchor when point is inside shape bounds", () => {
+    const shape = makeShape("s1", 100, 100, 200, 200);
+    const insideNearTop = findNearestAnchor({ x: 200, y: 130 }, [shape], 10);
+    expect(insideNearTop).not.toBeNull();
+    expect(insideNearTop?.elementId).toBe("s1");
+    expect(insideNearTop?.anchor).toBe("top");
+    expect(insideNearTop?.pt).toEqual({ x: 200, y: 100 });
+
+    const insideNearRight = findNearestAnchor({ x: 280, y: 200 }, [shape], 10);
+    expect(insideNearRight).not.toBeNull();
+    expect(insideNearRight?.anchor).toBe("right");
+    expect(insideNearRight?.pt).toEqual({ x: 300, y: 200 });
+  });
+
+  it("collects candidate anchor points from nearby shapes", () => {
+    const shape = makeShape("s1", 100, 100, 100, 100);
+    const nearby = getNearbyAnchorPoints({ x: 120, y: 120 }, [shape], 100);
+    expect(nearby).toHaveLength(4);
+    expect(nearby).toContainEqual({ x: 150, y: 100 });
+    expect(nearby).toContainEqual({ x: 200, y: 150 });
   });
 
   it("resolves dynamic arrow endpoints based on bound shapes", () => {

@@ -76,6 +76,7 @@ export class CanvasEngine
     h: number;
   } | null = null;
   private guides: { vertical?: number[]; horizontal?: number[] } | null = null;
+  private snapIndicator: { active: Point | null; candidates: Point[] } | null = null;
 
   private storeUnsub: (() => void) | null = null;
   private elementsObserver: Parameters<Y.Map<unknown>["observeDeep"]>[0] | null = null;
@@ -125,6 +126,10 @@ export class CanvasEngine
     this.setupListeners();
     this.repository.indexAllElements();
     this.startRenderLoop();
+
+    if (typeof window !== "undefined") {
+      (window as unknown as { __CANVAS_ENGINE__?: CanvasEngine }).__CANVAS_ENGINE__ = this;
+    }
   }
 
   setDirty(): void {
@@ -357,6 +362,7 @@ export class CanvasEngine
       },
       userId: this.userId,
       guides: this.guides,
+      snapIndicator: this.snapIndicator,
     });
 
     renderRemoteCursorsOverlay(
@@ -574,6 +580,14 @@ export class CanvasEngine
     return this.guides;
   }
 
+  setSnapIndicator(indicator: { active: Point | null; candidates: Point[] } | null): void {
+    this.snapIndicator = indicator;
+  }
+
+  getSnapIndicator(): { active: Point | null; candidates: Point[] } | null {
+    return this.snapIndicator;
+  }
+
   getOtherElements(excludeIds: readonly string[]): ElementData[] {
     const excludeSet = new Set(excludeIds);
     const elementsMap = this.repository.getElementsMap();
@@ -682,5 +696,8 @@ export class CanvasEngine
     this.events.clear();
     this.tools.forEach((tool) => tool.onDeactivate?.());
     this.undoManager.destroy();
+    if (typeof window !== "undefined") {
+      delete (window as unknown as { __CANVAS_ENGINE__?: CanvasEngine }).__CANVAS_ENGINE__;
+    }
   }
 }

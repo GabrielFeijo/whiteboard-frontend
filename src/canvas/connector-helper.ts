@@ -28,7 +28,7 @@ export function getAllAnchorPoints(
 export function findNearestAnchor(
   worldPt: Point,
   elements: readonly ElementData[],
-  threshold = 24,
+  threshold = 36,
 ): { elementId: string; anchor: AnchorPoint; pt: Point } | null {
   let closest: { elementId: string; anchor: AnchorPoint; pt: Point } | null = null;
   let minDistance = threshold;
@@ -37,21 +37,75 @@ export function findNearestAnchor(
     if (el.type === "arrow" || el.type === "line" || el.type === "freehand") {
       continue;
     }
+
+    const isInside =
+      worldPt.x >= el.x &&
+      worldPt.x <= el.x + el.w &&
+      worldPt.y >= el.y &&
+      worldPt.y <= el.y + el.h;
+
     const anchors = getAllAnchorPoints(el);
-    for (const item of anchors) {
-      const dist = Math.hypot(item.pt.x - worldPt.x, item.pt.y - worldPt.y);
-      if (dist < minDistance) {
-        minDistance = dist;
-        closest = {
+
+    if (isInside) {
+      let shapeClosest: { anchor: AnchorPoint; pt: Point } | null = null;
+      let shapeMinDist = Infinity;
+      for (const item of anchors) {
+        const dist = Math.hypot(item.pt.x - worldPt.x, item.pt.y - worldPt.y);
+        if (dist < shapeMinDist) {
+          shapeMinDist = dist;
+          shapeClosest = item;
+        }
+      }
+      if (shapeClosest) {
+        return {
           elementId: el.id,
-          anchor: item.anchor,
-          pt: item.pt,
+          anchor: shapeClosest.anchor,
+          pt: shapeClosest.pt,
         };
+      }
+    }
+
+    const dx = Math.max(el.x - worldPt.x, 0, worldPt.x - (el.x + el.w));
+    const dy = Math.max(el.y - worldPt.y, 0, worldPt.y - (el.y + el.h));
+    const boxDist = Math.hypot(dx, dy);
+
+    if (boxDist <= threshold) {
+      for (const item of anchors) {
+        const dist = Math.hypot(item.pt.x - worldPt.x, item.pt.y - worldPt.y);
+        if (dist < minDistance) {
+          minDistance = dist;
+          closest = {
+            elementId: el.id,
+            anchor: item.anchor,
+            pt: item.pt,
+          };
+        }
       }
     }
   }
 
   return closest;
+}
+
+export function getNearbyAnchorPoints(
+  worldPt: Point,
+  elements: readonly ElementData[],
+  maxDist = 140,
+): Point[] {
+  const points: Point[] = [];
+  for (const el of elements) {
+    if (el.type === "arrow" || el.type === "line" || el.type === "freehand") {
+      continue;
+    }
+    const dx = Math.max(el.x - worldPt.x, 0, worldPt.x - (el.x + el.w));
+    const dy = Math.max(el.y - worldPt.y, 0, worldPt.y - (el.y + el.h));
+    const boxDist = Math.hypot(dx, dy);
+    if (boxDist <= maxDist) {
+      const anchors = getAllAnchorPoints(el);
+      anchors.forEach((a) => points.push(a.pt));
+    }
+  }
+  return points;
 }
 
 export function resolveArrowEndpoints(
@@ -85,13 +139,14 @@ export function resolveArrowEndpoints(
   return { from, to };
 }
 
-export function drawCurvedArrow(
+export function drawCurvedConnector(
   ctx: CanvasRenderingContext2D,
   from: Point,
   to: Point,
   style: ElementData["style"],
   startAnchor?: AnchorPoint,
   endAnchor?: AnchorPoint,
+  withArrow = true,
 ): void {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
@@ -130,20 +185,44 @@ export function drawCurvedArrow(
   ctx.lineCap = "round";
   ctx.stroke();
 
-  const arrowAngle = Math.atan2(to.y - cp2y, to.x - cp2x);
-  const headLen = Math.max(10, Math.min(16, (style.strokeWidth || 2) * 5));
+  if (withArrow) {
+    const arrowAngle = Math.atan2(to.y - cp2y, to.x - cp2x);
+    const headLen = Math.max(10, Math.min(16, (style.strokeWidth || 2) * 5));
 
-  ctx.beginPath();
-  ctx.moveTo(to.x, to.y);
-  ctx.lineTo(
-    to.x - headLen * Math.cos(arrowAngle - Math.PI / 6),
-    to.y - headLen * Math.sin(arrowAngle - Math.PI / 6),
-  );
-  ctx.lineTo(
-    to.x - headLen * Math.cos(arrowAngle + Math.PI / 6),
-    to.y - headLen * Math.sin(arrowAngle + Math.PI / 6),
-  );
-  ctx.closePath();
-  ctx.fillStyle = style.stroke || "#000000";
-  ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(to.x, to.y);
+    ctx.lineTo(
+      to.x - headLen * Math.cos(arrowAngle - Math.PI / 6),
+      to.y - headLen * Math.sin(arrowAngle - Math.PI / 6),
+    );
+    ctx.lineTo(
+      to.x - headLen * Math.cos(arrowAngle + Math.PI / 6),
+      to.y - headLen * Math.sin(arrowAngle + Math.PI / 6),
+    );
+    ctx.closePath();
+    ctx.fillStyle = style.stroke || "#000000";
+    ctx.fill();
+  }
+}
+
+export function drawCurvedArrow(
+  ctx: CanvasRenderingContext2D,
+  from: Point,
+  to: Point,
+  style: ElementData["style"],
+  startAnchor?: AnchorPoint,
+  endAnchor?: AnchorPoint,
+): void {
+  drawCurvedConnector(ctx, from, to, style, startAnchor, endAnchor, true);
+}
+
+export function drawCurvedLine(
+  ctx: CanvasRenderingContext2D,
+  from: Point,
+  to: Point,
+  style: ElementData["style"],
+  startAnchor?: AnchorPoint,
+  endAnchor?: AnchorPoint,
+): void {
+  drawCurvedConnector(ctx, from, to, style, startAnchor, endAnchor, false);
 }

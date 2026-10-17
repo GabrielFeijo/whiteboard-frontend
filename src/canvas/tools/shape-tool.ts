@@ -2,7 +2,7 @@ import { nanoid } from "nanoid";
 import { CanvasHost, CanvasTool, ToolContext } from "./tool.interface";
 import { ArrowBinding, ElementData } from "../../shared";
 import { useCanvasStore } from "../../store/canvas-store";
-import { findNearestAnchor } from "@/canvas/connector-helper";
+import { findNearestAnchor, getNearbyAnchorPoints } from "@/canvas/connector-helper";
 
 export class ShapeTool implements CanvasTool {
   private startPoint = { x: 0, y: 0 };
@@ -15,12 +15,27 @@ export class ShapeTool implements CanvasTool {
     private readonly host: CanvasHost,
   ) {}
 
+  onPointerHover(ctx: ToolContext): void {
+    if (this.host.role === "VIEWER") return;
+    if (this.id === "arrow" || this.id === "line") {
+      const others = this.host.getOtherElements([]);
+      const match = findNearestAnchor(ctx.worldPt, others, 36);
+      const candidates = getNearbyAnchorPoints(ctx.worldPt, others, 140);
+      this.host.setSnapIndicator({
+        active: match?.pt ?? null,
+        candidates,
+      });
+    } else {
+      this.host.setSnapIndicator(null);
+    }
+  }
+
   onPointerDown(ctx: ToolContext): void {
     if (this.host.role === "VIEWER") return;
 
     if (this.id === "arrow" || this.id === "line") {
       const others = this.host.getOtherElements([]);
-      const match = findNearestAnchor(ctx.worldPt, others, 24);
+      const match = findNearestAnchor(ctx.worldPt, others, 36);
       if (match) {
         this.startPoint = { ...match.pt };
         this.startBinding = {
@@ -31,6 +46,11 @@ export class ShapeTool implements CanvasTool {
         this.startPoint = { ...ctx.worldPt };
         this.startBinding = undefined;
       }
+      const candidates = getNearbyAnchorPoints(ctx.worldPt, others, 140);
+      this.host.setSnapIndicator({
+        active: match?.pt ?? null,
+        candidates,
+      });
     } else {
       this.startPoint = { ...ctx.worldPt };
       this.startBinding = undefined;
@@ -55,7 +75,7 @@ export class ShapeTool implements CanvasTool {
     if (this.id === "arrow" || this.id === "line") {
       const excludeIds = this.startBinding ? [this.startBinding.elementId] : [];
       const others = this.host.getOtherElements(excludeIds);
-      const match = findNearestAnchor(ctx.worldPt, others, 24);
+      const match = findNearestAnchor(ctx.worldPt, others, 36);
       if (match) {
         targetPt = { ...match.pt };
         this.endBinding = {
@@ -65,6 +85,11 @@ export class ShapeTool implements CanvasTool {
       } else {
         this.endBinding = undefined;
       }
+      const candidates = getNearbyAnchorPoints(ctx.worldPt, others, 140);
+      this.host.setSnapIndicator({
+        active: match?.pt ?? null,
+        candidates,
+      });
     }
 
     const w = targetPt.x - this.startPoint.x;
@@ -102,7 +127,7 @@ export class ShapeTool implements CanvasTool {
     if (this.id === "arrow" || this.id === "line") {
       const excludeIds = this.startBinding ? [this.startBinding.elementId] : [];
       const others = this.host.getOtherElements(excludeIds);
-      const match = findNearestAnchor(ctx.worldPt, others, 24);
+      const match = findNearestAnchor(ctx.worldPt, others, 36);
       if (match) {
         targetPt = { ...match.pt };
         this.endBinding = {
@@ -111,6 +136,8 @@ export class ShapeTool implements CanvasTool {
         };
       }
     }
+
+    this.host.setSnapIndicator(null);
 
     const w = targetPt.x - this.startPoint.x;
     const h = targetPt.y - this.startPoint.y;
@@ -169,5 +196,6 @@ export class ShapeTool implements CanvasTool {
     this.startBinding = undefined;
     this.endBinding = undefined;
     this.host.setShapeDraft(null);
+    this.host.setSnapIndicator(null);
   }
 }

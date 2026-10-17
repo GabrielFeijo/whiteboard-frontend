@@ -1,6 +1,7 @@
 import { ElementData } from "../../shared";
 import {
   drawCurvedArrow,
+  drawCurvedLine,
   resolveArrowEndpoints,
 } from "@/canvas/connector-helper";
 
@@ -15,6 +16,15 @@ export function drawRect(ctx: CanvasRenderingContext2D, el: ElementData) {
     ctx.strokeStyle = el.style.stroke;
     ctx.lineWidth = el.style.strokeWidth;
     ctx.stroke();
+  }
+  if (el.text) {
+    ctx.save();
+    ctx.font = "14px Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = el.style.stroke || "#0f172a";
+    ctx.fillText(el.text, el.x + el.w / 2, el.y + el.h / 2);
+    ctx.restore();
   }
 }
 
@@ -33,6 +43,15 @@ export function drawEllipse(ctx: CanvasRenderingContext2D, el: ElementData) {
     ctx.strokeStyle = el.style.stroke;
     ctx.lineWidth = el.style.strokeWidth;
     ctx.stroke();
+  }
+  if (el.text) {
+    ctx.save();
+    ctx.font = "14px Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = el.style.stroke || "#0f172a";
+    ctx.fillText(el.text, cx, cy);
+    ctx.restore();
   }
 }
 
@@ -54,12 +73,39 @@ export function drawDiamond(ctx: CanvasRenderingContext2D, el: ElementData) {
     ctx.lineWidth = el.style.strokeWidth;
     ctx.stroke();
   }
+  if (el.text) {
+    ctx.save();
+    ctx.font = "14px Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = el.style.stroke || "#0f172a";
+    ctx.fillText(el.text, midX, midY);
+    ctx.restore();
+  }
 }
 
-export function drawLine(ctx: CanvasRenderingContext2D, el: ElementData) {
+export function drawLine(
+  ctx: CanvasRenderingContext2D,
+  el: ElementData,
+  getElementById?: (id: string) => ElementData | null,
+) {
+  const { from, to } = resolveArrowEndpoints(el, getElementById);
+
+  if (el.startBinding || el.endBinding) {
+    drawCurvedLine(
+      ctx,
+      from,
+      to,
+      el.style,
+      el.startBinding?.anchor,
+      el.endBinding?.anchor,
+    );
+    return;
+  }
+
   ctx.beginPath();
-  ctx.moveTo(el.x, el.y);
-  ctx.lineTo(el.x + el.w, el.y + el.h);
+  ctx.moveTo(from.x, from.y);
+  ctx.lineTo(to.x, to.y);
   ctx.strokeStyle = el.style.stroke || "#000000";
   ctx.lineWidth = el.style.strokeWidth || 2;
   ctx.lineCap = "round";

@@ -39,6 +39,8 @@ export interface CanvasHost {
   getGuides(): { vertical?: number[]; horizontal?: number[] } | null;
   getOtherElements(excludeIds: readonly string[]): ElementData[];
   syncConnectedArrows(movedIds: readonly string[]): void;
+  setSnapIndicator(indicator: { active: Point | null; candidates: Point[] } | null): void;
+  getSnapIndicator(): { active: Point | null; candidates: Point[] } | null;
 }
 
 export interface CanvasTool {
@@ -46,6 +48,7 @@ export interface CanvasTool {
   onPointerDown(ctx: ToolContext): void;
   onPointerMove(ctx: ToolContext): void;
   onPointerUp(ctx: ToolContext): void;
+  onPointerHover?(ctx: ToolContext): void;
   getCursor(ctx: ToolContext): string;
   onDeactivate?(): void;
 }

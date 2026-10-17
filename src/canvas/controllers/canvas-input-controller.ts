@@ -67,6 +67,12 @@ export class CanvasInputController {
 
     if (!this.isPointerDown) {
       this.updateHoverCursor(screenPt, worldPt);
+      this.host.getActiveTool().onPointerHover?.({
+        worldPt,
+        screenPt,
+        event: e,
+        isPointerDown: false,
+      });
       return;
     }
 

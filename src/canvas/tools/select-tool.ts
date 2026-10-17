@@ -150,6 +150,7 @@ export class SelectTool implements CanvasTool {
           });
         }, LOCAL_ORIGIN);
 
+        this.host.syncConnectedArrows([this.resizeInfo.elementId]);
         this.host.setDirty();
       }
       return;
@@ -222,6 +223,7 @@ export class SelectTool implements CanvasTool {
         });
       }, LOCAL_ORIGIN);
 
+      this.host.syncConnectedArrows(store.selectedIds);
       this.host.setDirty();
       return;
     }

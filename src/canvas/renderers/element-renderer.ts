@@ -33,7 +33,7 @@ export function renderElement(
       drawDiamond(ctx, el);
       break;
     case "line":
-      drawLine(ctx, el);
+      drawLine(ctx, el, getElementById);
       break;
     case "arrow":
       drawArrow(ctx, el, getElementById);
