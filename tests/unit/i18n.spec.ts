@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { pt, en } from "../../src/i18n";
+import { describe, expect, it } from "vitest";
+import { createTranslator, en, pt } from "@/i18n/translator";
 
 function getObjectKeyPaths(obj: Record<string, unknown>, prefix = ""): string[] {
   const keys: string[] = [];
@@ -50,17 +50,22 @@ describe("i18n Locales Parity and Completeness", () => {
     }
   });
 
-  it("should support parameter interpolation", () => {
-    const template = pt.shareModal.title;
-    expect(template).toContain("{title}");
-    const replaced = template.replace("{title}", "Sprint Planning");
-    expect(replaced).toBe('Compartilhar "Sprint Planning"');
+  it("should support parameter interpolation via createTranslator", () => {
+    const tPt = createTranslator("pt");
+    const tEn = createTranslator("en");
+
+    expect(
+      tPt("shareModal.emailTab.feedback.inviteSent", { email: "dev@example.com" })
+    ).toBe("Convite enviado para dev@example.com!");
+    expect(
+      tEn("shareModal.emailTab.feedback.inviteSent", { email: "dev@example.com" })
+    ).toBe("Invite sent to dev@example.com!");
   });
 
   it("should support count interpolation", () => {
-    const template = pt.properties.selectedCount;
-    expect(template).toContain("{count}");
-    const replaced = template.replace("{count}", "3");
-    expect(replaced).toBe("3 selecionados");
+    const tPt = createTranslator("pt");
+    expect(tPt("studio.inspector.header.selectedCount", { count: 3 })).toBe(
+      "3 selecionados"
+    );
   });
 });
