@@ -1,9 +1,5 @@
 import type { NextConfig } from "next";
 
-/**
- * Cabeçalhos de segurança base (T0.9). A CSP estrita com nonce e `connect-src`
- * restrito à API/WSS entra na task T8.5.
- */
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
