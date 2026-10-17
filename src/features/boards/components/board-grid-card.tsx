@@ -1,6 +1,7 @@
 "use client";
 
 import type React from "react";
+import { ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/i18n/context";
 import type { BoardItem } from "@/server/dal/boards.dal";
@@ -58,7 +59,7 @@ export function BoardGridCard({
           />
           <div className="flex items-center gap-2 opacity-50 transition-transform group-hover:scale-105">
             <div className="h-8 w-12 rounded border border-border-strong bg-surface" />
-            <span className="text-[10px] text-text-muted">➔</span>
+            <ArrowRight className="h-2.5 w-2.5 text-text-muted" />
             <div className="h-8 w-8 rounded-full border border-border-strong bg-accent-subtle" />
           </div>
         </div>

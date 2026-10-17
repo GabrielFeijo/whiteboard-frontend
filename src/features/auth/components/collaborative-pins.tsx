@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
+import { Zap, Pencil } from "lucide-react";
 
 interface DraggablePinProps {
   initialClass: string;
@@ -147,7 +148,7 @@ export function CollaborativePins() {
       >
         <div className="w-36 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-100 dark:bg-amber-950/70 p-2.5 shadow-md -rotate-2 pointer-events-none">
           <div className="flex items-center gap-1 text-[10px] font-bold text-amber-900 dark:text-amber-200">
-            <span>⚡</span>
+            <Zap className="h-3 w-3 text-amber-600 dark:text-amber-400 shrink-0" />
             <span>Ideias de Sprint</span>
           </div>
           <p className="mt-1 text-[10px] text-amber-800 dark:text-amber-300 leading-tight">
@@ -167,8 +168,9 @@ export function CollaborativePins() {
           colorText="text-white"
           cursorFill="#059669"
         >
-          <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-300 shadow-2xs pointer-events-none">
-            ✎ Desenhando formas...
+          <div className="flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-300 shadow-2xs pointer-events-none">
+            <Pencil className="h-2.5 w-2.5 shrink-0" />
+            <span>Desenhando formas...</span>
           </div>
         </DraggablePin>
       </div>

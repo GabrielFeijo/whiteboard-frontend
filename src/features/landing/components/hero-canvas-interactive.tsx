@@ -1,6 +1,14 @@
 "use client";
 
 import React, { useState, useRef, useCallback } from "react";
+import {
+  MousePointer2,
+  Pen,
+  Square,
+  StickyNote,
+  Zap,
+  MousePointerClick,
+} from "lucide-react";
 import { useI18n } from "@/i18n/context";
 
 interface DraggableItem {
@@ -11,6 +19,7 @@ interface DraggableItem {
   title: string;
   subtitle?: string;
   badge?: string;
+  hasIcon?: boolean;
   color: string;
 }
 
@@ -20,8 +29,9 @@ const INITIAL_ITEMS: DraggableItem[] = [
     x: 40,
     y: 35,
     type: "sticky",
-    title: "⚡ Sprint 2026",
+    title: "Sprint 2026",
     subtitle: "Yjs CRDT state vectors + distributed WebSocket mesh",
+    hasIcon: true,
     color: "bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/60 dark:text-amber-200 dark:border-amber-700",
   },
   {
@@ -157,9 +167,7 @@ export function HeroCanvasInteractive() {
                 : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
             }`}
           >
-            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M3 3l7 18 3-7 7-3L3 3z" />
-            </svg>
+            <MousePointer2 className="h-3.5 w-3.5" />
           </button>
 
           <button
@@ -172,12 +180,7 @@ export function HeroCanvasInteractive() {
                 : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
             }`}
           >
-            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M12 19l7-7 3 3-7 7-3-3z" />
-              <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
-              <path d="M2 2l7.586 7.586" />
-              <circle cx="11" cy="11" r="2" />
-            </svg>
+            <Pen className="h-3.5 w-3.5" />
           </button>
 
           <button
@@ -190,9 +193,7 @@ export function HeroCanvasInteractive() {
                 : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
             }`}
           >
-            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-            </svg>
+            <Square className="h-3.5 w-3.5" />
           </button>
 
           <button
@@ -205,10 +206,7 @@ export function HeroCanvasInteractive() {
                 : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
             }`}
           >
-            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-            </svg>
+            <StickyNote className="h-3.5 w-3.5" />
           </button>
         </div>
 
@@ -248,7 +246,10 @@ export function HeroCanvasInteractive() {
             }`}
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold tracking-tight">{item.title}</span>
+              <div className="flex items-center gap-1.5">
+                {item.hasIcon && <Zap className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />}
+                <span className="text-xs font-bold tracking-tight">{item.title}</span>
+              </div>
               {item.badge && (
                 <span className="rounded-md bg-surface/60 px-1.5 py-0.5 font-mono text-[9px] font-semibold text-text-muted">
                   {item.badge}
@@ -264,25 +265,24 @@ export function HeroCanvasInteractive() {
         ))}
 
         <div className="absolute top-[28%] left-[22%] z-20 flex items-center gap-1.5 pointer-events-none animate-pulse">
-          <svg className="h-4 w-4 text-blue-500 drop-shadow" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M3 3l7 18 3-7 7-3L3 3z" />
-          </svg>
+          <MousePointer2 className="h-4 w-4 fill-blue-500 text-blue-500 drop-shadow" />
           <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow-xs">
             Alice (Lead)
           </span>
         </div>
 
         <div className="absolute bottom-[20%] right-[18%] z-20 flex items-center gap-1.5 pointer-events-none">
-          <svg className="h-4 w-4 text-purple-500 drop-shadow" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M3 3l7 18 3-7 7-3L3 3z" />
-          </svg>
+          <MousePointer2 className="h-4 w-4 fill-purple-500 text-purple-500 drop-shadow" />
           <span className="rounded-full bg-purple-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow-xs">
             Bruno (Arch)
           </span>
         </div>
 
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 pointer-events-none rounded-full border border-border-subtle bg-surface/75 px-3 py-1 text-[11px] text-text-muted backdrop-blur-xs">
-          <span>💡 {t("landing.interactive.tryDrag")}</span>
+          <span className="flex items-center gap-1.5">
+            <MousePointerClick className="h-3.5 w-3.5 text-accent-primary" />
+            <span>{t("landing.interactive.tryDrag")}</span>
+          </span>
         </div>
       </div>
     </div>

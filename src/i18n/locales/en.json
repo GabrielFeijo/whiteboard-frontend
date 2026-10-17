@@ -62,8 +62,7 @@
       "description": "Draw, write, brainstorm, and create in real-time with conflict-free synchronization, offline support, and live presence.",
       "openDashboard": "Open Boards Dashboard",
       "signIn": "Sign In",
-      "exploreMore": "Explore Features",
-      "subnote": "No credit card required • 100% collaborative"
+      "exploreMore": "Explore Features"
     },
     "preview": {
       "noteTitle": "2026 Architecture",
@@ -83,26 +82,6 @@
       "collabNode": "WebSocket Cluster",
       "dbNode": "Yjs State Storage",
       "tryDrag": "Drag elements to interact with canvas"
-    },
-    "features": {
-      "title": "Built for Creative Speed & Precision",
-      "subtitle": "A suite of visual collaboration tools crafted for software architects, developers, and product teams.",
-      "crdt": {
-        "title": "Yjs CRDT Synchronization",
-        "desc": "Mathematical conflict resolution in real time. Concurrent edits without data loss or UI blocking."
-      },
-      "canvas": {
-        "title": "Infinite 60 FPS Canvas",
-        "desc": "Silky-smooth pan and zoom powered by hardware-accelerated transforms and canvas rendering."
-      },
-      "presence": {
-        "title": "Presence & Follow Mode",
-        "desc": "Track live cursors with distinct collaborator colors and navigate through any teammate's viewport."
-      },
-      "history": {
-        "title": "History & Vector Export",
-        "desc": "Time travel through immutable snapshots and export your diagrams in vector SVG or high-DPI PNG."
-      }
     },
     "useCases": {
       "title": "Everything your team needs in one workspace",
@@ -127,8 +106,7 @@
       "title": "Ready to collaborate in real-time?",
       "subtitle": "Create your free account in seconds or jump straight into your boards directly in your browser.",
       "primary": "Start Creating for Free",
-      "secondary": "Explore My Boards",
-      "badge": "No credit card needed • 100% collaborative"
+      "secondary": "Explore My Boards"
     },
     "footer": {
       "brand": "Whiteboard — Infinite Collaborative Visual Workspace",

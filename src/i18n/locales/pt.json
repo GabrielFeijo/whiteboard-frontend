@@ -62,8 +62,7 @@
       "description": "Desenhe, escreva, faça brainstorming e crie em tempo real com sincronização sem conflitos, suporte offline e presença ao vivo.",
       "openDashboard": "Abrir Painel de Quadros",
       "signIn": "Entrar",
-      "exploreMore": "Explorar Recursos",
-      "subnote": "Sem necessidade de cartão de crédito • 100% colaborativo"
+      "exploreMore": "Explorar Recursos"
     },
     "preview": {
       "noteTitle": "Arquitetura 2026",
@@ -83,26 +82,6 @@
       "collabNode": "Cluster WebSocket",
       "dbNode": "Armazenamento Yjs",
       "tryDrag": "Arraste os nós e notas para interagir"
-    },
-    "features": {
-      "title": "Projetado para Velocidade e Precisão Criativa",
-      "subtitle": "Uma suíte de ferramentas visuais pensada para desenvolvedores, arquitetos de software e equipes de produto.",
-      "crdt": {
-        "title": "Sincronização CRDT Yjs",
-        "desc": "Resolução matemática de conflitos em tempo real. Edições simultâneas sem perdas ou bloqueios de tela."
-      },
-      "canvas": {
-        "title": "Canvas Infinito a 60 FPS",
-        "desc": "Navegação suave com pan e zoom acelerados por hardware. Renderização ultra veloz em qualquer resolução."
-      },
-      "presence": {
-        "title": "Presença & Modo Seguir",
-        "desc": "Acompanhe cursores ao vivo com cores individuais e navegue pelo ponto de vista de outro membro da equipe."
-      },
-      "history": {
-        "title": "Histórico & Exportação Vetorial",
-        "desc": "Viaje no tempo com snapshots imutáveis e exporte seus diagramas em SVG vetorial ou PNG de alta definição."
-      }
     },
     "useCases": {
       "title": "Tudo o que sua equipe precisa em um só lugar",
@@ -127,8 +106,7 @@
       "title": "Pronto para criar juntos em tempo real?",
       "subtitle": "Crie sua conta gratuita em segundos ou abra seus quadros existentes diretamente no navegador.",
       "primary": "Começar a Criar Gratuitamente",
-      "secondary": "Explorar Meus Quadros",
-      "badge": "Sem necessidade de cartão • 100% colaborativo"
+      "secondary": "Explorar Meus Quadros"
     },
     "footer": {
       "brand": "Whiteboard — Espaço Visual Colaborativo Infinito",

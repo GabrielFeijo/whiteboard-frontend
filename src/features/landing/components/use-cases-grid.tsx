@@ -1,4 +1,5 @@
 import type React from "react";
+import { ArrowLeftRight } from "lucide-react";
 import { getServerTranslator } from "@/i18n/server";
 
 export async function UseCasesGrid() {
@@ -15,7 +16,7 @@ export async function UseCasesGrid() {
             <span className="font-mono text-[10px] font-bold text-blue-600 dark:text-blue-300">Next.js Client</span>
             <div className="mt-1 h-1 w-12 mx-auto rounded-full bg-blue-300 dark:bg-blue-700" />
           </div>
-          <span className="text-text-muted text-xs font-mono">⇄</span>
+          <ArrowLeftRight className="h-3.5 w-3.5 text-text-muted shrink-0" />
           <div className="rounded-lg border border-indigo-400 bg-indigo-50/80 dark:bg-indigo-950/40 p-2.5 text-center shadow-xs">
             <span className="font-mono text-[10px] font-bold text-indigo-600 dark:text-indigo-300">Yjs CRDT Node</span>
             <div className="mt-1 h-1 w-12 mx-auto rounded-full bg-indigo-300 dark:bg-indigo-700" />

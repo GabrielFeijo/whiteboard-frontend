@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { LandingHeader } from "@/components/layout/landing-header";
 import { Button } from "@/components/ui/button";
 import {
-  FeaturesGrid,
   HeroCanvasInteractive,
   LandingCta,
   LandingFooter,
@@ -38,20 +38,18 @@ async function LandingContent() {
 
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Link href="/boards">
-                <Button variant="primary" size="lg" className="px-7 h-11 text-sm font-semibold shadow-md">
-                  {t("landing.hero.openDashboard")}
+                <Button variant="primary" size="lg" className="px-7 h-11 text-sm font-semibold shadow-md gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  <span>{t("landing.hero.openDashboard")}</span>
                 </Button>
               </Link>
               <Link href="/login">
-                <Button variant="secondary" size="lg" className="px-6 h-11 text-sm font-medium">
-                  {t("landing.hero.signIn")}
+                <Button variant="secondary" size="lg" className="px-6 h-11 text-sm font-medium gap-2">
+                  <span>{t("landing.hero.signIn")}</span>
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
             </div>
-
-            <p className="mt-3 text-xs text-text-muted">
-              {t("landing.hero.subnote")}
-            </p>
 
             <div className="mt-12">
               <HeroCanvasInteractive />
@@ -59,7 +57,6 @@ async function LandingContent() {
           </div>
         </section>
 
-        <FeaturesGrid />
         <UseCasesGrid />
         <LandingCta />
       </main>

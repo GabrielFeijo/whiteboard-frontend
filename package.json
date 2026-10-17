@@ -25,6 +25,7 @@
     "dompurify": "^3.4.17",
     "fractional-indexing": "^4.0.0",
     "lib0": "^0.2.119",
+    "lucide-react": "^1.59.0",
     "nanoid": "^6.0.2",
     "next": "16.4.0",
     "perfect-freehand": "^1.2.3",
