@@ -11,6 +11,21 @@ import {
 import { TextContentEditor } from "@/features/studio/components/properties-palette/text-content-editor";
 import { useI18n } from "@/i18n/context";
 import { useCanvasStore } from "@/store/canvas-store";
+import {
+  AlignCenterHorizontal,
+  AlignCenterVertical,
+  AlignEndHorizontal,
+  AlignEndVertical,
+  AlignHorizontalDistributeCenter,
+  AlignStartHorizontal,
+  AlignStartVertical,
+  AlignVerticalDistributeCenter,
+  Group,
+  Lock,
+  Unlock,
+  Ungroup,
+  X,
+} from "lucide-react";
 
 interface PropertiesPaletteProps {
   engine?: CanvasEngine | null;
@@ -44,6 +59,11 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
     primaryElement.type === "ellipse" ||
     primaryElement.type === "diamond" ||
     primaryElement.type === "sticky";
+
+  const isLocked =
+    selectedElements.length > 0 && selectedElements.every((el) => el.locked);
+  const hasMultiple = selectedElements.length >= 2;
+  const isGrouped = selectedElements.some((el) => !!el.groupId);
 
   const handleStrokeChange = (color: string) => {
     setStrokeColor(color);
@@ -123,93 +143,211 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
             title={t("studio.inspector.closeButton")}
             aria-label={t("studio.inspector.closeButton")}
           >
-            <svg
-              className="h-3.5 w-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            <X className="h-3.5 w-3.5" />
           </button>
         )}
       </div>
 
-      {isTextual && selectedIds.length > 0 && currentId && (
-        <TextContentEditor
-          key={currentId}
-          initialText={primaryElement?.text ?? ""}
-          onChange={(newText) => engine?.updateSelectedText(newText)}
-          engine={engine}
-          placeholder={t("studio.inspector.fields.typeTextPlaceholder")}
-          title={t("studio.inspector.fields.textContent")}
-        />
+      {selectedIds.length > 0 && (
+        <div className="flex items-center gap-1.5 border-b border-border-subtle pb-2.5">
+          <button
+            type="button"
+            onClick={() => engine?.toggleLockSelected()}
+            className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded-md font-medium transition-all ${
+              isLocked
+                ? "bg-rose-500/15 text-rose-500 border border-rose-500/30 hover:bg-rose-500/25"
+                : "bg-surface text-text-secondary border border-border-subtle hover:text-text-primary hover:bg-surface-hover"
+            }`}
+            title={isLocked ? "Unlock (Ctrl+Shift+L)" : "Lock (Ctrl+Shift+L)"}
+          >
+            {isLocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+            <span>{isLocked ? "Unlock" : "Lock"}</span>
+          </button>
+
+          {hasMultiple && !isGrouped && (
+            <button
+              type="button"
+              onClick={() => engine?.groupSelected()}
+              className="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md font-medium bg-surface text-text-secondary border border-border-subtle hover:text-text-primary hover:bg-surface-hover transition-all"
+              title="Group elements (Ctrl+G)"
+            >
+              <Group className="h-3.5 w-3.5" />
+              <span>Group</span>
+            </button>
+          )}
+
+          {isGrouped && (
+            <button
+              type="button"
+              onClick={() => engine?.ungroupSelected()}
+              className="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md font-medium bg-surface text-text-secondary border border-border-subtle hover:text-text-primary hover:bg-surface-hover transition-all"
+              title="Ungroup elements (Ctrl+Shift+G)"
+            >
+              <Ungroup className="h-3.5 w-3.5" />
+              <span>Ungroup</span>
+            </button>
+          )}
+        </div>
       )}
 
-      <ColorSwatchPicker
-        label={t("studio.inspector.fields.strokeColor")}
-        colors={STROKE_COLORS}
-        value={strokeColor}
-        onChange={handleStrokeChange}
-        customPickerTitle={t("studio.inspector.fields.customStrokeColor")}
-      />
-
-      {hasFill && (
-        <ColorSwatchPicker
-          label={t("studio.inspector.fields.fillColor")}
-          colors={FILL_COLORS}
-          value={fillColor}
-          onChange={handleFillChange}
-          customPickerTitle={t("studio.inspector.fields.customFillColor")}
-        />
+      {selectedIds.length >= 2 && !isLocked && (
+        <div className="border-b border-border-subtle pb-2.5">
+          <div className="flex items-center justify-between gap-0.5 rounded-lg border border-border-subtle bg-surface p-0.5">
+            <button
+              type="button"
+              onClick={() => engine?.alignSelected("left")}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
+              title="Align Left"
+            >
+              <AlignStartHorizontal className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => engine?.alignSelected("center")}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
+              title="Align Center"
+            >
+              <AlignCenterHorizontal className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => engine?.alignSelected("right")}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
+              title="Align Right"
+            >
+              <AlignEndHorizontal className="h-3.5 w-3.5" />
+            </button>
+            <div className="h-4 w-px bg-border-subtle" />
+            <button
+              type="button"
+              onClick={() => engine?.alignSelected("top")}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
+              title="Align Top"
+            >
+              <AlignStartVertical className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => engine?.alignSelected("middle")}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
+              title="Align Middle"
+            >
+              <AlignCenterVertical className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => engine?.alignSelected("bottom")}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
+              title="Align Bottom"
+            >
+              <AlignEndVertical className="h-3.5 w-3.5" />
+            </button>
+            {selectedIds.length >= 3 && (
+              <>
+                <div className="h-4 w-px bg-border-subtle" />
+                <button
+                  type="button"
+                  onClick={() => engine?.distributeSelected("horizontal")}
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
+                  title="Distribute Horizontally"
+                >
+                  <AlignHorizontalDistributeCenter className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => engine?.distributeSelected("vertical")}
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
+                  title="Distribute Vertically"
+                >
+                  <AlignVerticalDistributeCenter className="h-3.5 w-3.5" />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       )}
 
-      <div>
-        <label className="text-[11px] font-medium text-text-secondary">
-          {t("studio.inspector.fields.strokeWidth")}
-        </label>
-        <div className="mt-1.5 grid grid-cols-4 gap-1 rounded-lg border border-border-subtle bg-surface p-0.5">
-          {STROKE_WIDTHS.map((w) => {
-            const isSelected = strokeWidth === w;
-            return (
-              <button
-                key={w}
-                type="button"
-                onClick={() => handleWidthChange(w)}
-                className={`rounded-md py-1 text-center text-xs font-mono font-medium transition-all ${
-                  isSelected
-                    ? "bg-surface-raised text-text-primary shadow-2xs border border-border-subtle/80"
-                    : "text-text-muted hover:text-text-primary"
-                }`}
-              >
-                {w}px
-              </button>
-            );
-          })}
+      {isLocked ? (
+        <div className="rounded-lg bg-surface p-3 text-center border border-border-subtle text-text-muted text-xs">
+          Element is locked. Unlock to modify properties.
         </div>
-      </div>
+      ) : (
+        <>
+          {isTextual && selectedIds.length > 0 && currentId && (
+            <TextContentEditor
+              key={currentId}
+              initialText={primaryElement?.text ?? ""}
+              onChange={(newText) => engine?.updateSelectedText(newText)}
+              engine={engine}
+              placeholder={t("studio.inspector.fields.typeTextPlaceholder")}
+              title={t("studio.inspector.fields.textContent")}
+            />
+          )}
 
-      <div>
-        <div className="flex items-center justify-between">
-          <label className="text-[11px] font-medium text-text-secondary">
-            {t("studio.inspector.fields.opacity")}
-          </label>
-          <span className="text-[11px] font-mono text-text-muted">
-            {Math.round(opacity * 100)}%
-          </span>
-        </div>
-        <input
-          type="range"
-          min="0.1"
-          max="1"
-          step="0.05"
-          value={opacity}
-          onChange={(e) => handleOpacityChange(parseFloat(e.target.value))}
-          className="mt-1.5 w-full accent-accent-primary cursor-pointer h-1.5 rounded-lg bg-border-strong"
-        />
-      </div>
+          <ColorSwatchPicker
+            label={t("studio.inspector.fields.strokeColor")}
+            colors={STROKE_COLORS}
+            value={strokeColor}
+            onChange={handleStrokeChange}
+            customPickerTitle={t("studio.inspector.fields.customStrokeColor")}
+          />
+
+          {hasFill && (
+            <ColorSwatchPicker
+              label={t("studio.inspector.fields.fillColor")}
+              colors={FILL_COLORS}
+              value={fillColor}
+              onChange={handleFillChange}
+              customPickerTitle={t("studio.inspector.fields.customFillColor")}
+            />
+          )}
+
+          <div>
+            <label className="text-[11px] font-medium text-text-secondary">
+              {t("studio.inspector.fields.strokeWidth")}
+            </label>
+            <div className="mt-1.5 grid grid-cols-4 gap-1 rounded-lg border border-border-subtle bg-surface p-0.5">
+              {STROKE_WIDTHS.map((w) => {
+                const isSelected = strokeWidth === w;
+                return (
+                  <button
+                    key={w}
+                    type="button"
+                    onClick={() => handleWidthChange(w)}
+                    className={`rounded-md py-1 text-center text-xs font-mono font-medium transition-all ${
+                      isSelected
+                        ? "bg-surface-raised text-text-primary shadow-2xs border border-border-subtle/80"
+                        : "text-text-muted hover:text-text-primary"
+                    }`}
+                  >
+                    {w}px
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-medium text-text-secondary">
+                {t("studio.inspector.fields.opacity")}
+              </label>
+              <span className="text-[11px] font-mono text-text-muted">
+                {Math.round(opacity * 100)}%
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0.1"
+              max="1"
+              step="0.05"
+              value={opacity}
+              onChange={(e) => handleOpacityChange(parseFloat(e.target.value))}
+              className="mt-1.5 w-full accent-accent-primary cursor-pointer h-1.5 rounded-lg bg-border-strong"
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

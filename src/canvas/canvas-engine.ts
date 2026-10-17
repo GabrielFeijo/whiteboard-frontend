@@ -35,6 +35,7 @@ import {
   CanvasKeyboardController,
   KeyboardControllerTarget,
 } from "@/canvas/controllers/canvas-keyboard-controller";
+import { AlignmentType, DistributionType } from "@/canvas/alignment-helper";
 
 export type ElementStyle = ElementData["style"];
 
@@ -68,6 +69,7 @@ export class CanvasEngine
     w: number;
     h: number;
   } | null = null;
+  private guides: { vertical?: number[]; horizontal?: number[] } | null = null;
 
   private storeUnsub: (() => void) | null = null;
   private elementsObserver: Parameters<Y.Map<unknown>["observeDeep"]>[0] | null = null;
@@ -338,6 +340,7 @@ export class CanvasEngine
         opacity: store.opacity,
       },
       userId: this.userId,
+      guides: this.guides,
     });
 
     renderRemoteCursorsOverlay(
@@ -502,6 +505,83 @@ export class CanvasEngine
     if (this.role === "VIEWER") return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.sendToBack(selectedIds);
+    this.isDirty = true;
+  }
+
+  public groupSelected(): void {
+    if (this.role === "VIEWER") return;
+    const { selectedIds } = useCanvasStore.getState();
+    const groupId = this.repository.groupElements(selectedIds);
+    if (groupId) {
+      this.isDirty = true;
+    }
+  }
+
+  public ungroupSelected(): void {
+    if (this.role === "VIEWER") return;
+    const { selectedIds } = useCanvasStore.getState();
+    this.repository.ungroupElements(selectedIds);
+    this.isDirty = true;
+  }
+
+  public lockSelected(): void {
+    if (this.role === "VIEWER") return;
+    const { selectedIds } = useCanvasStore.getState();
+    this.repository.lockElements(selectedIds);
+    this.isDirty = true;
+  }
+
+  public unlockSelected(): void {
+    if (this.role === "VIEWER") return;
+    const { selectedIds } = useCanvasStore.getState();
+    this.repository.unlockElements(selectedIds);
+    this.isDirty = true;
+  }
+
+  public toggleLockSelected(): void {
+    if (this.role === "VIEWER") return;
+    const { selectedIds } = useCanvasStore.getState();
+    this.repository.toggleLockElements(selectedIds);
+    this.isDirty = true;
+  }
+
+  public expandSelectionGroups(ids: readonly string[]): string[] {
+    return this.repository.expandSelectionGroups(ids);
+  }
+
+  setGuides(guides: { vertical?: number[]; horizontal?: number[] } | null): void {
+    this.guides = guides;
+    this.isDirty = true;
+  }
+
+  getGuides(): { vertical?: number[]; horizontal?: number[] } | null {
+    return this.guides;
+  }
+
+  getOtherElements(excludeIds: readonly string[]): ElementData[] {
+    const excludeSet = new Set(excludeIds);
+    const elementsMap = this.repository.getElementsMap();
+    const result: ElementData[] = [];
+    elementsMap.forEach((map, id) => {
+      if (!excludeSet.has(id)) {
+        const el = YjsElementAdapter.toElementData(map);
+        if (el) result.push(el);
+      }
+    });
+    return result;
+  }
+
+  public alignSelected(alignment: AlignmentType): void {
+    if (this.role === "VIEWER") return;
+    const { selectedIds } = useCanvasStore.getState();
+    this.repository.alignElements(selectedIds, alignment);
+    this.isDirty = true;
+  }
+
+  public distributeSelected(direction: DistributionType): void {
+    if (this.role === "VIEWER") return;
+    const { selectedIds } = useCanvasStore.getState();
+    this.repository.distributeElements(selectedIds, direction);
     this.isDirty = true;
   }
 

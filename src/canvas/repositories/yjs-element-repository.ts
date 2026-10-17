@@ -7,6 +7,12 @@ import { SpatialIndex } from "@/canvas/spatial-index";
 import { isPointInElement } from "@/canvas/resize-helper";
 import { measureTextDimensions } from "@/canvas/renderers/text-renderer";
 import { YjsElementAdapter } from "@/canvas/yjs-element-adapter";
+import {
+  AlignmentType,
+  calculateAlignedPositions,
+  calculateDistributedPositions,
+  DistributionType,
+} from "@/canvas/alignment-helper";
 
 export type ElementStylePatch = Partial<ElementData["style"]>;
 
@@ -146,7 +152,7 @@ export class YjsElementRepository {
     this.doc.transact(() => {
       ids.forEach((id) => {
         const map = elementsMap.get(id);
-        if (map) {
+        if (map && map.get("locked") !== true) {
           YjsElementAdapter.updateYMap(map, { style: styleUpdates });
         }
       });
@@ -159,7 +165,7 @@ export class YjsElementRepository {
     this.doc.transact(() => {
       ids.forEach((id) => {
         const map = elementsMap.get(id);
-        if (!map) return;
+        if (!map || map.get("locked") === true) return;
         YjsElementAdapter.updateYMap(map, { text });
         const type = YjsElementAdapter.getType(map);
         if (type === "text") {
@@ -178,6 +184,8 @@ export class YjsElementRepository {
     const elementsMap = this.getElementsMap();
     this.doc.transact(() => {
       ids.forEach((id) => {
+        const map = elementsMap.get(id);
+        if (map && map.get("locked") === true) return;
         elementsMap.delete(id);
         this.spatialIndex.remove(id);
       });
@@ -259,6 +267,156 @@ export class YjsElementRepository {
         if (map) {
           lowest = generateKeyBetween(null, lowest);
           YjsElementAdapter.updateYMap(map, { z: lowest });
+        }
+      });
+    }, LOCAL_ORIGIN);
+  }
+
+  groupElements(ids: readonly string[]): string | null {
+    if (ids.length < 2) return null;
+    const elementsMap = this.getElementsMap();
+    const groupId = nanoid(10);
+    this.doc.transact(() => {
+      ids.forEach((id) => {
+        const map = elementsMap.get(id);
+        if (map && map.get("locked") !== true) {
+          YjsElementAdapter.updateYMap(map, { groupId });
+        }
+      });
+    }, LOCAL_ORIGIN);
+    return groupId;
+  }
+
+  ungroupElements(ids: readonly string[]): void {
+    if (ids.length === 0) return;
+    const elementsMap = this.getElementsMap();
+    const groupIdsToClear = new Set<string>();
+    ids.forEach((id) => {
+      const map = elementsMap.get(id);
+      const gid = map?.get("groupId");
+      if (typeof gid === "string" && gid.length > 0) {
+        groupIdsToClear.add(gid);
+      }
+    });
+
+    this.doc.transact(() => {
+      if (groupIdsToClear.size > 0) {
+        elementsMap.forEach((map) => {
+          const gid = map.get("groupId");
+          if (typeof gid === "string" && groupIdsToClear.has(gid)) {
+            YjsElementAdapter.updateYMap(map, { groupId: "" });
+          }
+        });
+      } else {
+        ids.forEach((id) => {
+          const map = elementsMap.get(id);
+          if (map) {
+            YjsElementAdapter.updateYMap(map, { groupId: "" });
+          }
+        });
+      }
+    }, LOCAL_ORIGIN);
+  }
+
+  expandSelectionGroups(ids: readonly string[]): string[] {
+    if (ids.length === 0) return [];
+    const elementsMap = this.getElementsMap();
+    const groupIds = new Set<string>();
+    ids.forEach((id) => {
+      const map = elementsMap.get(id);
+      const gid = map?.get("groupId");
+      if (typeof gid === "string" && gid.length > 0) {
+        groupIds.add(gid);
+      }
+    });
+    if (groupIds.size === 0) return [...ids];
+
+    const resultIds = new Set<string>(ids);
+    elementsMap.forEach((map, id) => {
+      const gid = map.get("groupId");
+      if (typeof gid === "string" && groupIds.has(gid)) {
+        resultIds.add(id);
+      }
+    });
+    return Array.from(resultIds);
+  }
+
+  lockElements(ids: readonly string[]): void {
+    if (ids.length === 0) return;
+    const elementsMap = this.getElementsMap();
+    this.doc.transact(() => {
+      ids.forEach((id) => {
+        const map = elementsMap.get(id);
+        if (map) {
+          YjsElementAdapter.updateYMap(map, { locked: true });
+        }
+      });
+    }, LOCAL_ORIGIN);
+  }
+
+  unlockElements(ids: readonly string[]): void {
+    if (ids.length === 0) return;
+    const elementsMap = this.getElementsMap();
+    this.doc.transact(() => {
+      ids.forEach((id) => {
+        const map = elementsMap.get(id);
+        if (map) {
+          YjsElementAdapter.updateYMap(map, { locked: false });
+        }
+      });
+    }, LOCAL_ORIGIN);
+  }
+
+  toggleLockElements(ids: readonly string[]): void {
+    if (ids.length === 0) return;
+    const elements = this.getManyByIds(ids);
+    const allLocked = elements.length > 0 && elements.every((el) => el.locked);
+    if (allLocked) {
+      this.unlockElements(ids);
+    } else {
+      this.lockElements(ids);
+    }
+  }
+
+  alignElements(ids: readonly string[], alignment: AlignmentType): void {
+    if (ids.length < 2) return;
+    const elements = this.getManyByIds(ids);
+    const updates = calculateAlignedPositions(elements, alignment);
+    if (updates.size === 0) return;
+
+    const elementsMap = this.getElementsMap();
+    this.doc.transact(() => {
+      updates.forEach((pos, id) => {
+        const map = elementsMap.get(id);
+        if (map) {
+          YjsElementAdapter.updateYMap(map, pos);
+          const data = YjsElementAdapter.toElementData(map);
+          if (data) {
+            this.spatialIndex.remove(id);
+            this.spatialIndex.insert(id, data.x, data.y, data.w, data.h);
+          }
+        }
+      });
+    }, LOCAL_ORIGIN);
+  }
+
+  distributeElements(ids: readonly string[], direction: DistributionType): void {
+    if (ids.length < 3) return;
+    const elements = this.getManyByIds(ids);
+    const updates = calculateDistributedPositions(elements, direction);
+    if (updates.size === 0) return;
+
+    const elementsMap = this.getElementsMap();
+    this.doc.transact(() => {
+      updates.forEach((pos, id) => {
+        const map = elementsMap.get(id);
+        if (map) {
+          YjsElementAdapter.updateYMap(map, pos);
+          const data = YjsElementAdapter.toElementData(map);
+          if (data) {
+            this.spatialIndex.remove(id);
+            this.spatialIndex.insert(id, data.x, data.y, data.w, data.h);
+          }
         }
       });
     }, LOCAL_ORIGIN);

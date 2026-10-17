@@ -34,6 +34,10 @@ export interface CanvasHost {
   ): void;
   getShapeDraft(): { type: ElementData["type"]; x: number; y: number; w: number; h: number } | null;
   commitElement(data: ElementData): void;
+  expandSelectionGroups(ids: readonly string[]): string[];
+  setGuides(guides: { vertical?: number[]; horizontal?: number[] } | null): void;
+  getGuides(): { vertical?: number[]; horizontal?: number[] } | null;
+  getOtherElements(excludeIds: readonly string[]): ElementData[];
 }
 
 export interface CanvasTool {

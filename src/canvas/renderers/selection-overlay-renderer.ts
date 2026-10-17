@@ -21,6 +21,10 @@ export interface SelectionOverlayRenderParams {
     opacity: number;
   };
   userId: string;
+  guides?: {
+    vertical?: number[];
+    horizontal?: number[];
+  } | null;
 }
 
 export function renderSelectionAndDraftsOverlay(
@@ -35,15 +39,67 @@ export function renderSelectionAndDraftsOverlay(
     freehandDraft,
     draftStyle,
     userId,
+    guides,
   } = params;
+
+  if (guides) {
+    ctx.save();
+    ctx.strokeStyle = "#ef4444";
+    ctx.lineWidth = 1 / zoom;
+    ctx.setLineDash([4 / zoom, 4 / zoom]);
+
+    guides.vertical?.forEach((x) => {
+      ctx.beginPath();
+      ctx.moveTo(x, -1e6);
+      ctx.lineTo(x, 1e6);
+      ctx.stroke();
+    });
+
+    guides.horizontal?.forEach((y) => {
+      ctx.beginPath();
+      ctx.moveTo(-1e6, y);
+      ctx.lineTo(1e6, y);
+      ctx.stroke();
+    });
+
+    ctx.restore();
+  }
 
   if (selectedElements.length > 0) {
     selectedElements.forEach((el) => {
-      ctx.strokeStyle = "#4f46e5";
+      ctx.strokeStyle = el.locked ? "#f43f5e" : "#4f46e5";
       ctx.lineWidth = 1.5 / zoom;
       ctx.strokeRect(el.x, el.y, el.w, el.h);
 
-      if (selectedElements.length === 1) {
+      if (el.locked) {
+        const badgeSize = 16 / zoom;
+        const bx = el.x + el.w - badgeSize;
+        const by = el.y - badgeSize - 4 / zoom;
+        ctx.fillStyle = "#f43f5e";
+        ctx.beginPath();
+        ctx.roundRect(bx, by, badgeSize, badgeSize, 4 / zoom);
+        ctx.fill();
+
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1.2 / zoom;
+        ctx.beginPath();
+        ctx.arc(
+          bx + badgeSize / 2,
+          by + badgeSize * 0.42,
+          badgeSize * 0.18,
+          Math.PI,
+          0,
+          false,
+        );
+        ctx.stroke();
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(
+          bx + badgeSize * 0.28,
+          by + badgeSize * 0.42,
+          badgeSize * 0.44,
+          badgeSize * 0.36,
+        );
+      } else if (selectedElements.length === 1) {
         const handleSize = 8 / zoom;
         ctx.fillStyle = "#ffffff";
         ctx.strokeStyle = "#4f46e5";
