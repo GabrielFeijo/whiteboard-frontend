@@ -145,7 +145,7 @@ export function HeroCanvasInteractive() {
         ref={containerRef}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        className="relative h-[340px] sm:h-[400px] md:h-[440px] w-full overflow-hidden rounded-xl border border-border-subtle bg-canvas select-none touch-none"
+        className="relative h-85 sm:h-100 md:h-110 w-full overflow-hidden rounded-xl border border-border-subtle bg-canvas select-none touch-none"
       >
         <div
           className="absolute inset-0 opacity-40 dark:opacity-25 pointer-events-none"
@@ -161,11 +161,10 @@ export function HeroCanvasInteractive() {
             type="button"
             onClick={() => setActiveTool("select")}
             title={t("landing.interactive.toolSelect")}
-            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${
-              activeTool === "select"
-                ? "bg-accent-primary text-white"
-                : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
-            }`}
+            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${activeTool === "select"
+              ? "bg-accent-primary text-white"
+              : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
+              }`}
           >
             <MousePointer2 className="h-3.5 w-3.5" />
           </button>
@@ -174,11 +173,10 @@ export function HeroCanvasInteractive() {
             type="button"
             onClick={() => setActiveTool("pen")}
             title={t("landing.interactive.toolPen")}
-            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${
-              activeTool === "pen"
-                ? "bg-accent-primary text-white"
-                : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
-            }`}
+            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${activeTool === "pen"
+              ? "bg-accent-primary text-white"
+              : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
+              }`}
           >
             <Pen className="h-3.5 w-3.5" />
           </button>
@@ -187,11 +185,10 @@ export function HeroCanvasInteractive() {
             type="button"
             onClick={() => setActiveTool("rect")}
             title={t("landing.interactive.toolRect")}
-            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${
-              activeTool === "rect"
-                ? "bg-accent-primary text-white"
-                : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
-            }`}
+            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${activeTool === "rect"
+              ? "bg-accent-primary text-white"
+              : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
+              }`}
           >
             <Square className="h-3.5 w-3.5" />
           </button>
@@ -200,11 +197,10 @@ export function HeroCanvasInteractive() {
             type="button"
             onClick={() => setActiveTool("sticky")}
             title={t("landing.interactive.toolSticky")}
-            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${
-              activeTool === "sticky"
-                ? "bg-accent-primary text-white"
-                : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
-            }`}
+            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${activeTool === "sticky"
+              ? "bg-accent-primary text-white"
+              : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
+              }`}
           >
             <StickyNote className="h-3.5 w-3.5" />
           </button>
@@ -241,9 +237,8 @@ export function HeroCanvasInteractive() {
             key={item.id}
             onPointerDown={(e) => handlePointerDown(item.id, e)}
             style={{ transform: `translate3d(${item.x}px, ${item.y}px, 0)` }}
-            className={`absolute cursor-grab active:cursor-grabbing rounded-xl border p-3 shadow-md transition-shadow hover:shadow-lg ${item.color} ${
-              draggingId === item.id ? "ring-2 ring-accent-primary z-30" : "z-10"
-            }`}
+            className={`absolute cursor-grab active:cursor-grabbing rounded-xl border p-3 shadow-md transition-shadow hover:shadow-lg ${item.color} ${draggingId === item.id ? "ring-2 ring-accent-primary z-30" : "z-10"
+              }`}
           >
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5">
