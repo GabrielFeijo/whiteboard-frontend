@@ -1,51 +1,91 @@
 {
   "common": {
-    "loading": "Carregando...",
-    "cancel": "Cancelar",
-    "confirm": "Confirmar",
-    "delete": "Excluir",
-    "duplicate": "Duplicar",
-    "save": "Salvar",
-    "close": "Fechar",
-    "copy": "Copiar",
-    "copied": "Copiado!",
-    "share": "Compartilhar",
-    "export": "Exportar",
-    "history": "Histórico",
-    "signOut": "Sair",
-    "signIn": "Entrar",
-    "or": "ou",
-    "error": "Erro inesperado",
-    "dateLocale": "pt-BR"
+    "app": {
+      "name": "Whiteboard",
+      "dateLocale": "pt-BR"
+    },
+    "actions": {
+      "cancel": "Cancelar",
+      "confirm": "Confirmar",
+      "delete": "Excluir",
+      "duplicate": "Duplicar",
+      "save": "Salvar",
+      "close": "Fechar",
+      "copy": "Copiar",
+      "copied": "Copiado!",
+      "share": "Compartilhar",
+      "export": "Exportar",
+      "history": "Histórico",
+      "signIn": "Entrar",
+      "signOut": "Sair"
+    },
+    "status": {
+      "loading": "Carregando...",
+      "or": "ou",
+      "error": "Erro inesperado"
+    },
+    "validation": {
+      "invalidEmail": "Insira um e-mail válido"
+    },
+    "language": {
+      "pt": "Português",
+      "en": "English",
+      "toggle": "Idioma",
+      "select": "Selecionar Idioma"
+    }
   },
-  "nav": {
-    "dashboard": "Quadros",
-    "newBoard": "Novo Quadro",
-    "signedInAs": "Conectado como"
+  "navigation": {
+    "links": {
+      "dashboard": "Quadros",
+      "newBoard": "Novo Quadro"
+    },
+    "session": {
+      "signedInAs": "Conectado como"
+    }
   },
   "landing": {
-    "badge": "Colaboração CRDT em Tempo Real • Latência Sub-100ms",
-    "title": "Quadro Infinito Colaborativo para Equipes",
-    "description": "Desenhe, escreva, faça brainstorming e crie em tempo real com sincronização sem conflitos, suporte offline e presença ao vivo.",
-    "openDashboard": "Abrir Painel de Quadros",
-    "signIn": "Entrar"
+    "hero": {
+      "badge": "Colaboração CRDT em Tempo Real • Latência Sub-100ms",
+      "title": "Quadro Infinito Colaborativo para Equipes",
+      "description": "Desenhe, escreva, faça brainstorming e crie em tempo real com sincronização sem conflitos, suporte offline e presença ao vivo.",
+      "openDashboard": "Abrir Painel de Quadros",
+      "signIn": "Entrar"
+    },
+    "preview": {
+      "noteTitle": "Arquitetura 2026",
+      "noteBody": "CRDT + WebSockets stateful com sincronização de latência mínima.",
+      "restApi": "API REST",
+      "collabServer": "Collab Server"
+    },
+    "footer": {
+      "brand": "Whiteboard Colaborativo em Tempo Real — Yjs CRDT",
+      "rights": "© 2026. Todos os direitos reservados."
+    }
   },
   "auth": {
-    "welcomeBack": "Bem-vindo de volta",
-    "signInSubtitle": "Entre na sua conta do Whiteboard",
-    "createAccountTitle": "Criar uma Conta",
-    "createAccountSubtitle": "Comece a colaborar em tempo real",
-    "fullName": "Nome Completo",
-    "email": "E-mail",
-    "password": "Senha",
-    "signInButton": "Entrar",
-    "signingIn": "Entrando...",
-    "createAccountButton": "Criar Conta",
-    "creatingAccount": "Criando conta...",
-    "noAccount": "Não tem uma conta?",
-    "hasAccount": "Já tem uma conta?",
-    "createAccountLink": "Criar conta",
-    "signInLink": "Entrar",
+    "login": {
+      "title": "Bem-vindo de volta",
+      "subtitle": "Entre na sua conta do Whiteboard",
+      "submit": "Entrar",
+      "submitting": "Entrando...",
+      "noAccount": "Não tem uma conta?",
+      "createAccountLink": "Criar conta"
+    },
+    "register": {
+      "title": "Criar uma Conta",
+      "subtitle": "Comece a colaborar em tempo real",
+      "submit": "Criar Conta",
+      "submitting": "Criando conta...",
+      "hasAccount": "Já tem uma conta?",
+      "signInLink": "Entrar"
+    },
+    "fields": {
+      "fullName": "Nome Completo",
+      "email": "E-mail",
+      "password": "Senha",
+      "showPassword": "Mostrar",
+      "hidePassword": "Ocultar"
+    },
     "errors": {
       "emailRequired": "O e-mail é obrigatório",
       "emailInvalid": "Insira um e-mail válido",
@@ -56,175 +96,253 @@
     }
   },
   "dashboard": {
-    "title": "Meus Quadros",
-    "subtitle": "Crie, organize e colabore nos quadros da sua equipe.",
-    "loading": "Carregando seus quadros...",
-    "noBoards": "Nenhum quadro criado ainda.",
-    "createFirst": "Criar seu primeiro quadro",
-    "createNewBoard": "Criar Novo Quadro",
-    "createModalSubtitle": "Dê um título descritivo ao seu quadro.",
-    "boardTitlePlaceholder": "ex.: Diagrama de Arquitetura do Sistema",
-    "createButton": "Criar Quadro",
-    "creatingButton": "Criando...",
-    "titleRequired": "O título do quadro é obrigatório",
-    "titleTooLong": "O título é muito longo",
-    "confirmDelete": "Tem certeza de que deseja excluir este quadro?",
-    "confirmDeleteTitle": "Tem certeza absoluta?",
-    "confirmDeleteDescription": "Esta ação não pode ser desfeita. Isso excluirá permanentemente o seu quadro e removerá todos os dados dos nossos servidores.",
-    "confirmDeleteAction": "Sim, excluir quadro",
-    "share": "Compartilhar",
+    "header": {
+      "title": "Meus Quadros",
+      "subtitle": "Crie, organize e colabore nos quadros da sua equipe.",
+      "loading": "Carregando seus quadros..."
+    },
+    "filters": {
+      "searchPlaceholder": "Buscar por nome...",
+      "tabs": {
+        "all": "Todos",
+        "owned": "Meus",
+        "shared": "Compartilhados"
+      },
+      "counter": {
+        "singular": "quadro",
+        "plural": "quadros"
+      },
+      "viewMode": {
+        "grid": "Visualização em Grade",
+        "list": "Visualização em Lista"
+      }
+    },
+    "emptyState": {
+      "default": {
+        "title": "Nenhum quadro criado ainda.",
+        "description": "Crie um novo quadro branco para iniciar seu projeto ou convide sua equipe para colaborar.",
+        "cta": "Criar seu primeiro quadro"
+      },
+      "search": {
+        "title": "Nenhum quadro encontrado para esta busca",
+        "description": "Tente buscar com outro termo ou limpe os filtros."
+      }
+    },
+    "card": {
+      "updatedAt": "Atualizado em {date}",
+      "share": "Compartilhar"
+    },
+    "createModal": {
+      "title": "Criar Novo Quadro",
+      "subtitle": "Dê um título descritivo ao seu quadro.",
+      "placeholder": "ex.: Diagrama de Arquitetura do Sistema",
+      "submit": "Criar Quadro",
+      "submitting": "Criando...",
+      "validation": {
+        "titleRequired": "O título do quadro é obrigatório",
+        "titleTooLong": "O título é muito longo"
+      }
+    },
+    "deleteDialog": {
+      "title": "Tem certeza absoluta?",
+      "description": "Esta ação não pode ser desfeita. Isso excluirá permanentemente o seu quadro e removerá todos os dados dos nossos servidores.",
+      "confirm": "Sim, excluir quadro"
+    },
     "roles": {
-      "owner": "PROPRIETÁRIO",
-      "editor": "EDITOR",
-      "viewer": "LEITOR",
       "OWNER": "PROPRIETÁRIO",
       "EDITOR": "EDITOR",
       "VIEWER": "LEITOR"
     }
   },
-  "boardStudio": {
-    "loading": "Carregando espaço de trabalho do quadro...",
-    "readOnly": "Somente Leitura",
-    "toggleProperties": "Alternar Paleta de Estilo",
-    "zoomIn": "Aproximar (+)",
-    "zoomOut": "Afastar (-)",
-    "resetZoom": "Redefinir Zoom para 100%",
-    "versionHistory": "Histórico de Versões",
-    "exportCanvas": "Exportar Quadro (PNG / SVG)",
-    "share": "Compartilhar",
-    "backToBoards": "Voltar para Quadros"
-  },
-  "toolbar": {
-    "select": "Selecionar (V)",
-    "hand": "Mão / Mover (H)",
-    "rect": "Retângulo (R)",
-    "ellipse": "Elipse (O)",
-    "diamond": "Losango (D)",
-    "arrow": "Seta (A)",
-    "line": "Linha (L)",
-    "freehand": "Lápis (P)",
-    "sticky": "Nota Adesiva (S)",
-    "text": "Texto (T)",
-    "eraser": "Borracha (E)",
-    "undo": "Desfazer (Ctrl+Z)",
-    "redo": "Refazer (Ctrl+Y / Ctrl+Shift+Z)"
-  },
-  "properties": {
-    "defaultStyle": "Estilo Padrão",
-    "forNewElements": "Para novos elementos",
-    "editActiveElement": "Editar elemento ativo",
-    "selectedCount": "{count} selecionados",
-    "editingBadge": "Editando",
-    "textContent": "Conteúdo do Texto",
-    "typeTextPlaceholder": "Digite o texto...",
-    "strokeColor": "Cor do Traço / Borda",
-    "customColor": "Cor personalizada",
-    "fillColor": "Cor de Fundo / Preenchimento",
-    "transparent": "Transparente",
-    "customFillColor": "Cor de preenchimento personalizada",
-    "strokeWidth": "Espessura da Linha",
-    "opacity": "Opacidade",
-    "duplicate": "Duplicar (Ctrl+D)",
-    "delete": "Excluir (Delete / Backspace)",
-    "bringToFront": "Trazer p/ Frente",
-    "sendToBack": "Enviar p/ Trás",
-    "elementTypes": {
-      "rect": "Retângulo",
-      "ellipse": "Elipse",
-      "diamond": "Losango",
-      "line": "Linha",
-      "arrow": "Seta",
-      "sticky": "Nota Adesiva",
-      "text": "Texto",
-      "freehand": "Desenho",
-      "element": "Elemento"
+  "studio": {
+    "header": {
+      "loading": "Carregando espaço de trabalho do quadro...",
+      "readOnly": "Somente Leitura",
+      "backToBoards": "Voltar para Quadros",
+      "versionHistory": "Histórico de Versões",
+      "exportCanvas": "Exportar Quadro (PNG / SVG)",
+      "share": "Compartilhar"
+    },
+    "connection": {
+      "tooltip": "Status: {status}",
+      "states": {
+        "connected": "Conectado",
+        "connecting": "Conectando...",
+        "syncing": "Sincronizando...",
+        "offline": "Offline",
+        "forbidden": "Acesso Revogado"
+      }
+    },
+    "collaborators": {
+      "guestUser": "Convidado",
+      "anonymous": "Anônimo",
+      "you": "Você",
+      "clickToFollow": "Clique para seguir",
+      "clickToUnfollow": "Clique para deixar de seguir",
+      "stopFollowing": "Parar de Seguir"
+    },
+    "toolbar": {
+      "ariaLabel": "Ferramentas do Quadro",
+      "moreShapes": "Mais formas geométricas",
+      "tools": {
+        "select": "Selecionar (V)",
+        "hand": "Mão / Mover (H)",
+        "rect": "Retângulo (R)",
+        "ellipse": "Elipse (O)",
+        "diamond": "Losango (D)",
+        "arrow": "Seta (A)",
+        "line": "Linha (L)",
+        "freehand": "Lápis (P)",
+        "sticky": "Nota Adesiva (S)",
+        "text": "Texto (T)",
+        "eraser": "Borracha (E)"
+      },
+      "history": {
+        "undo": "Desfazer (Ctrl+Z)",
+        "redo": "Refazer (Ctrl+Y / Ctrl+Shift+Z)"
+      }
+    },
+    "inspector": {
+      "toggleButton": "Alternar Paleta de Estilo",
+      "closeButton": "Fechar inspetor",
+      "header": {
+        "defaultStyle": "Estilo Padrão",
+        "forNewElements": "Para novos elementos",
+        "editActiveElement": "Editar elemento ativo",
+        "selectedCount": "{count} selecionados"
+      },
+      "fields": {
+        "textContent": "Conteúdo do Texto",
+        "typeTextPlaceholder": "Digite o texto...",
+        "strokeColor": "Cor do Traço / Borda",
+        "customStrokeColor": "Cor personalizada",
+        "fillColor": "Cor de Fundo / Preenchimento",
+        "transparent": "Transparente",
+        "customFillColor": "Cor de preenchimento personalizada",
+        "strokeWidth": "Espessura da Linha",
+        "opacity": "Opacidade"
+      },
+      "elementTypes": {
+        "rect": "Retângulo",
+        "ellipse": "Elipse",
+        "diamond": "Losango",
+        "line": "Linha",
+        "arrow": "Seta",
+        "sticky": "Nota Adesiva",
+        "text": "Texto",
+        "freehand": "Desenho",
+        "element": "Elemento"
+      }
+    },
+    "viewport": {
+      "zoomIn": "Aproximar (+)",
+      "zoomOut": "Afastar (-)",
+      "resetZoom": "Redefinir Zoom para 100%"
     }
   },
-  "connection": {
-    "synced": "Sincronizado",
-    "syncing": "Sincronizando...",
-    "offline": "Offline (Salvo localmente)",
-    "forbidden": "Acesso Revogado"
-  },
-  "collaborators": {
-    "guestUser": "Convidado",
-    "anonymous": "Anônimo",
-    "you": "Você",
-    "clickToFollow": "Clique para seguir",
-    "clickToUnfollow": "Clique para deixar de seguir",
-    "stopFollowing": "Parar de Seguir"
-  },
   "shareModal": {
-    "title": "Compartilhar \"{title}\"",
-    "subtitle": "Qualquer pessoa com o link pode acessar com a permissão selecionada",
-    "canView": "Pode visualizar",
-    "canEdit": "Pode editar",
-    "neverExpires": "Nunca expira",
-    "oneHour": "1 hora",
-    "twentyFourHours": "24 horas",
-    "sevenDays": "7 dias",
-    "createLink": "Criar link",
-    "generating": "Gerando...",
-    "linkCreated": "Link criado! Copie agora (não será exibido novamente):",
-    "copy": "Copiar",
-    "copied": "Copiado!",
-    "activeLinks": "Links Ativos",
-    "loadingLinks": "Carregando links...",
-    "noActiveLinks": "Nenhum link ativo compartilhado ainda.",
-    "expiresIn": "Expira em {time}",
-    "expired": "Expirado",
-    "revoke": "Revogar",
-    "revoking": "Revogando...",
-    "shareByLink": "Compartilhar por Link",
-    "shareByEmail": "Convidar por E-mail",
-    "emailPlaceholder": "email@exemplo.com",
-    "inviteButton": "Convidar",
-    "invitingButton": "Convidando...",
-    "userNotFound": "Usuário não encontrado com este e-mail.",
-    "memberAdded": "Colaborador convidado com sucesso!",
-    "membersTitle": "Membros do Quadro",
-    "loadingMembers": "Carregando membros...",
-    "noMembers": "Nenhum outro membro convidado ainda.",
-    "removeMember": "Remover",
-    "confirmRemoveMemberTitle": "Remover Membro",
-    "confirmRemoveMemberDescription": "Tem certeza de que deseja remover este membro do quadro? O acesso deste usuário será revogado.",
-    "confirmRemoveMemberAction": "Sim, remover membro",
+    "header": {
+      "title": "Compartilhar \"{title}\"",
+      "subtitle": "Qualquer pessoa com o link pode acessar com a permissão selecionada"
+    },
+    "tabs": {
+      "byLink": "Compartilhar por Link",
+      "byEmail": "Convidar por E-mail"
+    },
+    "permissions": {
+      "canView": "Pode visualizar",
+      "canEdit": "Pode editar"
+    },
     "roles": {
       "OWNER": "Proprietário",
       "VIEWER": "Pode visualizar",
       "EDITOR": "Pode editar"
+    },
+    "linkTab": {
+      "expiration": {
+        "never": "Nunca expira",
+        "oneHour": "1 hora",
+        "twentyFourHours": "24 horas",
+        "sevenDays": "7 dias",
+        "expiresIn": "Expira em {time}",
+        "expired": "Expirado"
+      },
+      "actions": {
+        "create": "Criar link",
+        "generating": "Gerando...",
+        "copy": "Copiar",
+        "copied": "Copiado!",
+        "revoke": "Revogar",
+        "revoking": "Revogando..."
+      },
+      "status": {
+        "createdNotice": "Link criado! Copie agora (não será exibido novamente):",
+        "activeLinksTitle": "Links Ativos",
+        "loading": "Carregando links...",
+        "empty": "Nenhum link ativo compartilhado ainda."
+      }
+    },
+    "emailTab": {
+      "placeholder": "email@exemplo.com",
+      "actions": {
+        "invite": "Convidar",
+        "inviting": "Convidando..."
+      },
+      "feedback": {
+        "inviteSent": "Convite enviado para {email}!",
+        "userNotFound": "Usuário não encontrado com este e-mail.",
+        "inviteFailed": "Falha ao enviar convite."
+      }
+    },
+    "members": {
+      "title": "Membros do Quadro",
+      "loading": "Carregando membros...",
+      "empty": "Nenhum outro membro convidado ainda.",
+      "remove": "Remover",
+      "confirmRemove": {
+        "title": "Remover Membro",
+        "description": "Tem certeza de que deseja remover este membro do quadro? O acesso deste usuário será revogado.",
+        "confirm": "Sim, remover membro"
+      }
     }
   },
   "exportModal": {
-    "title": "Exportar Quadro",
-    "subtitle": "Escolha o formato desejado para salvar o quadro no seu computador.",
-    "format": "Formato do Arquivo",
-    "pngTitle": "Imagem PNG",
-    "pngDescription": "Renderização em alta resolução (2x DPR) com fundo branco.",
-    "svgTitle": "Vetor SVG",
-    "svgDescription": "Formato vetorial escalável, higienizado contra scripts maliciosos.",
-    "exportPng": "Exportar PNG",
-    "exportSvg": "Exportar SVG",
-    "exporting": "Exportando..."
+    "header": {
+      "title": "Exportar Quadro",
+      "subtitle": "Escolha o formato desejado para salvar o quadro no seu computador."
+    },
+    "formats": {
+      "png": {
+        "title": "Imagem PNG",
+        "description": "Renderização em alta resolução (2x DPR) com fundo limpo."
+      },
+      "svg": {
+        "title": "Vetor SVG",
+        "description": "Formato vetorial escalável, higienizado contra scripts maliciosos."
+      }
+    }
   },
   "versionHistory": {
-    "title": "Histórico de Versões",
-    "subtitle": "Restaure o quadro para qualquer ponto de captura anterior.",
-    "versionNumber": "Versão #{version}",
-    "loading": "Carregando versões...",
-    "noSnapshots": "Nenhum ponto histórico capturado ainda. Snapshots são gerados automaticamente a cada 5 minutos de atividade.",
-    "confirmRestore": "Tem certeza de que deseja restaurar esta versão? Alterações recentes não salvas serão arquivadas.",
-    "confirmRestoreTitle": "Tem certeza que deseja restaurar?",
-    "confirmRestoreDescription": "Esta ação substituirá os elementos atuais do quadro pelos dados desta versão anterior.",
-    "confirmRestoreAction": "Sim, restaurar versão",
-    "restore": "Restaurar",
-    "restoring": "Restaurando...",
-    "close": "Fechar"
-  },
-  "language": {
-    "pt": "Português",
-    "en": "English",
-    "toggle": "Idioma",
-    "selectLanguage": "Selecionar Idioma"
+    "header": {
+      "title": "Histórico de Versões",
+      "subtitle": "Restaure o quadro para qualquer ponto de captura anterior."
+    },
+    "list": {
+      "versionNumber": "Versão #{version}",
+      "loading": "Carregando versões...",
+      "empty": "Nenhum ponto histórico capturado ainda. Snapshots são gerados automaticamente a cada 5 minutos de atividade."
+    },
+    "actions": {
+      "restore": "Restaurar",
+      "restoring": "Restaurando..."
+    },
+    "confirmRestore": {
+      "title": "Tem certeza que deseja restaurar?",
+      "description": "Esta ação substituirá os elementos atuais do quadro pelos dados desta versão anterior.",
+      "confirm": "Sim, restaurar versão"
+    },
+    "errors": {
+      "restoreFailed": "Falha ao restaurar versão."
+    }
   }
 }

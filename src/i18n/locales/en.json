@@ -1,51 +1,91 @@
 {
   "common": {
-    "loading": "Loading...",
-    "cancel": "Cancel",
-    "confirm": "Confirm",
-    "delete": "Delete",
-    "duplicate": "Duplicate",
-    "save": "Save",
-    "close": "Close",
-    "copy": "Copy",
-    "copied": "Copied!",
-    "share": "Share",
-    "export": "Export",
-    "history": "History",
-    "signOut": "Sign out",
-    "signIn": "Sign in",
-    "or": "or",
-    "error": "An unexpected error occurred",
-    "dateLocale": "en-US"
+    "app": {
+      "name": "Whiteboard",
+      "dateLocale": "en-US"
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "delete": "Delete",
+      "duplicate": "Duplicate",
+      "save": "Save",
+      "close": "Close",
+      "copy": "Copy",
+      "copied": "Copied!",
+      "share": "Share",
+      "export": "Export",
+      "history": "History",
+      "signIn": "Sign in",
+      "signOut": "Sign out"
+    },
+    "status": {
+      "loading": "Loading...",
+      "or": "or",
+      "error": "An unexpected error occurred"
+    },
+    "validation": {
+      "invalidEmail": "Please enter a valid email address"
+    },
+    "language": {
+      "pt": "Português",
+      "en": "English",
+      "toggle": "Language",
+      "select": "Select Language"
+    }
   },
-  "nav": {
-    "dashboard": "Boards",
-    "newBoard": "New Board",
-    "signedInAs": "Signed in as"
+  "navigation": {
+    "links": {
+      "dashboard": "Boards",
+      "newBoard": "New Board"
+    },
+    "session": {
+      "signedInAs": "Signed in as"
+    }
   },
   "landing": {
-    "badge": "Real-Time CRDT Collaboration • Sub-100ms Latency",
-    "title": "Collaborative Infinite Canvas for Teams",
-    "description": "Draw, write, brainstorm, and create in real-time with conflict-free synchronization, offline support, and live presence.",
-    "openDashboard": "Open Boards Dashboard",
-    "signIn": "Sign In"
+    "hero": {
+      "badge": "Real-Time CRDT Collaboration • Sub-100ms Latency",
+      "title": "Collaborative Infinite Canvas for Teams",
+      "description": "Draw, write, brainstorm, and create in real-time with conflict-free synchronization, offline support, and live presence.",
+      "openDashboard": "Open Boards Dashboard",
+      "signIn": "Sign In"
+    },
+    "preview": {
+      "noteTitle": "2026 Architecture",
+      "noteBody": "CRDT + stateful WebSockets with sub-millisecond synchronization.",
+      "restApi": "REST API",
+      "collabServer": "Collab Server"
+    },
+    "footer": {
+      "brand": "Real-Time Collaborative Whiteboard — Yjs CRDT",
+      "rights": "© 2026. All rights reserved."
+    }
   },
   "auth": {
-    "welcomeBack": "Welcome Back",
-    "signInSubtitle": "Sign in to your Whiteboard account",
-    "createAccountTitle": "Create an Account",
-    "createAccountSubtitle": "Start collaborating in real time",
-    "fullName": "Full Name",
-    "email": "Email",
-    "password": "Password",
-    "signInButton": "Sign In",
-    "signingIn": "Signing in...",
-    "createAccountButton": "Create Account",
-    "creatingAccount": "Creating account...",
-    "noAccount": "Don't have an account?",
-    "hasAccount": "Already have an account?",
-    "createAccountLink": "Create account",
-    "signInLink": "Sign in",
+    "login": {
+      "title": "Welcome Back",
+      "subtitle": "Sign in to your Whiteboard account",
+      "submit": "Sign In",
+      "submitting": "Signing in...",
+      "noAccount": "Don't have an account?",
+      "createAccountLink": "Create account"
+    },
+    "register": {
+      "title": "Create an Account",
+      "subtitle": "Start collaborating in real time",
+      "submit": "Create Account",
+      "submitting": "Creating account...",
+      "hasAccount": "Already have an account?",
+      "signInLink": "Sign in"
+    },
+    "fields": {
+      "fullName": "Full Name",
+      "email": "Email",
+      "password": "Password",
+      "showPassword": "Show",
+      "hidePassword": "Hide"
+    },
     "errors": {
       "emailRequired": "Email is required",
       "emailInvalid": "Please enter a valid email address",
@@ -56,175 +96,253 @@
     }
   },
   "dashboard": {
-    "title": "My Whiteboards",
-    "subtitle": "Create, organize, and collaborate on your team boards.",
-    "loading": "Loading your boards...",
-    "noBoards": "No boards yet.",
-    "createFirst": "Create your first whiteboard",
-    "createNewBoard": "Create New Whiteboard",
-    "createModalSubtitle": "Give your whiteboard a descriptive title.",
-    "boardTitlePlaceholder": "e.g. System Architecture Diagram",
-    "createButton": "Create Whiteboard",
-    "creatingButton": "Creating...",
-    "titleRequired": "Board title is required",
-    "titleTooLong": "Title is too long",
-    "confirmDelete": "Are you sure you want to delete this board?",
-    "confirmDeleteTitle": "Are you absolutely sure?",
-    "confirmDeleteDescription": "This action cannot be undone. This will permanently delete your whiteboard and remove your data from our servers.",
-    "confirmDeleteAction": "Yes, delete board",
-    "share": "Share",
+    "header": {
+      "title": "My Whiteboards",
+      "subtitle": "Create, organize, and collaborate on your team boards.",
+      "loading": "Loading your boards..."
+    },
+    "filters": {
+      "searchPlaceholder": "Search by title...",
+      "tabs": {
+        "all": "All",
+        "owned": "Owned",
+        "shared": "Shared"
+      },
+      "counter": {
+        "singular": "board",
+        "plural": "boards"
+      },
+      "viewMode": {
+        "grid": "Grid View",
+        "list": "List View"
+      }
+    },
+    "emptyState": {
+      "default": {
+        "title": "No boards yet.",
+        "description": "Create a new whiteboard to start your project or invite your team to collaborate.",
+        "cta": "Create your first whiteboard"
+      },
+      "search": {
+        "title": "No boards found matching your search",
+        "description": "Try searching with another term or clear the filters."
+      }
+    },
+    "card": {
+      "updatedAt": "Updated on {date}",
+      "share": "Share"
+    },
+    "createModal": {
+      "title": "Create New Whiteboard",
+      "subtitle": "Give your whiteboard a descriptive title.",
+      "placeholder": "e.g. System Architecture Diagram",
+      "submit": "Create Whiteboard",
+      "submitting": "Creating...",
+      "validation": {
+        "titleRequired": "Board title is required",
+        "titleTooLong": "Title is too long"
+      }
+    },
+    "deleteDialog": {
+      "title": "Are you absolutely sure?",
+      "description": "This action cannot be undone. This will permanently delete your whiteboard and remove your data from our servers.",
+      "confirm": "Yes, delete board"
+    },
     "roles": {
-      "owner": "OWNER",
-      "editor": "EDITOR",
-      "viewer": "VIEWER",
       "OWNER": "OWNER",
       "EDITOR": "EDITOR",
       "VIEWER": "VIEWER"
     }
   },
-  "boardStudio": {
-    "loading": "Loading whiteboard workspace...",
-    "readOnly": "Read-Only",
-    "toggleProperties": "Toggle Style Palette",
-    "zoomIn": "Zoom In (+)",
-    "zoomOut": "Zoom Out (-)",
-    "resetZoom": "Reset Zoom to 100%",
-    "versionHistory": "Version History",
-    "exportCanvas": "Export Canvas (PNG / SVG)",
-    "share": "Share",
-    "backToBoards": "Back to Boards"
-  },
-  "toolbar": {
-    "select": "Select (V)",
-    "hand": "Hand / Pan (H)",
-    "rect": "Rectangle (R)",
-    "ellipse": "Ellipse (O)",
-    "diamond": "Diamond (D)",
-    "arrow": "Arrow (A)",
-    "line": "Line (L)",
-    "freehand": "Pencil (P)",
-    "sticky": "Sticky Note (S)",
-    "text": "Text (T)",
-    "eraser": "Eraser (E)",
-    "undo": "Undo (Ctrl+Z)",
-    "redo": "Redo (Ctrl+Y / Ctrl+Shift+Z)"
-  },
-  "properties": {
-    "defaultStyle": "Default Style",
-    "forNewElements": "For new elements",
-    "editActiveElement": "Edit active element",
-    "selectedCount": "{count} selected",
-    "editingBadge": "Editing",
-    "textContent": "Text Content",
-    "typeTextPlaceholder": "Type your text...",
-    "strokeColor": "Stroke / Border Color",
-    "customColor": "Custom color",
-    "fillColor": "Background Fill",
-    "transparent": "Transparent",
-    "customFillColor": "Custom fill color",
-    "strokeWidth": "Stroke Width",
-    "opacity": "Opacity",
-    "duplicate": "Duplicate (Ctrl+D)",
-    "delete": "Delete (Delete / Backspace)",
-    "bringToFront": "Bring to Front",
-    "sendToBack": "Send to Back",
-    "elementTypes": {
-      "rect": "Rectangle",
-      "ellipse": "Ellipse",
-      "diamond": "Diamond",
-      "line": "Line",
-      "arrow": "Arrow",
-      "sticky": "Sticky Note",
-      "text": "Text",
-      "freehand": "Pencil",
-      "element": "Element"
+  "studio": {
+    "header": {
+      "loading": "Loading whiteboard workspace...",
+      "readOnly": "Read-Only",
+      "backToBoards": "Back to Boards",
+      "versionHistory": "Version History",
+      "exportCanvas": "Export Canvas (PNG / SVG)",
+      "share": "Share"
+    },
+    "connection": {
+      "tooltip": "Status: {status}",
+      "states": {
+        "connected": "Connected",
+        "connecting": "Connecting...",
+        "syncing": "Syncing...",
+        "offline": "Offline",
+        "forbidden": "Access Revoked"
+      }
+    },
+    "collaborators": {
+      "guestUser": "Guest User",
+      "anonymous": "Anonymous",
+      "you": "You",
+      "clickToFollow": "Click to follow",
+      "clickToUnfollow": "Click to unfollow",
+      "stopFollowing": "Stop Following"
+    },
+    "toolbar": {
+      "ariaLabel": "Canvas Toolbar",
+      "moreShapes": "More geometric shapes",
+      "tools": {
+        "select": "Select (V)",
+        "hand": "Hand / Pan (H)",
+        "rect": "Rectangle (R)",
+        "ellipse": "Ellipse (O)",
+        "diamond": "Diamond (D)",
+        "arrow": "Arrow (A)",
+        "line": "Line (L)",
+        "freehand": "Pencil (P)",
+        "sticky": "Sticky Note (S)",
+        "text": "Text (T)",
+        "eraser": "Eraser (E)"
+      },
+      "history": {
+        "undo": "Undo (Ctrl+Z)",
+        "redo": "Redo (Ctrl+Y / Ctrl+Shift+Z)"
+      }
+    },
+    "inspector": {
+      "toggleButton": "Toggle Style Palette",
+      "closeButton": "Close inspector",
+      "header": {
+        "defaultStyle": "Default Style",
+        "forNewElements": "For new elements",
+        "editActiveElement": "Edit active element",
+        "selectedCount": "{count} selected"
+      },
+      "fields": {
+        "textContent": "Text Content",
+        "typeTextPlaceholder": "Type your text...",
+        "strokeColor": "Stroke / Border Color",
+        "customStrokeColor": "Custom color",
+        "fillColor": "Background Fill",
+        "transparent": "Transparent",
+        "customFillColor": "Custom fill color",
+        "strokeWidth": "Stroke Width",
+        "opacity": "Opacity"
+      },
+      "elementTypes": {
+        "rect": "Rectangle",
+        "ellipse": "Ellipse",
+        "diamond": "Diamond",
+        "line": "Line",
+        "arrow": "Arrow",
+        "sticky": "Sticky Note",
+        "text": "Text",
+        "freehand": "Pencil",
+        "element": "Element"
+      }
+    },
+    "viewport": {
+      "zoomIn": "Zoom In (+)",
+      "zoomOut": "Zoom Out (-)",
+      "resetZoom": "Reset Zoom to 100%"
     }
   },
-  "connection": {
-    "synced": "Synced",
-    "syncing": "Syncing...",
-    "offline": "Offline (Saved locally)",
-    "forbidden": "Access Revoked"
-  },
-  "collaborators": {
-    "guestUser": "Guest User",
-    "anonymous": "Anonymous",
-    "you": "You",
-    "clickToFollow": "Click to follow",
-    "clickToUnfollow": "Click to unfollow",
-    "stopFollowing": "Stop Following"
-  },
   "shareModal": {
-    "title": "Share \"{title}\"",
-    "subtitle": "Anyone with the link can access with selected role",
-    "canView": "Can view",
-    "canEdit": "Can edit",
-    "neverExpires": "Never expires",
-    "oneHour": "1 hour",
-    "twentyFourHours": "24 hours",
-    "sevenDays": "7 days",
-    "createLink": "Create link",
-    "generating": "Generating...",
-    "linkCreated": "Link created! Copy it now (it won't be shown again):",
-    "copy": "Copy",
-    "copied": "Copied!",
-    "activeLinks": "Active Links",
-    "loadingLinks": "Loading links...",
-    "noActiveLinks": "No active links shared yet.",
-    "expiresIn": "Expires in {time}",
-    "expired": "Expired",
-    "revoke": "Revoke",
-    "revoking": "Revoking...",
-    "shareByLink": "Share via Link",
-    "shareByEmail": "Invite via Email",
-    "emailPlaceholder": "email@example.com",
-    "inviteButton": "Invite",
-    "invitingButton": "Inviting...",
-    "userNotFound": "User not found with this email.",
-    "memberAdded": "Collaborator invited successfully!",
-    "membersTitle": "Board Members",
-    "loadingMembers": "Loading members...",
-    "noMembers": "No other members invited yet.",
-    "removeMember": "Remove",
-    "confirmRemoveMemberTitle": "Remove Member",
-    "confirmRemoveMemberDescription": "Are you sure you want to remove this member from the board? Their access will be revoked immediately.",
-    "confirmRemoveMemberAction": "Yes, remove member",
+    "header": {
+      "title": "Share \"{title}\"",
+      "subtitle": "Anyone with the link can access with selected role"
+    },
+    "tabs": {
+      "byLink": "Share via Link",
+      "byEmail": "Invite via Email"
+    },
+    "permissions": {
+      "canView": "Can view",
+      "canEdit": "Can edit"
+    },
     "roles": {
       "OWNER": "Owner",
       "VIEWER": "Can view",
       "EDITOR": "Can edit"
+    },
+    "linkTab": {
+      "expiration": {
+        "never": "Never expires",
+        "oneHour": "1 hour",
+        "twentyFourHours": "24 hours",
+        "sevenDays": "7 days",
+        "expiresIn": "Expires in {time}",
+        "expired": "Expired"
+      },
+      "actions": {
+        "create": "Create link",
+        "generating": "Generating...",
+        "copy": "Copy",
+        "copied": "Copied!",
+        "revoke": "Revoke",
+        "revoking": "Revoking..."
+      },
+      "status": {
+        "createdNotice": "Link created! Copy it now (it won't be shown again):",
+        "activeLinksTitle": "Active Links",
+        "loading": "Loading links...",
+        "empty": "No active links shared yet."
+      }
+    },
+    "emailTab": {
+      "placeholder": "email@example.com",
+      "actions": {
+        "invite": "Invite",
+        "inviting": "Inviting..."
+      },
+      "feedback": {
+        "inviteSent": "Invite sent to {email}!",
+        "userNotFound": "User not found with this email.",
+        "inviteFailed": "Failed to send invitation."
+      }
+    },
+    "members": {
+      "title": "Board Members",
+      "loading": "Loading members...",
+      "empty": "No other members invited yet.",
+      "remove": "Remove",
+      "confirmRemove": {
+        "title": "Remove Member",
+        "description": "Are you sure you want to remove this member from the board? Their access will be revoked immediately.",
+        "confirm": "Yes, remove member"
+      }
     }
   },
   "exportModal": {
-    "title": "Export Canvas",
-    "subtitle": "Choose your preferred format to save this whiteboard locally.",
-    "format": "File Format",
-    "pngTitle": "PNG Image",
-    "pngDescription": "High-resolution 2x DPR raster image with clean white background.",
-    "svgTitle": "SVG Vector",
-    "svgDescription": "Infinitely scalable vector format, sanitized against malicious code.",
-    "exportPng": "Export PNG",
-    "exportSvg": "Export SVG",
-    "exporting": "Exporting..."
+    "header": {
+      "title": "Export Canvas",
+      "subtitle": "Choose your preferred format to save this whiteboard locally."
+    },
+    "formats": {
+      "png": {
+        "title": "PNG Image",
+        "description": "High-resolution 2x DPR raster image with clean background."
+      },
+      "svg": {
+        "title": "SVG Vector",
+        "description": "Infinitely scalable vector format, sanitized against malicious code."
+      }
+    }
   },
   "versionHistory": {
-    "title": "Version History",
-    "subtitle": "Revert the whiteboard canvas back to any previously captured snapshot state.",
-    "versionNumber": "Version #{version}",
-    "loading": "Loading versions...",
-    "noSnapshots": "No historical snapshots captured yet. Snapshots are auto-created every 5 minutes during activity.",
-    "confirmRestore": "Are you sure you want to restore this version? Current unsaved changes will be archived.",
-    "confirmRestoreTitle": "Are you absolutely sure?",
-    "confirmRestoreDescription": "This action will replace the current whiteboard elements with this historical snapshot.",
-    "confirmRestoreAction": "Yes, restore version",
-    "restore": "Restore",
-    "restoring": "Restoring...",
-    "close": "Close"
-  },
-  "language": {
-    "pt": "Português",
-    "en": "English",
-    "toggle": "Language",
-    "selectLanguage": "Select Language"
+    "header": {
+      "title": "Version History",
+      "subtitle": "Revert the whiteboard canvas back to any previously captured snapshot state."
+    },
+    "list": {
+      "versionNumber": "Version #{version}",
+      "loading": "Loading versions...",
+      "empty": "No historical snapshots captured yet. Snapshots are auto-created every 5 minutes during activity."
+    },
+    "actions": {
+      "restore": "Restore",
+      "restoring": "Restoring..."
+    },
+    "confirmRestore": {
+      "title": "Are you absolutely sure?",
+      "description": "This action will replace the current whiteboard elements with this historical snapshot.",
+      "confirm": "Yes, restore version"
+    },
+    "errors": {
+      "restoreFailed": "Failed to restore version."
+    }
   }
 }
