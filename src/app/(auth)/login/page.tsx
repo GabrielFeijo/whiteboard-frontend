@@ -57,7 +57,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center bg-canvas px-4 py-12 selection:bg-accent-primary/20 selection:text-accent-primary">
+    <div className="relative min-h-screen flex flex-col items-center justify-center bg-canvas px-4 py-12 selection:bg-accent-primary/20 selection:text-accent-primary overflow-x-hidden">
       <div className="absolute top-6 right-6 flex items-center gap-2">
         <LanguageSwitcher />
         <ThemeToggle />
