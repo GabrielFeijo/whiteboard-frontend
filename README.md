@@ -231,12 +231,9 @@ npm run sync:shared:check   # Verifica se o shared está 100% atualizado com o b
 npm run gen:api             # Gera o cliente tipado TypeScript a partir do OpenAPI do backend
 
 # Qualidade de Código & Testes
-npm run check               # Executa o Biome em modo verificação (linter + formatação)
-npm run check:fix           # Aplica correções seguras automaticamente com Biome
-npm run format:biome        # Formata os arquivos do projeto com Biome
-npm run lint                # Executa o linter ESLint
+npm run lint                # Executa o linter ESLint (Next.js core rules)
 npm run format              # Formata os arquivos do projeto com Prettier
-npm run typecheck           # Verifica inconsistências de tipagem TypeScript
+npm run typecheck           # Verifica inconsistências de tipagem TypeScript (tsc --noEmit)
 npm run test                # Executa os testes unitários e de contrato com Vitest
 npm run test:e2e            # Roda a suíte completa de testes E2E com Playwright
 ```

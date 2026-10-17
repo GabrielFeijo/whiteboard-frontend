@@ -58,7 +58,10 @@ export function computeExportBoundingBox(
   };
 }
 
-export function sanitizeExportFilename(title: string, ext: "png" | "svg"): string {
+export function sanitizeExportFilename(
+  title: string,
+  ext: "png" | "svg" | "json",
+): string {
   const slug = title.toLowerCase().trim().replace(/\s+/g, "-") || "whiteboard";
   return `${slug}.${ext}`;
 }

@@ -14,6 +14,7 @@ export class HandTool implements CanvasTool {
     this.host.viewport.pan.x += ctx.event.movementX;
     this.host.viewport.pan.y += ctx.event.movementY;
     useCanvasStore.getState().setPan({ ...this.host.viewport.pan });
+    this.host.onViewportMutated?.();
     this.host.setDirty();
   }
 

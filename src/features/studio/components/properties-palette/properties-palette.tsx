@@ -158,10 +158,22 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
                 ? "bg-rose-500/15 text-rose-500 border border-rose-500/30 hover:bg-rose-500/25"
                 : "bg-surface text-text-secondary border border-border-subtle hover:text-text-primary hover:bg-surface-hover"
             }`}
-            title={isLocked ? "Unlock (Ctrl+Shift+L)" : "Lock (Ctrl+Shift+L)"}
+            title={
+              isLocked
+                ? t("studio.inspector.actions.unlockShortcut")
+                : t("studio.inspector.actions.lockShortcut")
+            }
           >
-            {isLocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-            <span>{isLocked ? "Unlock" : "Lock"}</span>
+            {isLocked ? (
+              <Unlock className="h-3.5 w-3.5" />
+            ) : (
+              <Lock className="h-3.5 w-3.5" />
+            )}
+            <span>
+              {isLocked
+                ? t("studio.inspector.actions.unlock")
+                : t("studio.inspector.actions.lock")}
+            </span>
           </button>
 
           {hasMultiple && !isGrouped && (
@@ -169,10 +181,10 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
               type="button"
               onClick={() => engine?.groupSelected()}
               className="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md font-medium bg-surface text-text-secondary border border-border-subtle hover:text-text-primary hover:bg-surface-hover transition-all"
-              title="Group elements (Ctrl+G)"
+              title={t("studio.inspector.actions.groupShortcut")}
             >
               <Group className="h-3.5 w-3.5" />
-              <span>Group</span>
+              <span>{t("studio.inspector.actions.group")}</span>
             </button>
           )}
 
@@ -181,10 +193,10 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
               type="button"
               onClick={() => engine?.ungroupSelected()}
               className="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md font-medium bg-surface text-text-secondary border border-border-subtle hover:text-text-primary hover:bg-surface-hover transition-all"
-              title="Ungroup elements (Ctrl+Shift+G)"
+              title={t("studio.inspector.actions.ungroupShortcut")}
             >
               <Ungroup className="h-3.5 w-3.5" />
-              <span>Ungroup</span>
+              <span>{t("studio.inspector.actions.ungroup")}</span>
             </button>
           )}
         </div>
@@ -197,7 +209,7 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
               type="button"
               onClick={() => engine?.alignSelected("left")}
               className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
-              title="Align Left"
+              title={t("studio.inspector.actions.alignLeft")}
             >
               <AlignStartHorizontal className="h-3.5 w-3.5" />
             </button>
@@ -205,7 +217,7 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
               type="button"
               onClick={() => engine?.alignSelected("center")}
               className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
-              title="Align Center"
+              title={t("studio.inspector.actions.alignCenter")}
             >
               <AlignCenterHorizontal className="h-3.5 w-3.5" />
             </button>
@@ -213,7 +225,7 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
               type="button"
               onClick={() => engine?.alignSelected("right")}
               className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
-              title="Align Right"
+              title={t("studio.inspector.actions.alignRight")}
             >
               <AlignEndHorizontal className="h-3.5 w-3.5" />
             </button>
@@ -222,7 +234,7 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
               type="button"
               onClick={() => engine?.alignSelected("top")}
               className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
-              title="Align Top"
+              title={t("studio.inspector.actions.alignTop")}
             >
               <AlignStartVertical className="h-3.5 w-3.5" />
             </button>
@@ -230,7 +242,7 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
               type="button"
               onClick={() => engine?.alignSelected("middle")}
               className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
-              title="Align Middle"
+              title={t("studio.inspector.actions.alignMiddle")}
             >
               <AlignCenterVertical className="h-3.5 w-3.5" />
             </button>
@@ -238,7 +250,7 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
               type="button"
               onClick={() => engine?.alignSelected("bottom")}
               className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
-              title="Align Bottom"
+              title={t("studio.inspector.actions.alignBottom")}
             >
               <AlignEndVertical className="h-3.5 w-3.5" />
             </button>
@@ -249,7 +261,7 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
                   type="button"
                   onClick={() => engine?.distributeSelected("horizontal")}
                   className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
-                  title="Distribute Horizontally"
+                  title={t("studio.inspector.actions.distributeHorizontal")}
                 >
                   <AlignHorizontalDistributeCenter className="h-3.5 w-3.5" />
                 </button>
@@ -257,7 +269,7 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
                   type="button"
                   onClick={() => engine?.distributeSelected("vertical")}
                   className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
-                  title="Distribute Vertically"
+                  title={t("studio.inspector.actions.distributeVertical")}
                 >
                   <AlignVerticalDistributeCenter className="h-3.5 w-3.5" />
                 </button>
@@ -269,7 +281,7 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
 
       {isLocked ? (
         <div className="rounded-lg bg-surface p-3 text-center border border-border-subtle text-text-muted text-xs">
-          Element is locked. Unlock to modify properties.
+          {t("studio.inspector.actions.lockedNotice")}
         </div>
       ) : (
         <>

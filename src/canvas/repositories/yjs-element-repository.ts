@@ -492,4 +492,84 @@ export class YjsElementRepository {
       });
     }, LOCAL_ORIGIN);
   }
+
+  getAllElementIds(): string[] {
+    const elementsMap = this.getElementsMap();
+    return Array.from(elementsMap.keys());
+  }
+
+  getAllElements(): ElementData[] {
+    const elementsMap = this.getElementsMap();
+    const result: ElementData[] = [];
+    elementsMap.forEach((map) => {
+      const data = YjsElementAdapter.toElementData(map);
+      if (data) result.push(data);
+    });
+    return result.sort((a, b) => (a.z > b.z ? 1 : a.z < b.z ? -1 : 0));
+  }
+
+  nudgeElements(ids: readonly string[], dx: number, dy: number): void {
+    if (ids.length === 0 || (dx === 0 && dy === 0)) return;
+    const elementsMap = this.getElementsMap();
+    this.doc.transact(() => {
+      ids.forEach((id) => {
+        const map = elementsMap.get(id);
+        if (!map || map.get("locked") === true) return;
+        const el = YjsElementAdapter.toElementData(map);
+        if (!el) return;
+
+        if (el.type === "line" || el.type === "arrow") {
+          const initPts =
+            el.points && el.points.length >= 4
+              ? el.points
+              : [el.x, el.y, el.x + el.w, el.y + el.h];
+          const p1x = Math.round(initPts[0] + dx);
+          const p1y = Math.round(initPts[1] + dy);
+          const p2x = Math.round(initPts[2] + dx);
+          const p2y = Math.round(initPts[3] + dy);
+          const newPoints = [p1x, p1y, p2x, p2y];
+          const newX = Math.min(p1x, p2x);
+          const newY = Math.min(p1y, p2y);
+          const newW = Math.max(1, Math.abs(p2x - p1x));
+          const newH = Math.max(1, Math.abs(p2y - p1y));
+          YjsElementAdapter.updateYMap(map, {
+            x: newX,
+            y: newY,
+            w: newW,
+            h: newH,
+            points: newPoints,
+          });
+          this.spatialIndex.remove(id);
+          this.spatialIndex.insert(id, newX, newY, newW, newH);
+        } else if (el.type === "freehand") {
+          const newPoints = el.points?.map((val, idx) =>
+            idx % 3 === 0
+              ? Math.round(val + dx)
+              : idx % 3 === 1
+                ? Math.round(val + dy)
+                : val,
+          );
+          const newX = Math.round(el.x + dx);
+          const newY = Math.round(el.y + dy);
+          YjsElementAdapter.updateYMap(map, {
+            x: newX,
+            y: newY,
+            points: newPoints,
+          });
+          this.spatialIndex.remove(id);
+          this.spatialIndex.insert(id, newX, newY, el.w, el.h);
+        } else {
+          const newX = Math.round(el.x + dx);
+          const newY = Math.round(el.y + dy);
+          YjsElementAdapter.updateYMap(map, {
+            x: newX,
+            y: newY,
+          });
+          this.spatialIndex.remove(id);
+          this.spatialIndex.insert(id, newX, newY, el.w, el.h);
+        }
+      });
+      this.syncConnectedArrows(ids);
+    }, LOCAL_ORIGIN);
+  }
 }

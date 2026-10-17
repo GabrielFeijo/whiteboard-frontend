@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { ArrowRight, Copy, Share2, Trash2 } from "lucide-react";
+import { ArrowRight, Copy, Pencil, Share2, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/i18n/context";
 import type { BoardItem } from "@/server/dal/boards.dal";
@@ -12,6 +12,7 @@ interface BoardGridCardProps {
   onShare: (board: BoardItem) => void;
   onDuplicate: (boardId: string, e: React.MouseEvent) => void;
   onDelete: (boardId: string, e: React.MouseEvent) => void;
+  onRename?: (board: BoardItem, e: React.MouseEvent) => void;
 }
 
 export function getRoleBadgeVariant(role: BoardItem["role"]): "default" | "success" | "neutral" {
@@ -32,6 +33,7 @@ export function BoardGridCard({
   onShare,
   onDuplicate,
   onDelete,
+  onRename,
 }: BoardGridCardProps) {
   const { t } = useI18n();
 
@@ -85,6 +87,18 @@ export function BoardGridCard({
           >
             <Share2 className="h-3.5 w-3.5" />
           </button>
+
+          {onRename && (board.role === "OWNER" || board.role === "EDITOR") && (
+            <button
+              type="button"
+              onClick={(e) => onRename(board, e)}
+              title={t("dashboard.card.rename")}
+              aria-label={t("dashboard.card.rename")}
+              className="rounded-md p-1.5 text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          )}
 
           <button
             type="button"

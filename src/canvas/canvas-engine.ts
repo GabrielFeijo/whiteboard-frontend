@@ -498,6 +498,25 @@ export class CanvasEngine
     this.isDirty = true;
   }
 
+  public selectAll(): void {
+    const allIds = this.repository.getAllElementIds();
+    const expanded = this.repository.expandSelectionGroups(allIds);
+    useCanvasStore.getState().setSelectedIds(expanded);
+    this.syncStoreWithSelection(expanded);
+    this.isDirty = true;
+  }
+
+  public nudgeSelected(dx: number, dy: number): void {
+    if (this.role === "VIEWER") return;
+    const { selectedIds } = useCanvasStore.getState();
+    this.repository.nudgeElements(selectedIds, dx, dy);
+    this.isDirty = true;
+  }
+
+  public getAllElements(): ElementData[] {
+    return this.repository.getAllElements();
+  }
+
   public deleteSelected(): void {
     if (this.role === "VIEWER") return;
     const store = useCanvasStore.getState();

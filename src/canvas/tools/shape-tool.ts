@@ -90,6 +90,18 @@ export class ShapeTool implements CanvasTool {
         active: match?.pt ?? null,
         candidates,
       });
+
+      if (ctx.event.shiftKey) {
+        const dx = targetPt.x - this.startPoint.x;
+        const dy = targetPt.y - this.startPoint.y;
+        const angle = Math.atan2(dy, dx);
+        const snapAngle = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
+        const dist = Math.hypot(dx, dy);
+        targetPt = {
+          x: this.startPoint.x + dist * Math.cos(snapAngle),
+          y: this.startPoint.y + dist * Math.sin(snapAngle),
+        };
+      }
     }
 
     const w = targetPt.x - this.startPoint.x;
@@ -104,12 +116,31 @@ export class ShapeTool implements CanvasTool {
         h,
       });
     } else {
+      let finalW = Math.abs(w);
+      let finalH = Math.abs(h);
+      let posX = Math.min(this.startPoint.x, targetPt.x);
+      let posY = Math.min(this.startPoint.y, targetPt.y);
+
+      if (ctx.event.shiftKey) {
+        const side = Math.max(finalW, finalH);
+        finalW = side;
+        finalH = side;
+        posX =
+          targetPt.x < this.startPoint.x
+            ? this.startPoint.x - side
+            : this.startPoint.x;
+        posY =
+          targetPt.y < this.startPoint.y
+            ? this.startPoint.y - side
+            : this.startPoint.y;
+      }
+
       this.host.setShapeDraft({
         type: this.id,
-        x: Math.min(this.startPoint.x, targetPt.x),
-        y: Math.min(this.startPoint.y, targetPt.y),
-        w: Math.abs(w),
-        h: Math.abs(h),
+        x: posX,
+        y: posY,
+        w: finalW,
+        h: finalH,
       });
     }
 
@@ -135,6 +166,18 @@ export class ShapeTool implements CanvasTool {
           anchor: match.anchor,
         };
       }
+
+      if (ctx.event.shiftKey) {
+        const dx = targetPt.x - this.startPoint.x;
+        const dy = targetPt.y - this.startPoint.y;
+        const angle = Math.atan2(dy, dx);
+        const snapAngle = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
+        const dist = Math.hypot(dx, dy);
+        targetPt = {
+          x: this.startPoint.x + dist * Math.cos(snapAngle),
+          y: this.startPoint.y + dist * Math.sin(snapAngle),
+        };
+      }
     }
 
     this.host.setSnapIndicator(null);
@@ -146,10 +189,25 @@ export class ShapeTool implements CanvasTool {
       const id = nanoid(10);
       const z = this.host.getNextZIndex();
 
-      const posX = Math.min(this.startPoint.x, targetPt.x);
-      const posY = Math.min(this.startPoint.y, targetPt.y);
-      const width = Math.max(1, Math.abs(w));
-      const height = Math.max(1, Math.abs(h));
+      let posX = Math.min(this.startPoint.x, targetPt.x);
+      let posY = Math.min(this.startPoint.y, targetPt.y);
+      let width = Math.max(1, Math.abs(w));
+      let height = Math.max(1, Math.abs(h));
+
+      if (ctx.event.shiftKey && this.id !== "line" && this.id !== "arrow") {
+        const side = Math.max(width, height);
+        width = side;
+        height = side;
+        posX =
+          targetPt.x < this.startPoint.x
+            ? this.startPoint.x - side
+            : this.startPoint.x;
+        posY =
+          targetPt.y < this.startPoint.y
+            ? this.startPoint.y - side
+            : this.startPoint.y;
+      }
+
       const points =
         this.id === "line" || this.id === "arrow"
           ? [this.startPoint.x, this.startPoint.y, targetPt.x, targetPt.y]

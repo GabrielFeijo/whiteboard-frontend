@@ -289,11 +289,45 @@ export function renderSelectionAndDraftsOverlay(
       ctx.lineWidth = draftStyle.strokeWidth || 2;
       ctx.lineCap = "round";
       ctx.stroke();
+    } else if (shapeDraft.type === "ellipse") {
+      ctx.strokeStyle = "#4f46e5";
+      ctx.lineWidth = 1.5 / zoom;
+      ctx.setLineDash([4 / zoom, 4 / zoom]);
+      ctx.beginPath();
+      const rx = Math.abs(shapeDraft.w / 2);
+      const ry = Math.abs(shapeDraft.h / 2);
+      ctx.ellipse(
+        shapeDraft.x + rx,
+        shapeDraft.y + ry,
+        rx,
+        ry,
+        0,
+        0,
+        Math.PI * 2,
+      );
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else if (shapeDraft.type === "diamond") {
+      ctx.strokeStyle = "#4f46e5";
+      ctx.lineWidth = 1.5 / zoom;
+      ctx.setLineDash([4 / zoom, 4 / zoom]);
+      ctx.beginPath();
+      const midX = shapeDraft.x + shapeDraft.w / 2;
+      const midY = shapeDraft.y + shapeDraft.h / 2;
+      ctx.moveTo(midX, shapeDraft.y);
+      ctx.lineTo(shapeDraft.x + shapeDraft.w, midY);
+      ctx.lineTo(midX, shapeDraft.y + shapeDraft.h);
+      ctx.lineTo(shapeDraft.x, midY);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
     } else {
       ctx.strokeStyle = "#4f46e5";
       ctx.lineWidth = 1.5 / zoom;
       ctx.setLineDash([4 / zoom, 4 / zoom]);
-      ctx.strokeRect(shapeDraft.x, shapeDraft.y, shapeDraft.w, shapeDraft.h);
+      ctx.beginPath();
+      ctx.roundRect(shapeDraft.x, shapeDraft.y, shapeDraft.w, shapeDraft.h, 6);
+      ctx.stroke();
       ctx.setLineDash([]);
     }
   }

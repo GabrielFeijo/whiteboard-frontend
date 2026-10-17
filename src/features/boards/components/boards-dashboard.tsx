@@ -20,6 +20,7 @@ import { BoardsEmptyState } from "@/features/boards/components/boards-empty-stat
 import { BoardsFilterBar } from "@/features/boards/components/boards-filter-bar";
 import { BoardsHeader } from "@/features/boards/components/boards-header";
 import { CreateBoardModal } from "@/features/boards/components/create-board-modal";
+import { RenameBoardModal } from "@/features/boards/components/rename-board-modal";
 import { useDashboardPrefsStore } from "@/features/boards/store/dashboard-prefs-store";
 import { ShareModal } from "@/features/share/components/share-modal";
 import { useI18n } from "@/i18n/context";
@@ -40,6 +41,7 @@ export function BoardsDashboard({ user, initialBoards }: BoardsDashboardProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [sharingBoard, setSharingBoard] = useState<BoardItem | null>(null);
+  const [renamingBoard, setRenamingBoard] = useState<BoardItem | null>(null);
   const [deletingBoardId, setDeletingBoardId] = useState<string | null>(null);
 
   const { data, isLoading } = useBoardsQuery(initialBoards);
@@ -144,6 +146,10 @@ export function BoardsDashboard({ user, initialBoards }: BoardsDashboardProps) {
                 onShare={setSharingBoard}
                 onDuplicate={handleDuplicate}
                 onDelete={handleDeleteRequest}
+                onRename={(b, e) => {
+                  e.stopPropagation();
+                  setRenamingBoard(b);
+                }}
               />
             ))}
           </div>
@@ -158,6 +164,10 @@ export function BoardsDashboard({ user, initialBoards }: BoardsDashboardProps) {
                   onShare={setSharingBoard}
                   onDuplicate={handleDuplicate}
                   onDelete={handleDeleteRequest}
+                  onRename={(b, e) => {
+                    e.stopPropagation();
+                    setRenamingBoard(b);
+                  }}
                 />
               ))}
             </div>
@@ -165,6 +175,14 @@ export function BoardsDashboard({ user, initialBoards }: BoardsDashboardProps) {
         )}
 
         <CreateBoardModal isOpen={isCreating} onClose={() => setIsCreating(false)} />
+
+        {renamingBoard && (
+          <RenameBoardModal
+            isOpen={Boolean(renamingBoard)}
+            board={renamingBoard}
+            onClose={() => setRenamingBoard(null)}
+          />
+        )}
 
         {sharingBoard && (
           <ShareModal

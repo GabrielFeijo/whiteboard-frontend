@@ -7,10 +7,13 @@ export interface KeyboardControllerTarget {
   duplicateSelected(): void;
   undo(): void;
   redo(): void;
+  selectAll?(): void;
+  nudgeSelected?(dx: number, dy: number): void;
   groupSelected?(): void;
   ungroupSelected?(): void;
   toggleLockSelected?(): void;
   pasteImage?(file: File): void;
+  setDirty?(): void;
 }
 
 const SHORTCUT_TOOL_MAP: Record<string, Tool> = {
@@ -48,6 +51,45 @@ export class CanvasKeyboardController {
     }
 
     const store = useCanvasStore.getState();
+
+    if (e.key === "Escape") {
+      e.preventDefault();
+      if (store.selectedIds.length > 0) {
+        store.setSelectedIds([]);
+        this.target.setDirty?.();
+      } else if (store.activeTool !== "select") {
+        store.setActiveTool("select");
+      }
+      return;
+    }
+
+    if (
+      (e.ctrlKey || e.metaKey) &&
+      e.key.toLowerCase() === "a" &&
+      !e.shiftKey
+    ) {
+      e.preventDefault();
+      this.target.selectAll?.();
+      return;
+    }
+
+    if (
+      (e.key === "ArrowUp" ||
+        e.key === "ArrowDown" ||
+        e.key === "ArrowLeft" ||
+        e.key === "ArrowRight") &&
+      store.selectedIds.length > 0
+    ) {
+      if (this.target.role === "VIEWER") return;
+      e.preventDefault();
+      const step = e.shiftKey ? 10 : 1;
+      const dx =
+        e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
+      const dy =
+        e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0;
+      this.target.nudgeSelected?.(dx, dy);
+      return;
+    }
 
     if (
       (e.key === "Delete" || e.key === "Backspace") &&

@@ -1,7 +1,8 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Download, History, Share2 } from "lucide-react";
+import { ArrowLeft, Check, Download, History, Pencil, Share2, X } from "lucide-react";
 import type { Role } from "@/shared";
 import { LanguageSwitcher } from "@/components/preferences/language-switcher";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +14,7 @@ import { ConnectionStatusBadge } from "@/features/studio/components/connection-s
 import { useI18n } from "@/i18n/context";
 
 interface StudioHeaderProps {
+  boardId?: string;
   boardTitle: string;
   boardRole: Role;
   syncStatus: SyncStatus;
@@ -22,9 +24,11 @@ interface StudioHeaderProps {
   onOpenHistory: () => void;
   onOpenExport: () => void;
   onOpenShare: () => void;
+  onRenameBoard?: (newTitle: string) => Promise<void>;
 }
 
 export function StudioHeader({
+  boardId: _boardId,
   boardTitle,
   boardRole,
   syncStatus,
@@ -34,10 +38,53 @@ export function StudioHeader({
   onOpenHistory,
   onOpenExport,
   onOpenShare,
+  onRenameBoard,
 }: StudioHeaderProps) {
   const { t } = useI18n();
   const router = useRouter();
   const isReadOnly = boardRole === "VIEWER";
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [titleInput, setTitleInput] = useState(boardTitle);
+  const [prevBoardTitle, setPrevBoardTitle] = useState(boardTitle);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  if (boardTitle !== prevBoardTitle) {
+    setPrevBoardTitle(boardTitle);
+    setTitleInput(boardTitle);
+  }
+
+  useEffect(() => {
+    if (isEditing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [isEditing]);
+
+  const handleSave = async () => {
+    const trimmed = titleInput.trim();
+    if (!trimmed || trimmed === boardTitle) {
+      setTitleInput(boardTitle);
+      setIsEditing(false);
+      return;
+    }
+    try {
+      if (onRenameBoard) {
+        await onRenameBoard(trimmed);
+      }
+      setIsEditing(false);
+    } catch {
+      setTitleInput(boardTitle);
+      setIsEditing(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setTitleInput(boardTitle);
+    setIsEditing(false);
+  };
+
+  const canEditTitle = !isReadOnly && Boolean(onRenameBoard);
 
   return (
     <header className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between pointer-events-none">
@@ -54,9 +101,53 @@ export function StudioHeader({
 
         <div className="h-3.5 w-px bg-border-subtle" />
 
-        <h1 className="text-xs font-semibold text-text-primary max-w-40 sm:max-w-64 truncate">
-          {boardTitle}
-        </h1>
+        {isEditing ? (
+          <div className="flex items-center gap-1">
+            <input
+              ref={inputRef}
+              type="text"
+              value={titleInput}
+              onChange={(e) => setTitleInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSave();
+                if (e.key === "Escape") handleCancel();
+              }}
+              className="h-6 w-36 sm:w-48 rounded border border-accent-primary bg-surface px-1.5 text-xs font-semibold text-text-primary outline-hidden"
+              maxLength={64}
+            />
+            <button
+              type="button"
+              onClick={handleSave}
+              className="rounded p-0.5 text-emerald-500 hover:bg-surface-hover"
+              title={t("common.actions.save")}
+            >
+              <Check className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="rounded p-0.5 text-text-muted hover:bg-surface-hover"
+              title={t("common.actions.cancel")}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : (
+          <div
+            className={`group flex items-center gap-1.5 ${
+              canEditTitle ? "cursor-pointer" : ""
+            }`}
+            onClick={() => canEditTitle && setIsEditing(true)}
+            title={canEditTitle ? t("studio.header.rename") : undefined}
+          >
+            <h1 className="text-xs font-semibold text-text-primary max-w-36 sm:max-w-64 truncate">
+              {boardTitle}
+            </h1>
+            {canEditTitle && (
+              <Pencil className="h-3 w-3 text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
+            )}
+          </div>
+        )}
 
         {isReadOnly ? (
           <Badge variant="warning" className="text-[10px] py-0">

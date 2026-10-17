@@ -47,6 +47,8 @@
       "boardCreateError": "Não foi possível criar o quadro.",
       "versionRestored": "Versão restaurada com sucesso!",
       "versionRestoreError": "Não foi possível restaurar a versão anterior.",
+      "boardRenamed": "Quadro renomeado com sucesso!",
+      "boardRenameError": "Não foi possível renomear o quadro.",
       "networkError": "Falha na comunicação com o servidor. Verifique sua conexão."
     }
   },
@@ -195,7 +197,8 @@
     },
     "card": {
       "updatedAt": "Atualizado em {date}",
-      "share": "Compartilhar"
+      "share": "Compartilhar",
+      "rename": "Renomear"
     },
     "createModal": {
       "title": "Criar Novo Quadro",
@@ -226,7 +229,9 @@
       "backToBoards": "Voltar para Quadros",
       "versionHistory": "Histórico de Versões",
       "exportCanvas": "Exportar Quadro (PNG / SVG)",
-      "share": "Compartilhar"
+      "share": "Compartilhar",
+      "rename": "Renomear Quadro",
+      "renamePrompt": "Digite o novo título do quadro:"
     },
     "connection": {
       "tooltip": "Status: {status}",
@@ -298,12 +303,35 @@
         "text": "Texto",
         "freehand": "Desenho",
         "element": "Elemento"
+      },
+      "actions": {
+        "lock": "Bloquear",
+        "unlock": "Desbloquear",
+        "group": "Agrupar",
+        "ungroup": "Desagrupar",
+        "lockShortcut": "Bloquear (Ctrl+Shift+L)",
+        "unlockShortcut": "Desbloquear (Ctrl+Shift+L)",
+        "groupShortcut": "Agrupar elementos (Ctrl+G)",
+        "ungroupShortcut": "Desagrupar elementos (Ctrl+Shift+G)",
+        "alignLeft": "Alinhar à Esquerda",
+        "alignCenter": "Alinhar ao Centro",
+        "alignRight": "Alinhar à Direita",
+        "alignTop": "Alinhar ao Topo",
+        "alignMiddle": "Alinhar ao Meio",
+        "alignBottom": "Alinhar à Base",
+        "distributeHorizontal": "Distribuir Horizontalmente",
+        "distributeVertical": "Distribuir Verticalmente",
+        "lockedNotice": "O elemento está bloqueado. Desbloqueie para alterar propriedades."
       }
     },
     "viewport": {
       "zoomIn": "Aproximar (+)",
       "zoomOut": "Afastar (-)",
       "resetZoom": "Redefinir Zoom para 100%"
+    },
+    "minimap": {
+      "toggle": "Alternar Minimapa",
+      "title": "Visão Geral do Minimapa"
     }
   },
   "shareModal": {
@@ -385,7 +413,16 @@
       "svg": {
         "title": "Vetor SVG",
         "description": "Formato vetorial escalável, higienizado contra scripts maliciosos."
+      },
+      "json": {
+        "title": "JSON Whiteboard",
+        "description": "Arquivo de dados portátil contendo todos os elementos, estilos e geometria."
       }
+    },
+    "import": {
+      "button": "Importar JSON",
+      "success": "{count} elementos importados com sucesso!",
+      "error": "Falha ao importar o arquivo JSON. Verifique o formato."
     }
   },
   "versionHistory": {
@@ -410,5 +447,16 @@
     "errors": {
       "restoreFailed": "Falha ao restaurar versão."
     }
+  },
+  "notFound": {
+    "title": "Página ou Quadro Não Encontrado",
+    "description": "O quadro solicitado não existe ou o link de acesso expirou.",
+    "backHome": "Voltar para Quadros"
+  },
+  "errorPage": {
+    "title": "Algo deu errado",
+    "description": "Ocorreu um erro inesperado ao carregar este quadro.",
+    "tryAgain": "Tentar Novamente",
+    "backHome": "Voltar para Quadros"
   }
 }

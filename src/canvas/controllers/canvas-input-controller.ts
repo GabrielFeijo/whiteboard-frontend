@@ -12,9 +12,21 @@ export interface InputControllerHost {
   onDropFile?(file: File, worldPt: Point): void;
 }
 
+function isEditableDomElement(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target.tagName === "INPUT" ||
+    target.tagName === "TEXTAREA" ||
+    target.isContentEditable
+  );
+}
+
 export class CanvasInputController {
   private isPointerDown = false;
   private currentWorldPoint: Point = { x: 0, y: 0 };
+  private isSpacePressed = false;
+  private isMiddlePanning = false;
+  private isSpacePanning = false;
 
   constructor(private readonly host: InputControllerHost) {
     const canvas = this.host.overlayCanvas;
@@ -26,6 +38,8 @@ export class CanvasInputController {
     canvas.addEventListener("dblclick", this.onDoubleClick);
     canvas.addEventListener("dragover", this.onDragOver);
     canvas.addEventListener("drop", this.onDrop);
+    window.addEventListener("keydown", this.onKeyDown);
+    window.addEventListener("keyup", this.onKeyUp);
   }
 
   getCurrentWorldPoint(): Point {
@@ -33,9 +47,31 @@ export class CanvasInputController {
   }
 
   refreshHoverCursor(): void {
+    if (this.isSpacePressed) {
+      this.setCursor("grab");
+      return;
+    }
     const screenPt = this.host.viewport.worldToScreen(this.currentWorldPoint);
     this.updateHoverCursor(screenPt, this.currentWorldPoint);
   }
+
+  private onKeyDown = (e: KeyboardEvent): void => {
+    if (isEditableDomElement(e.target)) return;
+    if (e.code === "Space" && !this.isSpacePressed) {
+      this.isSpacePressed = true;
+      if (!this.isPointerDown) {
+        this.setCursor("grab");
+      }
+    }
+  };
+
+  private onKeyUp = (e: KeyboardEvent): void => {
+    if (e.code === "Space") {
+      this.isSpacePressed = false;
+      this.isSpacePanning = false;
+      this.refreshHoverCursor();
+    }
+  };
 
   private getScreenAndWorldPoint(e: PointerEvent): {
     screenPt: Point;
@@ -48,6 +84,15 @@ export class CanvasInputController {
   }
 
   private onPointerDown = (e: PointerEvent): void => {
+    if (e.button === 1 || (e.button === 0 && this.isSpacePressed)) {
+      e.preventDefault();
+      if (e.button === 1) this.isMiddlePanning = true;
+      if (this.isSpacePressed) this.isSpacePanning = true;
+      this.isPointerDown = true;
+      this.setCursor("grabbing");
+      return;
+    }
+
     this.isPointerDown = true;
     const { screenPt, worldPt } = this.getScreenAndWorldPoint(e);
     this.currentWorldPoint = worldPt;
@@ -61,6 +106,14 @@ export class CanvasInputController {
   };
 
   private onPointerMove = (e: PointerEvent): void => {
+    if (this.isMiddlePanning || this.isSpacePanning) {
+      this.host.viewport.pan.x += e.movementX;
+      this.host.viewport.pan.y += e.movementY;
+      useCanvasStore.getState().setPan({ ...this.host.viewport.pan });
+      this.host.onViewportMutated();
+      return;
+    }
+
     const { screenPt, worldPt } = this.getScreenAndWorldPoint(e);
     this.currentWorldPoint = worldPt;
     this.host.onCursorWorldMove(worldPt);
@@ -85,6 +138,14 @@ export class CanvasInputController {
   };
 
   private onPointerUp = (e: PointerEvent): void => {
+    if (this.isMiddlePanning || this.isSpacePanning) {
+      this.isMiddlePanning = false;
+      this.isSpacePanning = false;
+      this.isPointerDown = false;
+      this.setCursor(this.isSpacePressed ? "grab" : "default");
+      return;
+    }
+
     if (!this.isPointerDown) return;
     this.isPointerDown = false;
 
@@ -192,5 +253,7 @@ export class CanvasInputController {
     canvas.removeEventListener("dblclick", this.onDoubleClick);
     canvas.removeEventListener("dragover", this.onDragOver);
     canvas.removeEventListener("drop", this.onDrop);
+    window.removeEventListener("keydown", this.onKeyDown);
+    window.removeEventListener("keyup", this.onKeyUp);
   }
 }

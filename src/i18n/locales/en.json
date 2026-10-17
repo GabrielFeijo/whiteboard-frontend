@@ -47,6 +47,8 @@
       "boardCreateError": "Could not create the board.",
       "versionRestored": "Version restored successfully!",
       "versionRestoreError": "Could not restore the previous version.",
+      "boardRenamed": "Board renamed successfully!",
+      "boardRenameError": "Failed to rename board.",
       "networkError": "Failed to communicate with the server. Please check your connection."
     }
   },
@@ -195,7 +197,8 @@
     },
     "card": {
       "updatedAt": "Updated on {date}",
-      "share": "Share"
+      "share": "Share",
+      "rename": "Rename"
     },
     "createModal": {
       "title": "Create New Whiteboard",
@@ -226,7 +229,9 @@
       "backToBoards": "Back to Boards",
       "versionHistory": "Version History",
       "exportCanvas": "Export Canvas (PNG / SVG)",
-      "share": "Share"
+      "share": "Share",
+      "rename": "Rename Board",
+      "renamePrompt": "Enter new board title:"
     },
     "connection": {
       "tooltip": "Status: {status}",
@@ -298,12 +303,35 @@
         "text": "Text",
         "freehand": "Pencil",
         "element": "Element"
+      },
+      "actions": {
+        "lock": "Lock",
+        "unlock": "Unlock",
+        "group": "Group",
+        "ungroup": "Ungroup",
+        "lockShortcut": "Lock (Ctrl+Shift+L)",
+        "unlockShortcut": "Unlock (Ctrl+Shift+L)",
+        "groupShortcut": "Group elements (Ctrl+G)",
+        "ungroupShortcut": "Ungroup elements (Ctrl+Shift+G)",
+        "alignLeft": "Align Left",
+        "alignCenter": "Align Center",
+        "alignRight": "Align Right",
+        "alignTop": "Align Top",
+        "alignMiddle": "Align Middle",
+        "alignBottom": "Align Bottom",
+        "distributeHorizontal": "Distribute Horizontally",
+        "distributeVertical": "Distribute Vertically",
+        "lockedNotice": "Element is locked. Unlock to modify properties."
       }
     },
     "viewport": {
       "zoomIn": "Zoom In (+)",
       "zoomOut": "Zoom Out (-)",
       "resetZoom": "Reset Zoom to 100%"
+    },
+    "minimap": {
+      "toggle": "Toggle Minimap",
+      "title": "Minimap Overview"
     }
   },
   "shareModal": {
@@ -385,7 +413,16 @@
       "svg": {
         "title": "SVG Vector",
         "description": "Infinitely scalable vector format, sanitized against malicious code."
+      },
+      "json": {
+        "title": "Whiteboard JSON",
+        "description": "Portable data format containing all elements, styles, and geometry."
       }
+    },
+    "import": {
+      "button": "Import JSON",
+      "success": "Imported {count} elements successfully!",
+      "error": "Failed to import JSON file. Please check the file format."
     }
   },
   "versionHistory": {
@@ -410,5 +447,16 @@
     "errors": {
       "restoreFailed": "Failed to restore version."
     }
+  },
+  "notFound": {
+    "title": "Page or Whiteboard Not Found",
+    "description": "The requested whiteboard does not exist, or the link has expired.",
+    "backHome": "Back to Dashboard"
+  },
+  "errorPage": {
+    "title": "Something went wrong",
+    "description": "An unexpected error occurred while rendering this whiteboard.",
+    "tryAgain": "Try Again",
+    "backHome": "Back to Dashboard"
   }
 }

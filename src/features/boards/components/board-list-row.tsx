@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { Copy, Square, Trash2 } from "lucide-react";
+import { Copy, Pencil, Square, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getRoleBadgeVariant } from "@/features/boards/components/board-grid-card";
@@ -14,6 +14,7 @@ interface BoardListRowProps {
   onShare: (board: BoardItem) => void;
   onDuplicate: (boardId: string, e: React.MouseEvent) => void;
   onDelete: (boardId: string, e: React.MouseEvent) => void;
+  onRename?: (board: BoardItem, e: React.MouseEvent) => void;
 }
 
 export function BoardListRow({
@@ -22,6 +23,7 @@ export function BoardListRow({
   onShare,
   onDuplicate,
   onDelete,
+  onRename,
 }: BoardListRowProps) {
   const { t } = useI18n();
 
@@ -66,6 +68,18 @@ export function BoardListRow({
         >
           {t("dashboard.card.share")}
         </Button>
+
+        {onRename && (board.role === "OWNER" || board.role === "EDITOR") && (
+          <button
+            type="button"
+            onClick={(e) => onRename(board, e)}
+            title={t("dashboard.card.rename")}
+            aria-label={t("dashboard.card.rename")}
+            className="rounded-md p-1.5 text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        )}
 
         <button
           type="button"

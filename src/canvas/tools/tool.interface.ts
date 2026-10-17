@@ -42,6 +42,7 @@ export interface CanvasHost {
   setSnapIndicator(indicator: { active: Point | null; candidates: Point[] } | null): void;
   getSnapIndicator(): { active: Point | null; candidates: Point[] } | null;
   getElementById(id: string): ElementData | null;
+  onViewportMutated?(): void;
 }
 
 export interface CanvasTool {

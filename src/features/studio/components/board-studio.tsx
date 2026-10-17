@@ -7,10 +7,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { CanvasEngine } from "@/canvas/canvas-engine";
 import { SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 import { useSessionStore } from "@/features/auth/store/session-store";
-import { useBoardQuery } from "@/features/boards/api/boards.queries";
+import {
+  useBoardQuery,
+  useUpdateBoardMutation,
+} from "@/features/boards/api/boards.queries";
 import { ExportModal } from "@/features/export/components/export-modal";
 import { ShareModal } from "@/features/share/components/share-modal";
+import { Minimap } from "@/features/studio/components/minimap";
 import { PropertiesPalette } from "@/features/studio/components/properties-palette/properties-palette";
 import { StudioHeader } from "@/features/studio/components/studio-header";
 import { StudioToolbar } from "@/features/studio/components/toolbar/studio-toolbar";
@@ -47,6 +52,8 @@ export function BoardStudio({
     isLoading: isBoardLoading,
     error: boardError,
   } = useBoardQuery(boardId, linkToken, initialBoard);
+
+  const updateBoardMutation = useUpdateBoardMutation(boardId);
 
   useEffect(() => {
     hydrateUser(user);
@@ -163,6 +170,16 @@ export function BoardStudio({
 
   const isReadOnly = board.role === "VIEWER";
 
+  const handleRenameBoard = async (newTitle: string) => {
+    try {
+      await updateBoardMutation.mutateAsync({ title: newTitle });
+      toast.success(t("common.toasts.boardRenamed"));
+    } catch {
+      toast.error(t("common.toasts.boardRenameError"));
+      throw new Error("Rename failed");
+    }
+  };
+
   return (
     <div className="relative h-screen w-screen overflow-hidden select-none bg-canvas text-text-primary">
       <div ref={containerRef} className="absolute inset-0 h-full w-full">
@@ -175,6 +192,7 @@ export function BoardStudio({
       </div>
 
       <StudioHeader
+        boardId={board.id}
         boardTitle={board.title}
         boardRole={board.role}
         syncStatus={syncStatus}
@@ -184,6 +202,7 @@ export function BoardStudio({
         onOpenHistory={() => setShowHistoryModal(true)}
         onOpenExport={() => setShowExportModal(true)}
         onOpenShare={() => setShowShareModal(true)}
+        onRenameBoard={handleRenameBoard}
       />
 
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
@@ -220,7 +239,8 @@ export function BoardStudio({
         </div>
       )}
 
-      <div className="absolute right-3 bottom-4 z-20 pointer-events-auto">
+      <div className="absolute right-3 bottom-4 z-20 pointer-events-auto flex flex-col items-end gap-2">
+        <Minimap engine={engine} />
         <ZoomControls
           onZoomIn={() => engine?.zoomIn()}
           onZoomOut={() => engine?.zoomOut()}
