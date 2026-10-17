@@ -13,6 +13,8 @@ export type Tool =
   | "freehand"
   | "eraser";
 
+export type ToolType = Tool;
+
 interface CanvasState {
   activeTool: Tool;
   strokeColor: string;

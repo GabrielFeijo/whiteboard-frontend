@@ -1,5 +1,21 @@
 import * as Y from "yjs";
-import { ElementData, ElementDataSchema } from "../shared";
+import {
+  ELEMENT_TYPES,
+  ElementData,
+  ElementDataSchema,
+  ElementType,
+} from "@/shared";
+
+function isYMap(value: unknown): value is Y.Map<unknown> {
+  return value instanceof Y.Map;
+}
+
+function isElementType(value: unknown): value is ElementType {
+  return (
+    typeof value === "string" &&
+    (ELEMENT_TYPES as readonly string[]).includes(value)
+  );
+}
 
 export class YjsElementAdapter {
   static toElementData(map: Y.Map<unknown>): ElementData | null {
@@ -13,6 +29,25 @@ export class YjsElementAdapter {
     } catch {
       return null;
     }
+  }
+
+  static getZIndex(map: Y.Map<unknown>): string {
+    const z = map.get("z");
+    return typeof z === "string" && z.length > 0 ? z : "a0";
+  }
+
+  static getType(map: Y.Map<unknown>): ElementType | null {
+    const type = map.get("type");
+    return isElementType(type) ? type : null;
+  }
+
+  static getPosition(map: Y.Map<unknown>): { x: number; y: number } {
+    const rawX = map.get("x");
+    const rawY = map.get("y");
+    return {
+      x: typeof rawX === "number" && Number.isFinite(rawX) ? rawX : 0,
+      y: typeof rawY === "number" && Number.isFinite(rawY) ? rawY : 0,
+    };
   }
 
   static createYMap(data: ElementData): Y.Map<unknown> {
@@ -42,7 +77,12 @@ export class YjsElementAdapter {
     return elementMap;
   }
 
-  static updateYMap(map: Y.Map<unknown>, patch: Partial<ElementData>): void {
+  static updateYMap(
+    map: Y.Map<unknown>,
+    patch: Omit<Partial<ElementData>, "style"> & {
+      style?: Partial<ElementData["style"]>;
+    },
+  ): void {
     if (patch.x !== undefined) map.set("x", Math.round(patch.x));
     if (patch.y !== undefined) map.set("y", Math.round(patch.y));
     if (patch.w !== undefined) map.set("w", Math.round(patch.w));
@@ -53,16 +93,21 @@ export class YjsElementAdapter {
     if (patch.points !== undefined) map.set("points", patch.points);
 
     if (patch.style) {
-      let styleMap = map.get("style") as Y.Map<unknown> | undefined;
-      if (!styleMap || typeof styleMap.set !== "function") {
+      const rawStyle = map.get("style");
+      let styleMap: Y.Map<unknown>;
+      if (isYMap(rawStyle)) {
+        styleMap = rawStyle;
+      } else {
         styleMap = new Y.Map<unknown>();
         map.set("style", styleMap);
       }
       if (patch.style.fill !== undefined) styleMap.set("fill", patch.style.fill);
-      if (patch.style.stroke !== undefined) styleMap.set("stroke", patch.style.stroke);
+      if (patch.style.stroke !== undefined)
+        styleMap.set("stroke", patch.style.stroke);
       if (patch.style.strokeWidth !== undefined)
         styleMap.set("strokeWidth", patch.style.strokeWidth);
-      if (patch.style.opacity !== undefined) styleMap.set("opacity", patch.style.opacity);
+      if (patch.style.opacity !== undefined)
+        styleMap.set("opacity", patch.style.opacity);
     }
   }
 }

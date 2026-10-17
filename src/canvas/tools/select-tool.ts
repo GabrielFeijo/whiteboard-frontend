@@ -1,14 +1,14 @@
 import { CanvasHost, CanvasTool, ToolContext } from "./tool.interface";
-import { useCanvasStore } from "../../store/canvas-store";
-import { getDocRoots } from "../../shared";
-import { LOCAL_ORIGIN } from "../../collab/undo-manager";
+import { useCanvasStore } from "@/store/canvas-store";
+import { getDocRoots } from "@/shared";
+import { LOCAL_ORIGIN } from "@/collab/undo-manager";
 import {
   calculateResizedBounds,
   getHandleAt,
   ResizeHandleType,
   scaleFreehandPoints,
-} from "../resize-helper";
-import { YjsElementAdapter } from "../yjs-element-adapter";
+} from "@/canvas/resize-helper";
+import { YjsElementAdapter } from "@/canvas/yjs-element-adapter";
 
 export class SelectTool implements CanvasTool {
   readonly id = "select";
@@ -78,10 +78,10 @@ export class SelectTool implements CanvasTool {
       useCanvasStore.getState().selectedIds.forEach((id) => {
         const map = roots.elements.get(id);
         if (map) {
-          this.moveInitialPositions.set(id, {
-            x: (map.get("x") as number) || 0,
-            y: (map.get("y") as number) || 0,
-          });
+          this.moveInitialPositions.set(
+            id,
+            YjsElementAdapter.getPosition(map),
+          );
         }
       });
     } else {
@@ -102,7 +102,7 @@ export class SelectTool implements CanvasTool {
       if (map) {
         const dx = ctx.worldPt.x - this.resizeInfo.startWorldPt.x;
         const dy = ctx.worldPt.y - this.resizeInfo.startWorldPt.y;
-        const type = map.get("type") as string;
+        const type = YjsElementAdapter.getType(map);
         const minSize = type === "sticky" ? 40 : 10;
 
         const newBounds = calculateResizedBounds({
@@ -116,19 +116,22 @@ export class SelectTool implements CanvasTool {
         });
 
         this.host.doc.transact(() => {
-          map.set("x", newBounds.x);
-          map.set("y", newBounds.y);
-          map.set("w", newBounds.w);
-          map.set("h", newBounds.h);
+          const scaledPoints =
+            type === "freehand" && this.resizeInfo?.initialPoints
+              ? scaleFreehandPoints(
+                  this.resizeInfo.initialPoints,
+                  this.resizeInfo.initialBounds,
+                  newBounds,
+                )
+              : undefined;
 
-          if (type === "freehand" && this.resizeInfo?.initialPoints) {
-            const scaled = scaleFreehandPoints(
-              this.resizeInfo.initialPoints,
-              this.resizeInfo.initialBounds,
-              newBounds,
-            );
-            map.set("points", scaled);
-          }
+          YjsElementAdapter.updateYMap(map, {
+            x: newBounds.x,
+            y: newBounds.y,
+            w: newBounds.w,
+            h: newBounds.h,
+            points: scaledPoints,
+          });
         }, LOCAL_ORIGIN);
 
         this.host.setDirty();
@@ -145,8 +148,10 @@ export class SelectTool implements CanvasTool {
         this.moveInitialPositions.forEach((initial, id) => {
           const map = roots.elements.get(id);
           if (map) {
-            map.set("x", Math.round(initial.x + dx));
-            map.set("y", Math.round(initial.y + dy));
+            YjsElementAdapter.updateYMap(map, {
+              x: initial.x + dx,
+              y: initial.y + dy,
+            });
           }
         });
       }, LOCAL_ORIGIN);

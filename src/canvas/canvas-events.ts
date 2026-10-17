@@ -5,39 +5,52 @@ export type CanvasEventMap = {
 };
 
 type Listener<T> = (data: T) => void;
-type AnyListener = (data: never) => void;
+
+type ListenerRegistry = {
+  [K in keyof CanvasEventMap]: Set<Listener<CanvasEventMap[K]>>;
+};
 
 export class CanvasEventEmitter {
-  private listeners = new Map<string, Set<AnyListener>>();
+  private readonly listeners: ListenerRegistry = {
+    focusTextInput: new Set(),
+    selectionChange: new Set(),
+    viewportChange: new Set(),
+  };
 
-  on<K extends keyof CanvasEventMap>(event: K, listener: Listener<CanvasEventMap[K]>): () => void {
-    const key = String(event);
-    let set = this.listeners.get(key);
-    if (!set) {
-      set = new Set();
-      this.listeners.set(key, set);
-    }
-    set.add(listener as unknown as AnyListener);
+  on<K extends keyof CanvasEventMap>(
+    event: K,
+    listener: Listener<CanvasEventMap[K]>,
+  ): () => void {
+    this.listeners[event].add(listener);
     return () => this.off(event, listener);
   }
 
-  off<K extends keyof CanvasEventMap>(event: K, listener: Listener<CanvasEventMap[K]>): void {
-    const key = String(event);
-    this.listeners.get(key)?.delete(listener as unknown as AnyListener);
+  off<K extends keyof CanvasEventMap>(
+    event: K,
+    listener: Listener<CanvasEventMap[K]>,
+  ): void {
+    this.listeners[event].delete(listener);
   }
 
-  emit<K extends keyof CanvasEventMap>(event: K, data: CanvasEventMap[K]): void {
-    const key = String(event);
-    this.listeners.get(key)?.forEach((fn) => {
+  emit<K extends keyof CanvasEventMap>(
+    event: K,
+    data: CanvasEventMap[K],
+  ): void {
+    this.listeners[event].forEach((fn) => {
       try {
-        (fn as unknown as Listener<CanvasEventMap[K]>)(data);
+        fn(data);
       } catch (err) {
-        console.error(`Error in CanvasEventEmitter listener for event "${key}":`, err);
+        console.error(
+          `Error in CanvasEventEmitter listener for event "${String(event)}":`,
+          err,
+        );
       }
     });
   }
 
   clear(): void {
-    this.listeners.clear();
+    this.listeners.focusTextInput.clear();
+    this.listeners.selectionChange.clear();
+    this.listeners.viewportChange.clear();
   }
 }

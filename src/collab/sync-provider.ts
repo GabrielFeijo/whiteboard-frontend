@@ -4,17 +4,24 @@ import * as awarenessProtocol from "y-protocols/awareness";
 import * as encoding from "lib0/encoding";
 import * as decoding from "lib0/decoding";
 import { IndexeddbPersistence } from "y-indexeddb";
-import { api, WS_URL } from "../lib/api/client";
-import { MSG, WS_CLOSE, Role } from "../shared";
+import { api, WS_URL } from "@/lib/api/client";
+import { MSG, WS_CLOSE, Role } from "@/shared";
 
 export type ConnectionStatus =
-  "connecting" | "connected" | "syncing" | "synced" | "offline" | "forbidden";
+  | "connecting"
+  | "connected"
+  | "syncing"
+  | "synced"
+  | "offline"
+  | "forbidden";
+
+export type SyncStatus = ConnectionStatus;
 
 export class SyncProvider {
   readonly doc: Y.Doc;
   readonly awareness: awarenessProtocol.Awareness;
   private ws: WebSocket | null = null;
-  private reconnectTimeout: NodeJS.Timeout | null = null;
+  private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private reconnectDelay = 1000;
   private isDestroyed = false;
   private indexeddbProvider: IndexeddbPersistence | null = null;
@@ -36,7 +43,11 @@ export class SyncProvider {
     this.connect();
 
     this.doc.on("update", (update: Uint8Array, origin: unknown) => {
-      if (origin !== this && this.ws?.readyState === WebSocket.OPEN && this.role !== "VIEWER") {
+      if (
+        origin !== this &&
+        this.ws?.readyState === WebSocket.OPEN &&
+        this.role !== "VIEWER"
+      ) {
         const encoder = encoding.createEncoder();
         encoding.writeVarUint(encoder, MSG.SYNC);
         syncProtocol.writeUpdate(encoder, update);
@@ -47,7 +58,11 @@ export class SyncProvider {
     this.awareness.on(
       "update",
       (
-        { added, updated, removed }: { added: number[]; updated: number[]; removed: number[] },
+        {
+          added,
+          updated,
+          removed,
+        }: { added: number[]; updated: number[]; removed: number[] },
         origin: unknown,
       ) => {
         if (origin !== this && this.ws?.readyState === WebSocket.OPEN) {
@@ -56,7 +71,10 @@ export class SyncProvider {
           encoding.writeVarUint(encoder, MSG.AWARENESS);
           encoding.writeVarUint8Array(
             encoder,
-            awarenessProtocol.encodeAwarenessUpdate(this.awareness, changedClients),
+            awarenessProtocol.encodeAwarenessUpdate(
+              this.awareness,
+              changedClients,
+            ),
           );
           this.ws.send(encoding.toUint8Array(encoder));
         }
@@ -64,18 +82,18 @@ export class SyncProvider {
     );
   }
 
-  onStatusChange(cb: (status: ConnectionStatus) => void) {
+  onStatusChange(cb: (status: ConnectionStatus) => void): () => void {
     this.listeners.add(cb);
     cb(this.status);
     return () => this.listeners.delete(cb);
   }
 
-  private setStatus(newStatus: ConnectionStatus) {
+  private setStatus(newStatus: ConnectionStatus): void {
     this.status = newStatus;
     this.listeners.forEach((cb) => cb(newStatus));
   }
 
-  private async connect() {
+  private async connect(): Promise<void> {
     if (this.isDestroyed) return;
     this.setStatus("connecting");
 
@@ -86,7 +104,7 @@ export class SyncProvider {
       );
       this.role = res.data.role;
 
-      const url = `${WS_URL}?ticket=${res.data.ticket}`;
+      const url = `${WS_URL}?ticket=${encodeURIComponent(res.data.ticket)}`;
       const ws = new WebSocket(url);
       ws.binaryType = "arraybuffer";
       this.ws = ws;
@@ -106,14 +124,18 @@ export class SyncProvider {
           encoding.writeVarUint(awEncoder, MSG.AWARENESS);
           encoding.writeVarUint8Array(
             awEncoder,
-            awarenessProtocol.encodeAwarenessUpdate(this.awareness, Array.from(states.keys())),
+            awarenessProtocol.encodeAwarenessUpdate(
+              this.awareness,
+              Array.from(states.keys()),
+            ),
           );
           ws.send(encoding.toUint8Array(awEncoder));
         }
       };
 
-      ws.onmessage = (event) => {
-        const data = new Uint8Array(event.data as ArrayBuffer);
+      ws.onmessage = (event: MessageEvent<unknown>) => {
+        if (!(event.data instanceof ArrayBuffer)) return;
+        const data = new Uint8Array(event.data);
         const decoder = decoding.createDecoder(data);
         const messageType = decoding.readVarUint(decoder);
 
@@ -155,7 +177,7 @@ export class SyncProvider {
     }
   }
 
-  private scheduleReconnect() {
+  private scheduleReconnect(): void {
     if (this.isDestroyed || this.reconnectTimeout) return;
     const jitter = Math.random() * 1000;
     const delay = Math.min(this.reconnectDelay + jitter, 30_000);
@@ -167,7 +189,7 @@ export class SyncProvider {
     }, delay);
   }
 
-  destroy() {
+  destroy(): void {
     this.isDestroyed = true;
     if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
     this.listeners.clear();
