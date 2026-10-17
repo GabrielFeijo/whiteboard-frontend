@@ -1,8 +1,8 @@
 "use client";
 
-import { useCanvasStore } from "../store/canvas-store";
-import { useI18n } from "../i18n";
-import { Tooltip } from "./ui/tooltip";
+import { Tooltip } from "@/components/ui/tooltip";
+import { useI18n } from "@/i18n/context";
+import { useCanvasStore } from "@/store/canvas-store";
 
 interface ZoomControlsProps {
   onZoomIn?: () => void;
@@ -10,7 +10,11 @@ interface ZoomControlsProps {
   onResetZoom?: () => void;
 }
 
-export function ZoomControls({ onZoomIn, onZoomOut, onResetZoom }: ZoomControlsProps) {
+export function ZoomControls({
+  onZoomIn,
+  onZoomOut,
+  onResetZoom,
+}: ZoomControlsProps) {
   const { zoom, setZoom, resetViewport } = useCanvasStore();
   const { t } = useI18n();
 
@@ -40,20 +44,28 @@ export function ZoomControls({ onZoomIn, onZoomOut, onResetZoom }: ZoomControlsP
 
   return (
     <div className="flex items-center gap-0.5 rounded-lg border border-border-strong bg-surface-raised/95 px-1 py-0.5 shadow-lg backdrop-blur-md select-none">
-      <Tooltip label={t("boardStudio.zoomOut")} shortcut="-" side="top">
+      <Tooltip label={t("studio.viewport.zoomOut")} shortcut="-" side="top">
         <button
+          type="button"
           onClick={handleZoomOut}
           className="flex h-7 w-7 items-center justify-center rounded-md text-text-secondary transition-all hover:bg-surface-hover hover:text-text-primary active:scale-95"
-          aria-label={t("boardStudio.zoomOut")}
+          aria-label={t("studio.viewport.zoomOut")}
         >
-          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            className="h-3.5 w-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
         </button>
       </Tooltip>
 
-      <Tooltip label={t("boardStudio.resetZoom")} shortcut="0" side="top">
+      <Tooltip label={t("studio.viewport.resetZoom")} shortcut="0" side="top">
         <button
+          type="button"
           onClick={handleReset}
           className="min-w-12 px-1.5 py-0.5 text-center font-mono text-[11px] font-semibold text-text-secondary transition-all hover:text-accent-primary hover:bg-surface-hover rounded-md"
         >
@@ -61,13 +73,20 @@ export function ZoomControls({ onZoomIn, onZoomOut, onResetZoom }: ZoomControlsP
         </button>
       </Tooltip>
 
-      <Tooltip label={t("boardStudio.zoomIn")} shortcut="+" side="top">
+      <Tooltip label={t("studio.viewport.zoomIn")} shortcut="+" side="top">
         <button
+          type="button"
           onClick={handleZoomIn}
           className="flex h-7 w-7 items-center justify-center rounded-md text-text-secondary transition-all hover:bg-surface-hover hover:text-text-primary active:scale-95"
-          aria-label={t("boardStudio.zoomIn")}
+          aria-label={t("studio.viewport.zoomIn")}
         >
-          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            className="h-3.5 w-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>

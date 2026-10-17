@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SyncProvider } from "../collab/sync-provider";
-import { Role } from "../shared";
-import { useI18n } from "../i18n";
-import { EyeIcon } from "./icons";
+import type { Role } from "@/shared";
+import { EyeIcon } from "@/components/icons";
+import type { SyncProvider } from "@/collab/sync-provider";
+import { useI18n } from "@/i18n/context";
 
 interface CollaboratorInfo {
   clientId: number;
@@ -39,7 +39,7 @@ export function CollaboratorsList({
         if (!state.user) return;
         list.push({
           clientId,
-          name: state.user.name || t("collaborators.anonymous"),
+          name: state.user.name || t("studio.collaborators.anonymous"),
           color: state.user.color || "#3b82f6",
           role: state.user.role || "VIEWER",
           viewport: state.viewport,
@@ -73,10 +73,10 @@ export function CollaboratorsList({
             .slice(0, 2);
 
           const actionHint = isMe
-            ? ` - ${t("collaborators.you")}`
+            ? ` - ${t("studio.collaborators.you")}`
             : isFollowing
-              ? ` - ${t("collaborators.clickToUnfollow")}`
-              : ` - ${t("collaborators.clickToFollow")}`;
+              ? ` - ${t("studio.collaborators.clickToUnfollow")}`
+              : ` - ${t("studio.collaborators.clickToFollow")}`;
 
           return (
             <button
@@ -85,9 +85,7 @@ export function CollaboratorsList({
               disabled={isMe}
               onClick={() => {
                 if (isMe) return;
-                if (onFollowUser) {
-                  onFollowUser(isFollowing ? null : c.clientId);
-                }
+                onFollowUser?.(isFollowing ? null : c.clientId);
               }}
               title={`${c.name} (${c.role})${actionHint}`}
               className={`relative flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white transition-all ring-1 ring-surface-raised ${
@@ -108,10 +106,11 @@ export function CollaboratorsList({
 
       {followingClientId && (
         <button
+          type="button"
           onClick={() => onFollowUser?.(null)}
           className="ml-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-accent-subtle text-accent-primary hover:opacity-80 transition-opacity"
         >
-          {t("collaborators.stopFollowing")}
+          {t("studio.collaborators.stopFollowing")}
         </button>
       )}
     </div>

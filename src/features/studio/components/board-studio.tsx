@@ -1,0 +1,256 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+
+import { CanvasEngine } from "@/canvas/canvas-engine";
+import { Button } from "@/components/ui/button";
+import { useSessionStore } from "@/features/auth/store/session-store";
+import { useBoardQuery } from "@/features/boards/api/boards.queries";
+import { ExportModal } from "@/features/export/components/export-modal";
+import { ShareModal } from "@/features/share/components/share-modal";
+import { PropertiesPalette } from "@/features/studio/components/properties-palette/properties-palette";
+import { StudioHeader } from "@/features/studio/components/studio-header";
+import { StudioToolbar } from "@/features/studio/components/toolbar/studio-toolbar";
+import { ZoomControls } from "@/features/studio/components/zoom-controls";
+import { useBoardCollab } from "@/features/studio/hooks/use-board-collab";
+import { useFollowCollaborator } from "@/features/studio/hooks/use-follow-collaborator";
+import { VersionHistoryModal } from "@/features/version-history/components/version-history-modal";
+import { useI18n } from "@/i18n/context";
+import { queryKeys } from "@/lib/api/query-keys";
+import type { SessionUser } from "@/server/auth/session";
+import type { BoardDetail } from "@/server/dal/boards.dal";
+import { useCanvasStore } from "@/store/canvas-store";
+
+interface BoardStudioProps {
+  boardId: string;
+  initialBoard: BoardDetail | null;
+  user: SessionUser | null;
+  linkToken?: string;
+}
+
+export function BoardStudio({
+  boardId,
+  initialBoard,
+  user,
+  linkToken,
+}: BoardStudioProps) {
+  const { t } = useI18n();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const hydrateUser = useSessionStore((s) => s.hydrateUser);
+
+  const {
+    data: board,
+    isLoading: isBoardLoading,
+    error: boardError,
+  } = useBoardQuery(boardId, linkToken, initialBoard);
+
+  useEffect(() => {
+    hydrateUser(user);
+  }, [hydrateUser, user]);
+
+  useEffect(() => {
+    if (board && linkToken && user?.id) {
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
+    }
+  }, [board, linkToken, user?.id, queryClient]);
+
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showProperties, setShowProperties] = useState(false);
+
+  const selectedIds = useCanvasStore((state) => state.selectedIds);
+  const isPropertiesOpen = showProperties || selectedIds.length > 0;
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const bgCanvasRef = useRef<HTMLCanvasElement>(null);
+  const contentCanvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  const [engine, setEngine] = useState<CanvasEngine | null>(null);
+
+  const boardRole = board?.role;
+  const { provider, syncStatus, userId } = useBoardCollab({
+    boardId,
+    boardRole,
+    user,
+    linkToken,
+  });
+
+  const { followingClientId, setFollowingClientId } = useFollowCollaborator(
+    provider,
+    engine
+  );
+
+  useEffect(() => {
+    if (
+      !provider ||
+      !boardRole ||
+      !containerRef.current ||
+      !bgCanvasRef.current ||
+      !contentCanvasRef.current ||
+      !overlayCanvasRef.current
+    ) {
+      return;
+    }
+
+    const canvasEngine = new CanvasEngine(
+      containerRef.current,
+      bgCanvasRef.current,
+      contentCanvasRef.current,
+      overlayCanvasRef.current,
+      provider.doc,
+      provider,
+      boardRole,
+      userId
+    );
+
+    canvasEngine.broadcastViewport();
+    setEngine(canvasEngine);
+
+    return () => {
+      canvasEngine.destroy();
+      setEngine(null);
+    };
+  }, [provider, boardRole, userId]);
+
+  if (isBoardLoading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-canvas">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-primary border-t-transparent" />
+          <p className="text-xs font-medium text-text-muted">
+            {t("studio.header.loading")}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (boardError || !board) {
+    const errorMessage =
+      boardError instanceof Error ? boardError.message : t("studio.header.loading");
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-canvas p-4">
+        <div className="max-w-md rounded-2xl border border-red-500/20 bg-surface p-6 text-center shadow-xl">
+          <h2 className="text-base font-bold text-red-500">{t("common.status.error")}</h2>
+          <p className="mt-2 text-xs text-text-muted">{errorMessage}</p>
+          <Button
+            onClick={() => router.push("/boards")}
+            variant="primary"
+            size="sm"
+            className="mt-4"
+          >
+            {t("studio.header.backToBoards")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const isReadOnly = board.role === "VIEWER";
+
+  return (
+    <div className="relative h-screen w-screen overflow-hidden select-none bg-canvas text-text-primary">
+      <div ref={containerRef} className="absolute inset-0 h-full w-full">
+        <canvas ref={bgCanvasRef} className="absolute inset-0 pointer-events-none" />
+        <canvas
+          ref={contentCanvasRef}
+          className="absolute inset-0 pointer-events-none"
+        />
+        <canvas ref={overlayCanvasRef} className="absolute inset-0 touch-none" />
+      </div>
+
+      <StudioHeader
+        boardTitle={board.title}
+        boardRole={board.role}
+        syncStatus={syncStatus}
+        provider={provider}
+        followingClientId={followingClientId}
+        onFollowUser={setFollowingClientId}
+        onOpenHistory={() => setShowHistoryModal(true)}
+        onOpenExport={() => setShowExportModal(true)}
+        onOpenShare={() => setShowShareModal(true)}
+      />
+
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+        <StudioToolbar
+          readOnly={isReadOnly}
+          canUndo={!isReadOnly}
+          canRedo={!isReadOnly}
+          onUndo={() => engine?.undo()}
+          onRedo={() => engine?.redo()}
+        />
+      </div>
+
+      {!isReadOnly && (
+        <div className="absolute left-3 top-16 z-20 pointer-events-auto">
+          {!isPropertiesOpen && (
+            <button
+              type="button"
+              onClick={() => setShowProperties(true)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-strong bg-surface-raised/95 text-text-secondary shadow-md backdrop-blur-md hover:bg-surface-hover hover:text-text-primary transition-all active:scale-95"
+              title={t("studio.inspector.toggleButton")}
+              aria-label={t("studio.inspector.toggleButton")}
+            >
+              <svg
+                className="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </button>
+          )}
+
+          {isPropertiesOpen && (
+            <PropertiesPalette
+              engine={engine}
+              onClose={() => setShowProperties(false)}
+            />
+          )}
+        </div>
+      )}
+
+      <div className="absolute right-3 bottom-4 z-20 pointer-events-auto">
+        <ZoomControls
+          onZoomIn={() => engine?.zoomIn()}
+          onZoomOut={() => engine?.zoomOut()}
+          onResetZoom={() => engine?.resetViewport()}
+        />
+      </div>
+
+      {showShareModal && (
+        <ShareModal
+          isOpen={showShareModal}
+          boardId={board.id}
+          boardTitle={board.title}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
+
+      {showExportModal && provider && (
+        <ExportModal
+          doc={provider.doc}
+          boardTitle={board.title}
+          onClose={() => setShowExportModal(false)}
+        />
+      )}
+
+      {showHistoryModal && (
+        <VersionHistoryModal
+          boardId={board.id}
+          userRole={board.role}
+          onClose={() => setShowHistoryModal(false)}
+          onRestored={() => window.location.reload()}
+        />
+      )}
+    </div>
+  );
+}
