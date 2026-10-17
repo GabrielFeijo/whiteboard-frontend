@@ -8,6 +8,7 @@ import { useI18n } from "@/i18n";
 import { getApiErrorMessage } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { useSessionStore } from "@/features/auth/store/session-store";
 import {
   createRegisterSchema,
@@ -44,9 +45,9 @@ export function RegisterForm() {
       router.push("/boards");
       router.refresh();
     } catch (err: unknown) {
-      setServerError(
-        getApiErrorMessage(err) || t("auth.errors.registerFailed"),
-      );
+      const errorMsg = getApiErrorMessage(err) || t("auth.errors.registerFailed");
+      setServerError(errorMsg);
+      toast.error(errorMsg);
     }
   };
 
@@ -59,8 +60,21 @@ export function RegisterForm() {
       footerLinkHref="/login"
     >
       {serverError && (
-        <div className="mb-5 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs font-medium text-red-600 dark:text-red-400">
-          {serverError}
+        <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs font-medium text-red-600 dark:text-red-400 animate-in fade-in duration-150">
+          <svg
+            className="h-4 w-4 shrink-0 mt-0.5 text-red-500"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span className="leading-relaxed">{serverError}</span>
         </div>
       )}
 
@@ -72,6 +86,20 @@ export function RegisterForm() {
           placeholder="Alice Johnson"
           autoComplete="name"
           error={errors.name?.message}
+          leftIcon={
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          }
           {...register("name")}
         />
 
@@ -82,6 +110,20 @@ export function RegisterForm() {
           placeholder="alice@example.com"
           autoComplete="email"
           error={errors.email?.message}
+          leftIcon={
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+              <polyline points="22,6 12,13 2,6" />
+            </svg>
+          }
           {...register("email")}
         />
 
@@ -98,7 +140,7 @@ export function RegisterForm() {
           variant="primary"
           size="lg"
           isLoading={isSubmitting}
-          className="w-full mt-2"
+          className="w-full mt-2 h-11 text-sm font-semibold shadow-sm"
         >
           {isSubmitting
             ? t("auth.register.submitting")
