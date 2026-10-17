@@ -1,6 +1,6 @@
 import type React from "react";
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { LayoutDashboard, SquarePen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getServerTranslator } from "@/i18n/server";
 
@@ -23,14 +23,14 @@ export async function LandingCta() {
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link href="/register">
             <Button variant="primary" size="lg" className="px-7 h-11 text-sm font-semibold shadow-md gap-2">
-              <Sparkles className="h-4 w-4" />
+              <SquarePen className="h-4 w-4" />
               <span>{t("landing.cta.primary")}</span>
             </Button>
           </Link>
           <Link href="/boards">
             <Button variant="secondary" size="lg" className="px-6 h-11 text-sm font-medium gap-2">
+              <LayoutDashboard className="h-4 w-4" />
               <span>{t("landing.cta.secondary")}</span>
-              <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { LayoutDashboard } from "lucide-react";
 import { AppLogo } from "@/components/brand";
 import { LanguageSwitcher } from "@/components/preferences/language-switcher";
 import { Button } from "@/components/ui/button";
@@ -26,8 +27,9 @@ export function LandingHeader() {
             </Button>
           </Link>
           <Link href="/boards">
-            <Button variant="primary" size="sm">
-              {t("landing.hero.openDashboard")}
+            <Button variant="primary" size="sm" className="gap-1.5 shadow-2xs">
+              <LayoutDashboard className="h-3.5 w-3.5" />
+              <span>{t("landing.hero.openDashboard")}</span>
             </Button>
           </Link>
         </div>
