@@ -8,7 +8,6 @@ RUN --mount=type=cache,target=/root/.npm npm ci --ignore-scripts
 FROM deps AS build
 WORKDIR /app
 COPY . .
-# NEXT_PUBLIC_* são embutidas no bundle em tempo de build
 ARG NEXT_PUBLIC_API_URL=http://localhost:3001
 ARG NEXT_PUBLIC_WS_URL=ws://localhost:3002
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
