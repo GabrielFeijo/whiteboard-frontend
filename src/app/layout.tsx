@@ -20,6 +20,11 @@ export const metadata: Metadata = {
   title: "Whiteboard — Colaboração Visual em Tempo Real",
   description:
     "Quadro branco colaborativo infinito em tempo real com CRDT e sincronização ultra rápida",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+  },
 };
 
 const themeCookieBootstrapScript = `
