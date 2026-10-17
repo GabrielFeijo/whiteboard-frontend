@@ -1,19 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/query-keys";
-import { Role } from "@/shared";
+import type { Role } from "@/shared";
+import type { CreatedShareLink, ShareLinkItem } from "../types";
 
-export interface ShareLinkItem {
-  id: string;
-  role: Role;
-  createdAt: string;
-  expiresAt: string | null;
-}
-
-export interface CreatedShareLink extends ShareLinkItem {
-  boardId: string;
-  token: string;
-}
+export type { CreatedShareLink, ShareLinkItem };
 
 export function useShareLinksQuery(boardId: string, enabled = true) {
   return useQuery({

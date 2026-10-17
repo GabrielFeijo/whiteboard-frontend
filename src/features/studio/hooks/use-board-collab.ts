@@ -5,7 +5,7 @@ import type { Role } from "@/shared";
 import { SyncProvider, type SyncStatus } from "@/collab/sync-provider";
 import { getUserColor } from "@/features/studio/utils/user-color";
 import { useI18n } from "@/i18n/context";
-import type { SessionUser } from "@/server/auth/session";
+import type { SessionUser } from "@/features/auth/types";
 
 interface UseBoardCollabOptions {
   boardId: string;

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import { useUpdateBoardMutation } from "@/features/boards/api/boards.queries";
 import { useI18n } from "@/i18n/context";
-import type { BoardItem } from "@/server/dal/boards.dal";
+import type { BoardItem } from "../types";
 
 interface RenameBoardModalProps {
   isOpen: boolean;

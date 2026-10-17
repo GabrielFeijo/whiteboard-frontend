@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useSessionStore } from "@/features/auth/store/session-store";
 import { useI18n } from "@/i18n/context";
-import type { SessionUser } from "@/server/auth/session";
+import type { SessionUser } from "@/features/auth/types";
 
 interface BoardsHeaderProps {
   user: SessionUser;

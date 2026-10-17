@@ -28,8 +28,8 @@ import {
 import { ShareModal } from "@/features/share/components/share-modal";
 import { useI18n } from "@/i18n/context";
 import { Role } from "@/shared";
-import type { SessionUser } from "@/server/auth/session";
-import type { BoardItem, BoardsListResponse } from "@/server/dal/boards.dal";
+import type { SessionUser } from "@/features/auth/types";
+import type { BoardItem, BoardsListResponse } from "../types";
 
 interface BoardsDashboardProps {
   user: SessionUser;

@@ -2,14 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/query-keys";
 
-export interface SnapshotItem {
-  id: string;
-  boardId: string;
-  version: number;
-  reason: string;
-  createdAt: string;
-  size?: number;
-}
+import type { RestoreSnapshotResponse, SnapshotItem } from "../types";
+
+export type { RestoreSnapshotResponse, SnapshotItem };
 
 export function useSnapshotsQuery(boardId: string, enabled = true) {
   return useQuery({

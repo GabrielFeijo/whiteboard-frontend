@@ -7,13 +7,9 @@ import {
   sanitizeExportFilename,
 } from "./bounding-box";
 
-export interface WhiteboardExportData {
-  version: 1;
-  generator: "whiteboard-canvas";
-  title: string;
-  exportedAt: string;
-  elements: ElementData[];
-}
+import type { WhiteboardExportData } from "../types";
+
+export type { WhiteboardExportData };
 
 export function exportBoardAsJson(doc: Y.Doc, boardTitle: string): void {
   const elements = extractSortedElementsFromDoc(doc);

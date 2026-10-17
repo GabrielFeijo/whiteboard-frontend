@@ -2,38 +2,22 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/query-keys";
 import { useSessionStore } from "@/features/auth/store/session-store";
-import { Role } from "@/shared";
+import type { Role } from "@/shared";
+import type {
+  BoardDetail,
+  BoardItem,
+  BoardMember,
+  BoardMemberInfo,
+  BoardsListResponse,
+} from "../types";
 
-export interface BoardItem {
-  id: string;
-  title: string;
-  ownerId?: string;
-  createdAt: string;
-  updatedAt: string;
-  role: Role;
-  memberCount: number;
-}
-
-export interface BoardDetail {
-  id: string;
-  title: string;
-  role: Role;
-  ownerId: string;
-}
-
-export interface BoardMemberInfo {
-  boardId: string;
-  userId: string;
-  role: Role;
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    avatarUrl?: string | null;
-  };
-}
-
-export type BoardMember = BoardMemberInfo;
+export type {
+  BoardDetail,
+  BoardItem,
+  BoardMember,
+  BoardMemberInfo,
+  BoardsListResponse,
+};
 
 export function useBoardsQuery(
   initialData?: { items: BoardItem[]; nextCursor: string | null } | null,

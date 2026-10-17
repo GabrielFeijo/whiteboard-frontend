@@ -1,11 +1,8 @@
 import { create } from "zustand";
 import { api } from "@/lib/api/client";
+import type { SessionUser } from "../types";
 
-export interface SessionUser {
-  id: string;
-  email: string;
-  name: string;
-}
+export type { SessionUser };
 
 interface AuthSessionResponse {
   user: SessionUser;

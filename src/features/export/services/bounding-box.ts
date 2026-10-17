@@ -2,14 +2,9 @@ import * as Y from "yjs";
 import { type ElementData, getDocRoots } from "@/shared";
 import { YjsElementAdapter } from "@/canvas/yjs-element-adapter";
 
-export interface ExportBoundingBox {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-  width: number;
-  height: number;
-}
+import type { ExportBoundingBox } from "../types";
+
+export type { ExportBoundingBox };
 
 export function extractSortedElementsFromDoc(doc: Y.Doc): ElementData[] {
   const roots = getDocRoots(doc);

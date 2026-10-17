@@ -8,7 +8,7 @@ import { getRoleBadgeVariant } from "@/features/boards/components/board-grid-car
 import { useI18n } from "@/i18n/context";
 import type { TranslationKey } from "@/i18n/types";
 import { Role } from "@/shared";
-import type { BoardItem } from "@/server/dal/boards.dal";
+import type { BoardItem } from "../types";
 
 interface BoardListRowProps {
   board: BoardItem;

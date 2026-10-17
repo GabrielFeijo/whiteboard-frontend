@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { ROLES } from "@/shared";
 import { serverBackendFetch } from "@/server/http/backend-client";
+import type { BoardDetail, BoardItem, BoardsListResponse } from "@/features/boards/types";
+
+export type { BoardDetail, BoardItem, BoardsListResponse };
 
 export const BoardItemSchema = z.object({
   id: z.string(),
@@ -12,14 +15,10 @@ export const BoardItemSchema = z.object({
   memberCount: z.number(),
 });
 
-export type BoardItem = z.infer<typeof BoardItemSchema>;
-
 export const BoardsListResponseSchema = z.object({
   items: z.array(BoardItemSchema),
   nextCursor: z.string().nullable(),
 });
-
-export type BoardsListResponse = z.infer<typeof BoardsListResponseSchema>;
 
 export const BoardDetailSchema = z.object({
   id: z.string(),
@@ -27,8 +26,6 @@ export const BoardDetailSchema = z.object({
   role: z.enum(ROLES),
   ownerId: z.string(),
 });
-
-export type BoardDetail = z.infer<typeof BoardDetailSchema>;
 
 export async function getBoardsServer(
   cursor?: string,

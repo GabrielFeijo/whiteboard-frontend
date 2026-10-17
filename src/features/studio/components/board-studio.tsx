@@ -25,8 +25,8 @@ import { useFollowCollaborator } from "@/features/studio/hooks/use-follow-collab
 import { VersionHistoryModal } from "@/features/version-history/components/version-history-modal";
 import { useI18n } from "@/i18n/context";
 import { queryKeys } from "@/lib/api/query-keys";
-import type { SessionUser } from "@/server/auth/session";
-import type { BoardDetail } from "@/server/dal/boards.dal";
+import type { SessionUser } from "@/features/auth/types";
+import type { BoardDetail } from "@/features/boards/types";
 import { Role } from "@/shared";
 import { useCanvasStore } from "@/store/canvas-store";
 
