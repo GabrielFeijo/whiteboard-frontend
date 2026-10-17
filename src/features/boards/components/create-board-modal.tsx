@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import { useCreateBoardMutation } from "@/features/boards/api/boards.queries";
 import {
   buildCreateBoardSchema,
@@ -44,10 +45,15 @@ export function CreateBoardModal({ isOpen, onClose }: CreateBoardModalProps) {
   };
 
   const onSubmit = async (formData: CreateBoardFormValues) => {
-    const created = await createMutation.mutateAsync({ title: formData.title });
-    reset();
-    onClose();
-    router.push(`/board/${created.id}`);
+    try {
+      const created = await createMutation.mutateAsync({ title: formData.title });
+      toast.success(t("common.toasts.boardCreated"));
+      reset();
+      onClose();
+      router.push(`/board/${created.id}`);
+    } catch {
+      toast.error(t("common.toasts.boardCreateError"));
+    }
   };
 
   return (

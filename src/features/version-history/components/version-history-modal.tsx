@@ -5,6 +5,7 @@ import type { Role } from "@/shared";
 import { ConfirmDialog } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 import {
   useRestoreSnapshotMutation,
   useSnapshotsQuery,
@@ -36,6 +37,7 @@ export function VersionHistoryModal({
     if (!restoringSnapshotId) return;
     try {
       await restoreMutation.mutateAsync(restoringSnapshotId);
+      toast.success(t("common.toasts.versionRestored"));
       setRestoringSnapshotId(null);
       if (onRestored) {
         onRestored();
@@ -43,7 +45,7 @@ export function VersionHistoryModal({
         window.location.reload();
       }
     } catch {
-      return;
+      toast.error(t("common.toasts.versionRestoreError"));
     }
   };
 

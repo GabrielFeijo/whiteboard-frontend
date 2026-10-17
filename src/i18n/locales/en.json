@@ -32,6 +32,18 @@
       "en": "English",
       "toggle": "Language",
       "select": "Select Language"
+    },
+    "toasts": {
+      "linkCopied": "Link copied to clipboard!",
+      "boardDuplicated": "Board duplicated successfully!",
+      "boardDuplicateError": "Could not duplicate the board.",
+      "boardDeleted": "Board deleted successfully!",
+      "boardDeleteError": "Could not delete the board.",
+      "boardCreated": "Board created successfully!",
+      "boardCreateError": "Could not create the board.",
+      "versionRestored": "Version restored successfully!",
+      "versionRestoreError": "Could not restore the previous version.",
+      "networkError": "Failed to communicate with the server. Please check your connection."
     }
   },
   "navigation": {
@@ -63,6 +75,10 @@
     }
   },
   "auth": {
+    "backToHome": "Back to home",
+    "badge": "Collaborative Visual Workspace",
+    "secureNote": "End-to-end encryption & real-time CRDT sync",
+    "collaboratorTag": "Real-time collaborator",
     "login": {
       "title": "Welcome Back",
       "subtitle": "Sign in to your Whiteboard account",

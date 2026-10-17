@@ -32,6 +32,18 @@
       "en": "English",
       "toggle": "Idioma",
       "select": "Selecionar Idioma"
+    },
+    "toasts": {
+      "linkCopied": "Link copiado para a área de transferência!",
+      "boardDuplicated": "Quadro duplicado com sucesso!",
+      "boardDuplicateError": "Não foi possível duplicar o quadro.",
+      "boardDeleted": "Quadro excluído com sucesso!",
+      "boardDeleteError": "Não foi possível excluir o quadro.",
+      "boardCreated": "Quadro criado com sucesso!",
+      "boardCreateError": "Não foi possível criar o quadro.",
+      "versionRestored": "Versão restaurada com sucesso!",
+      "versionRestoreError": "Não foi possível restaurar a versão anterior.",
+      "networkError": "Falha na comunicação com o servidor. Verifique sua conexão."
     }
   },
   "navigation": {
@@ -63,6 +75,10 @@
     }
   },
   "auth": {
+    "backToHome": "Voltar ao início",
+    "badge": "Espaço Visual Colaborativo",
+    "secureNote": "Criptografia de ponta a ponta e sincronização CRDT",
+    "collaboratorTag": "Colaborador em tempo real",
     "login": {
       "title": "Bem-vindo de volta",
       "subtitle": "Entre na sua conta do Whiteboard",

@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useI18n } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "@/components/ui/toast";
 import {
   useCreateShareLinkMutation,
   useRevokeShareLinkMutation,
@@ -40,12 +41,16 @@ export function ShareLinkTab({ boardId }: ShareLinkTabProps) {
   });
 
   const onSubmitLink = async (data: ShareLinkFormData) => {
-    const hours = data.expiresHours ? parseInt(data.expiresHours, 10) : undefined;
-    const res = await createMutation.mutateAsync({
-      role: data.role,
-      expiresInHours: hours,
-    });
-    setCreatedToken(res.token);
+    try {
+      const hours = data.expiresHours ? parseInt(data.expiresHours, 10) : undefined;
+      const res = await createMutation.mutateAsync({
+        role: data.role,
+        expiresInHours: hours,
+      });
+      setCreatedToken(res.token);
+    } catch {
+      toast.error(t("common.status.error"));
+    }
   };
 
   const fullShareUrl = createdToken
@@ -56,6 +61,7 @@ export function ShareLinkTab({ boardId }: ShareLinkTabProps) {
     if (!fullShareUrl) return;
     navigator.clipboard.writeText(fullShareUrl);
     setCopied(true);
+    toast.success(t("common.toasts.linkCopied"));
     setTimeout(() => setCopied(false), 2000);
   };
 

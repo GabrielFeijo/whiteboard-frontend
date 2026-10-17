@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 import { useAddBoardMember } from "@/features/boards/api/boards.queries";
 import {
   inviteEmailSchema,
@@ -45,22 +46,25 @@ export function ShareEmailTab({ boardId }: ShareEmailTabProps) {
       { email: values.email.trim(), role: values.role },
       {
         onSuccess: () => {
-          setInviteSuccess(
-            t("shareModal.emailTab.feedback.inviteSent", { email: values.email.trim() })
-          );
+          const successMessage = t("shareModal.emailTab.feedback.inviteSent", {
+            email: values.email.trim(),
+          });
+          setInviteSuccess(successMessage);
+          toast.success(successMessage);
           reset({ email: "", role: values.role });
         },
         onError: (err: unknown) => {
+          let errorMessage = t("shareModal.emailTab.feedback.inviteFailed");
           if (axios.isAxiosError(err)) {
             const msg = err.response?.data?.message as string | undefined;
             if (err.response?.status === 404) {
-              setInviteError(t("shareModal.emailTab.feedback.userNotFound"));
-            } else {
-              setInviteError(msg || t("shareModal.emailTab.feedback.inviteFailed"));
+              errorMessage = t("shareModal.emailTab.feedback.userNotFound");
+            } else if (msg) {
+              errorMessage = msg;
             }
-          } else {
-            setInviteError(t("shareModal.emailTab.feedback.inviteFailed"));
           }
+          setInviteError(errorMessage);
+          toast.error(errorMessage);
         },
       }
     );

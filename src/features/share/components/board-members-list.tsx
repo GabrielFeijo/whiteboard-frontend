@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/alert-dialog";
+import { toast } from "@/components/ui/toast";
 import {
   useBoardMembers,
   useRemoveBoardMember,
@@ -33,6 +34,12 @@ export function BoardMembersList({ boardId }: BoardMembersListProps) {
   const handleConfirmRemove = () => {
     if (!removingMemberId) return;
     removeMemberMutation.mutate(removingMemberId, {
+      onSuccess: () => {
+        toast.success(t("shareModal.members.remove"));
+      },
+      onError: () => {
+        toast.error(t("common.status.error"));
+      },
       onSettled: () => setRemovingMemberId(null),
     });
   };

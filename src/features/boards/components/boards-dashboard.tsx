@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { ConfirmDialog } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 import { useSessionStore } from "@/features/auth/store/session-store";
 import {
   useBoardsQuery,
@@ -67,7 +68,12 @@ export function BoardsDashboard({ user, initialBoards }: BoardsDashboardProps) {
 
   const handleDuplicate = async (boardId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    await duplicateMutation.mutateAsync(boardId);
+    try {
+      await duplicateMutation.mutateAsync(boardId);
+      toast.success(t("common.toasts.boardDuplicated"));
+    } catch {
+      toast.error(t("common.toasts.boardDuplicateError"));
+    }
   };
 
   const handleDeleteRequest = (boardId: string, e: React.MouseEvent) => {
@@ -77,8 +83,14 @@ export function BoardsDashboard({ user, initialBoards }: BoardsDashboardProps) {
 
   const handleConfirmDelete = async () => {
     if (!deletingBoardId) return;
-    await deleteMutation.mutateAsync(deletingBoardId);
-    setDeletingBoardId(null);
+    try {
+      await deleteMutation.mutateAsync(deletingBoardId);
+      toast.success(t("common.toasts.boardDeleted"));
+    } catch {
+      toast.error(t("common.toasts.boardDeleteError"));
+    } finally {
+      setDeletingBoardId(null);
+    }
   };
 
   return (
