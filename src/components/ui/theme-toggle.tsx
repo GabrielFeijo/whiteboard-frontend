@@ -3,7 +3,17 @@
 import { useTheme } from "../../providers/theme-provider";
 import { Tooltip } from "./tooltip";
 
-export function ThemeToggle({ className = "" }: { className?: string } = {}) {
+export interface ThemeToggleProps {
+  className?: string;
+  side?: "top" | "bottom" | "left" | "right";
+  align?: "center" | "start" | "end";
+}
+
+export function ThemeToggle({
+  className = "",
+  side = "bottom",
+  align = "end",
+}: ThemeToggleProps = {}) {
   const { resolvedTheme, setTheme } = useTheme();
 
   const toggleNext = () => {
@@ -19,7 +29,7 @@ export function ThemeToggle({ className = "" }: { className?: string } = {}) {
   };
 
   return (
-    <Tooltip label={getLabel()} side="bottom">
+    <Tooltip label={getLabel()} side={side} align={align}>
       <button
         onClick={toggleNext}
         className={`flex h-8 w-8 items-center justify-center rounded-lg border border-border-subtle bg-surface text-text-secondary transition-all hover:bg-surface-hover hover:text-text-primary hover:border-border-strong active:scale-95 shadow-2xs ${className}`}
