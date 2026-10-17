@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "../lib/api/axios-client";
-import { useAuthStore } from "../store/auth-store";
-import { Role } from "../shared";
+import { api } from "@/lib/api/client";
+import { queryKeys } from "@/lib/api/query-keys";
+import { useSessionStore } from "@/features/auth/store/session-store";
+import { Role } from "@/shared";
 
 export interface BoardItem {
   id: string;
@@ -32,35 +33,51 @@ export interface BoardMemberInfo {
   };
 }
 
-export function useBoardsQuery(cursor?: string, limit = 20) {
-  const userId = useAuthStore((s) => s.user?.id);
-  const isInitialized = useAuthStore((s) => s.isInitialized);
+export type BoardMember = BoardMemberInfo;
+
+export function useBoardsQuery(
+  initialData?: { items: BoardItem[]; nextCursor: string | null } | null,
+  cursor?: string,
+  limit = 20,
+) {
+  const userId = useSessionStore((s) => s.user?.id);
+  const isInitialized = useSessionStore((s) => s.isInitialized);
 
   return useQuery({
-    queryKey: ["boards", { cursor, limit }, userId],
+    queryKey: queryKeys.boards.list({ cursor, limit, userId }),
     queryFn: async () => {
-      const response = await api.get<{ items: BoardItem[]; nextCursor: string | null }>("/boards", {
+      const response = await api.get<{
+        items: BoardItem[];
+        nextCursor: string | null;
+      }>("/boards", {
         params: { cursor, limit },
       });
       return response.data;
     },
-    enabled: isInitialized && Boolean(userId),
+    initialData: initialData ?? undefined,
+    enabled: Boolean(initialData) || (isInitialized && Boolean(userId)),
   });
 }
 
-export function useBoardQuery(boardId: string, token?: string, enabled = true) {
-  const userId = useAuthStore((s) => s.user?.id);
-  const isInitialized = useAuthStore((s) => s.isInitialized);
+export function useBoardQuery(
+  boardId: string,
+  token?: string,
+  initialData?: BoardDetail | null,
+  enabled = true,
+) {
+  const userId = useSessionStore((s) => s.user?.id);
+  const isInitialized = useSessionStore((s) => s.isInitialized);
 
   return useQuery({
-    queryKey: ["board", boardId, token, userId],
+    queryKey: queryKeys.boards.detail(boardId, token, userId),
     queryFn: async () => {
       const response = await api.get<BoardDetail>(`/boards/${boardId}`, {
         params: token ? { token } : undefined,
       });
       return response.data;
     },
-    enabled: Boolean(boardId) && isInitialized && enabled,
+    initialData: initialData ?? undefined,
+    enabled: Boolean(boardId) && (Boolean(initialData) || isInitialized) && enabled,
   });
 }
 
@@ -72,7 +89,7 @@ export function useCreateBoardMutation() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["boards"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
     },
   });
 }
@@ -85,7 +102,7 @@ export function useUpdateBoardMutation(boardId: string) {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["boards"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
       queryClient.invalidateQueries({ queryKey: ["board", boardId] });
     },
   });
@@ -99,7 +116,7 @@ export function useDeleteBoardMutation() {
       return boardId;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["boards"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
     },
   });
 }
@@ -112,36 +129,47 @@ export function useDuplicateBoardMutation() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["boards"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
     },
   });
 }
 
 export function useBoardMembersQuery(boardId: string, enabled = true) {
   return useQuery({
-    queryKey: ["board-members", boardId],
+    queryKey: queryKeys.boards.members(boardId),
     queryFn: async () => {
-      const response = await api.get<BoardMemberInfo[]>(`/boards/${boardId}/members`);
+      const response = await api.get<BoardMemberInfo[]>(
+        `/boards/${boardId}/members`,
+      );
       return response.data;
     },
     enabled: Boolean(boardId) && enabled,
   });
 }
 
+export const useBoardMembers = useBoardMembersQuery;
+
 export function useAddBoardMemberMutation(boardId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (dto: { email: string; role: Role }) => {
-      const response = await api.post<BoardMemberInfo>(`/boards/${boardId}/members`, dto);
+      const response = await api.post<BoardMemberInfo>(
+        `/boards/${boardId}/members`,
+        dto,
+      );
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["board-members", boardId] });
-      queryClient.invalidateQueries({ queryKey: ["boards"] });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.boards.members(boardId),
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
       queryClient.invalidateQueries({ queryKey: ["board", boardId] });
     },
   });
 }
+
+export const useAddBoardMember = useAddBoardMemberMutation;
 
 export function useRemoveBoardMemberMutation(boardId: string) {
   const queryClient = useQueryClient();
@@ -151,9 +179,13 @@ export function useRemoveBoardMemberMutation(boardId: string) {
       return memberUserId;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["board-members", boardId] });
-      queryClient.invalidateQueries({ queryKey: ["boards"] });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.boards.members(boardId),
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.all });
       queryClient.invalidateQueries({ queryKey: ["board", boardId] });
     },
   });
 }
+
+export const useRemoveBoardMember = useRemoveBoardMemberMutation;
