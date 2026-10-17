@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { QueryProvider } from "../providers/query-provider";
-import { ThemeProvider } from "../providers/theme-provider";
-import { I18nProvider } from "../i18n";
+import { AppProviders } from "@/providers/app-providers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,18 +15,48 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Whiteboard — Colaboração Visual em Tempo Real",
-  description: "Quadro branco colaborativo infinito em tempo real com CRDT e sincronização ultra rápida",
+  description:
+    "Quadro branco colaborativo infinito em tempo real com CRDT e sincronização ultra rápida",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+const themeCookieBootstrapScript = `
+(function() {
+  try {
+    var match = document.cookie.match(/(?:^|;\\s*)wb_theme=([^;]*)/);
+    var theme = match ? decodeURIComponent(match[1]) : 'system';
+    var isDark = theme === 'dark' || (theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    var locMatch = document.cookie.match(/(?:^|;\\s*)wb_locale=([^;]*)/);
+    var locale = locMatch ? decodeURIComponent(locMatch[1]) : '';
+    if (locale === 'en') {
+      document.documentElement.lang = 'en-US';
+    } else if (locale === 'pt') {
+      document.documentElement.lang = 'pt-BR';
+    }
+  } catch (e) {}
+})();
+`;
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="pt-BR" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
+    <html
+      lang="pt-BR"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeCookieBootstrapScript }} />
+      </head>
       <body className="min-h-full flex flex-col font-sans bg-canvas text-text-primary selection:bg-accent-primary/20 selection:text-accent-primary">
-        <ThemeProvider>
-          <QueryProvider>
-            <I18nProvider>{children}</I18nProvider>
-          </QueryProvider>
-        </ThemeProvider>
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );
