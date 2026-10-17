@@ -110,15 +110,12 @@ export function AlertDialogCancel({
 }
 
 export interface ConfirmDialogProps {
-  open?: boolean;
-  isOpen?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  onCancel?: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   title: React.ReactNode;
   description: React.ReactNode;
   cancelText?: React.ReactNode;
   confirmText?: React.ReactNode;
-  confirmLabel?: React.ReactNode;
   variant?: "destructive" | "primary";
   isLoading?: boolean;
   onConfirm: () => void | Promise<void>;
@@ -126,45 +123,32 @@ export interface ConfirmDialogProps {
 
 export function ConfirmDialog({
   open,
-  isOpen,
   onOpenChange,
-  onCancel,
   title,
   description,
   cancelText = "Cancel",
   confirmText = "Confirm",
-  confirmLabel,
   variant = "destructive",
   isLoading = false,
   onConfirm,
 }: ConfirmDialogProps) {
-  const isDialogActive = Boolean(open ?? isOpen);
-
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && onCancel) {
-      onCancel();
-    }
-    if (onOpenChange) {
-      onOpenChange(nextOpen);
-    }
-  };
-
   const confirmClasses =
     variant === "destructive"
       ? "bg-red-600 text-white hover:bg-red-700 active:bg-red-800 border border-red-700/20"
       : "bg-accent-primary text-white hover:bg-accent-hover active:bg-accent-hover border border-accent-primary/20";
 
-  const resolvedConfirmText = confirmLabel ?? confirmText;
-
   return (
-    <AlertDialog open={isDialogActive} onOpenChange={handleOpenChange}>
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading} onClick={onCancel}>
+          <AlertDialogCancel
+            disabled={isLoading}
+            onClick={() => onOpenChange(false)}
+          >
             {cancelText}
           </AlertDialogCancel>
           <AlertDialogAction
@@ -173,10 +157,10 @@ export function ConfirmDialog({
             onClick={async (e) => {
               e.preventDefault();
               await onConfirm();
-              handleOpenChange(false);
+              onOpenChange(false);
             }}
           >
-            {isLoading ? "..." : resolvedConfirmText}
+            {isLoading ? "..." : confirmText}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

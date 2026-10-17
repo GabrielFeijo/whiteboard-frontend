@@ -1,6 +1,19 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import {
+  COOKIE_NAMES,
+  getClientCookie,
+  setClientCookie,
+} from "@/lib/cookies/cookie-storage";
 
 export type Theme = "light" | "dark" | "system";
 
@@ -16,17 +29,33 @@ const ThemeContext = createContext<ThemeContextType>({
   setTheme: () => {},
 });
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("wb-theme") as Theme | null;
-      if (saved && (saved === "light" || saved === "dark" || saved === "system")) {
-        return saved;
-      }
-    }
-    return "system";
-  });
-  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
+export function isValidTheme(value: unknown): value is Theme {
+  return value === "light" || value === "dark" || value === "system";
+}
+
+function resolveInitialTheme(initialTheme?: Theme): Theme {
+  if (initialTheme && isValidTheme(initialTheme)) {
+    return initialTheme;
+  }
+  const saved = getClientCookie(COOKIE_NAMES.THEME);
+  if (isValidTheme(saved)) {
+    return saved;
+  }
+  return "system";
+}
+
+export interface ThemeProviderProps {
+  children: ReactNode;
+  initialTheme?: Theme;
+}
+
+export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
+  const [theme, setThemeState] = useState<Theme>(() =>
+    resolveInitialTheme(initialTheme),
+  );
+  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">(() =>
+    initialTheme === "dark" ? "dark" : "light",
+  );
 
   useEffect(() => {
     const root = document.documentElement;
@@ -57,13 +86,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => mediaQuery.removeEventListener("change", listener);
   }, [theme]);
 
-  const setTheme = (newTheme: Theme) => {
+  const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
-    localStorage.setItem("wb-theme", newTheme);
-  };
+    setClientCookie(COOKIE_NAMES.THEME, newTheme);
+  }, []);
+
+  const contextValue = useMemo(
+    () => ({ theme, resolvedTheme, setTheme }),
+    [theme, resolvedTheme, setTheme],
+  );
 
   return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>
+    <ThemeContext.Provider value={contextValue}>
       {children}
     </ThemeContext.Provider>
   );

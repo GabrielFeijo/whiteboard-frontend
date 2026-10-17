@@ -1,10 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useI18n, Locale } from "../i18n";
-import { BrazilFlagIcon, USFlagIcon } from "./icons";
+import { useRouter } from "next/navigation";
+import { BrazilFlagIcon, USFlagIcon } from "@/components/icons";
+import { useI18n } from "@/i18n/context";
+import type { Locale } from "@/i18n/types";
 
-interface LanguageSwitcherProps {
+export interface LanguageSwitcherProps {
   className?: string;
   variant?: "pill" | "compact";
 }
@@ -14,14 +16,24 @@ const LANGUAGES: { code: Locale; icon: ReactNode; label: string }[] = [
   { code: "en", icon: <USFlagIcon />, label: "EN" },
 ];
 
-export function LanguageSwitcher({ className = "", variant = "pill" }: LanguageSwitcherProps) {
+export function LanguageSwitcher({
+  className = "",
+  variant = "pill",
+}: LanguageSwitcherProps) {
+  const router = useRouter();
   const { locale, setLocale, t } = useI18n();
   const isCompact = variant === "compact";
+
+  const handleSelectLocale = (newLocale: Locale) => {
+    if (newLocale === locale) return;
+    setLocale(newLocale);
+    router.refresh();
+  };
 
   return (
     <div
       className={`inline-flex items-center rounded-lg border border-border-subtle bg-surface p-0.5 shadow-2xs ${className}`}
-      title={t("language.selectLanguage")}
+      title={t("common.language.select")}
     >
       {LANGUAGES.map((lang) => {
         const isActive = locale === lang.code;
@@ -29,7 +41,7 @@ export function LanguageSwitcher({ className = "", variant = "pill" }: LanguageS
           <button
             key={lang.code}
             type="button"
-            onClick={() => setLocale(lang.code)}
+            onClick={() => handleSelectLocale(lang.code)}
             className={`flex items-center ${isCompact ? "gap-1 px-1.5 py-0.5 text-[10px]" : "gap-1.5 px-2 py-1 text-xs"} rounded-md font-medium transition-all duration-150 select-none ${
               isActive
                 ? "bg-surface-raised text-text-primary shadow-2xs border border-border-subtle/80"
