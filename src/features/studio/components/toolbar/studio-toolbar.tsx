@@ -4,7 +4,8 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { ShapeToolMenu } from "@/features/studio/components/toolbar/shape-tool-menu";
 import { useI18n } from "@/i18n/context";
 import { useCanvasStore } from "@/store/canvas-store";
-import { Redo2, Undo2 } from "lucide-react";
+import { Image as ImageIcon, Redo2, Undo2 } from "lucide-react";
+import { useRef } from "react";
 
 interface StudioToolbarProps {
   onUndo?: () => void;
@@ -12,6 +13,7 @@ interface StudioToolbarProps {
   canUndo?: boolean;
   canRedo?: boolean;
   readOnly?: boolean;
+  onInsertImage?: (file: File) => void;
 }
 
 export function StudioToolbar({
@@ -20,9 +22,21 @@ export function StudioToolbar({
   canUndo,
   canRedo,
   readOnly,
+  onInsertImage,
 }: StudioToolbarProps) {
   const { activeTool, setActiveTool } = useCanvasStore();
   const { t } = useI18n();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onInsertImage) {
+      onInsertImage(file);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   return (
     <nav
@@ -153,6 +167,28 @@ export function StudioToolbar({
             <line x1="9" y1="20" x2="15" y2="20" />
             <line x1="12" y1="4" x2="12" y2="20" />
           </svg>
+        </button>
+      </Tooltip>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,.svg"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
+      <Tooltip label={t("studio.toolbar.tools.image")} side="top">
+        <button
+          type="button"
+          disabled={readOnly}
+          onClick={() => fileInputRef.current?.click()}
+          className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-150 text-text-secondary hover:text-text-primary hover:bg-surface-hover ${
+            readOnly ? "opacity-40 cursor-not-allowed" : ""
+          }`}
+          aria-label={t("studio.toolbar.tools.image")}
+        >
+          <ImageIcon className="h-4 w-4" />
         </button>
       </Tooltip>
 

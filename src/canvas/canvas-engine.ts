@@ -36,6 +36,12 @@ import {
   KeyboardControllerTarget,
 } from "@/canvas/controllers/canvas-keyboard-controller";
 import { AlignmentType, DistributionType } from "@/canvas/alignment-helper";
+import {
+  calculateImagePlacement,
+  fileToDataUrl,
+  loadImageDimensions,
+} from "@/canvas/image-helper";
+import { nanoid } from "nanoid";
 
 export type ElementStyle = ElementData["style"];
 
@@ -191,6 +197,14 @@ export class CanvasEngine
       this.syncStoreWithSelection([hitId]);
       this.events.emit("focusTextInput", { elementId: hitId });
     }
+  }
+
+  onDropFile(file: File, worldPt: Point): void {
+    void this.insertImage(file, worldPt);
+  }
+
+  pasteImage(file: File): void {
+    void this.insertImage(file);
   }
 
   private setupListeners(): void {
@@ -590,6 +604,59 @@ export class CanvasEngine
   syncConnectedArrows(movedIds: readonly string[]): void {
     this.repository.syncConnectedArrows(movedIds);
     this.isDirty = true;
+  }
+
+  public async insertImage(
+    file: File,
+    targetWorldPt?: Point,
+  ): Promise<string | null> {
+    if (this.role === "VIEWER") return null;
+    if (!file.type.startsWith("image/") && !file.name.endsWith(".svg")) {
+      return null;
+    }
+
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const dimensions = await loadImageDimensions(dataUrl);
+
+      const center =
+        targetWorldPt ??
+        this.viewport.screenToWorld({
+          x: this.container.clientWidth / 2,
+          y: this.container.clientHeight / 2,
+        });
+
+      const placement = calculateImagePlacement(dimensions, center);
+      const id = nanoid(10);
+      const z = this.getNextZIndex();
+
+      const element: ElementData = {
+        id,
+        type: "image",
+        x: placement.x,
+        y: placement.y,
+        w: placement.w,
+        h: placement.h,
+        rotation: 0,
+        z,
+        style: {
+          fill: "transparent",
+          stroke: "transparent",
+          strokeWidth: 0,
+          opacity: 1,
+        },
+        src: dataUrl,
+        createdBy: this.userId,
+      };
+
+      this.commitElement(element);
+      useCanvasStore.getState().setSelectedIds([id]);
+      this.syncStoreWithSelection([id]);
+      this.isDirty = true;
+      return id;
+    } catch {
+      return null;
+    }
   }
 
   destroy(): void {

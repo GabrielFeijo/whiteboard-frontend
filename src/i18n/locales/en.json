@@ -256,6 +256,7 @@
         "freehand": "Pencil (P)",
         "sticky": "Sticky Note (S)",
         "text": "Text (T)",
+        "image": "Image / SVG",
         "eraser": "Eraser (E)"
       },
       "history": {

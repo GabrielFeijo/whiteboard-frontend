@@ -10,6 +10,7 @@ export interface KeyboardControllerTarget {
   groupSelected?(): void;
   ungroupSelected?(): void;
   toggleLockSelected?(): void;
+  pasteImage?(file: File): void;
 }
 
 const SHORTCUT_TOOL_MAP: Record<string, Tool> = {
@@ -38,6 +39,7 @@ function isEditableDomElement(target: EventTarget | null): boolean {
 export class CanvasKeyboardController {
   constructor(private readonly target: KeyboardControllerTarget) {
     window.addEventListener("keydown", this.onKeyDown);
+    window.addEventListener("paste", this.onPaste);
   }
 
   private onKeyDown = (e: KeyboardEvent): void => {
@@ -115,7 +117,42 @@ export class CanvasKeyboardController {
     }
   };
 
+  private onPaste = (e: ClipboardEvent): void => {
+    if (isEditableDomElement(e.target)) {
+      return;
+    }
+    if (this.target.role === "VIEWER") return;
+
+    const files = e.clipboardData?.files;
+    if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.type.startsWith("image/") || file.name.endsWith(".svg")) {
+          e.preventDefault();
+          this.target.pasteImage?.(file);
+          return;
+        }
+      }
+    }
+
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            this.target.pasteImage?.(file);
+            return;
+          }
+        }
+      }
+    }
+  };
+
   destroy(): void {
     window.removeEventListener("keydown", this.onKeyDown);
+    window.removeEventListener("paste", this.onPaste);
   }
 }

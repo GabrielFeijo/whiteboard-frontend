@@ -192,6 +192,7 @@ export function BoardStudio({
           canRedo={!isReadOnly && undoStatus.canRedo}
           onUndo={() => engine?.undo()}
           onRedo={() => engine?.redo()}
+          onInsertImage={(file) => void engine?.insertImage(file)}
         />
       </div>
 

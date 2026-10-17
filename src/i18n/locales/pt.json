@@ -256,6 +256,7 @@
         "freehand": "Lápis (P)",
         "sticky": "Nota Adesiva (S)",
         "text": "Texto (T)",
+        "image": "Imagem / SVG",
         "eraser": "Borracha (E)"
       },
       "history": {

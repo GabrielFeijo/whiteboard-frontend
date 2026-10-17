@@ -9,6 +9,7 @@ export interface InputControllerHost {
   onCursorWorldMove(worldPt: Point): void;
   onDoubleClickAtWorld(worldPt: Point): void;
   onViewportMutated(): void;
+  onDropFile?(file: File, worldPt: Point): void;
 }
 
 export class CanvasInputController {
@@ -23,6 +24,8 @@ export class CanvasInputController {
     canvas.addEventListener("pointerleave", this.onPointerLeave);
     canvas.addEventListener("wheel", this.onWheel, { passive: false });
     canvas.addEventListener("dblclick", this.onDoubleClick);
+    canvas.addEventListener("dragover", this.onDragOver);
+    canvas.addEventListener("drop", this.onDrop);
   }
 
   getCurrentWorldPoint(): Point {
@@ -149,6 +152,30 @@ export class CanvasInputController {
     this.host.onDoubleClickAtWorld(worldPt);
   };
 
+  private onDragOver = (e: DragEvent): void => {
+    e.preventDefault();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = "copy";
+    }
+  };
+
+  private onDrop = (e: DragEvent): void => {
+    e.preventDefault();
+    const files = e.dataTransfer?.files;
+    if (!files || files.length === 0) return;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.type.startsWith("image/") || file.name.endsWith(".svg")) {
+        const rect = this.host.overlayCanvas.getBoundingClientRect();
+        const screenPt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        const worldPt = this.host.viewport.screenToWorld(screenPt);
+        this.host.onDropFile?.(file, worldPt);
+        break;
+      }
+    }
+  };
+
   destroy(): void {
     const canvas = this.host.overlayCanvas;
     canvas.removeEventListener("pointerdown", this.onPointerDown);
@@ -157,5 +184,7 @@ export class CanvasInputController {
     canvas.removeEventListener("pointerleave", this.onPointerLeave);
     canvas.removeEventListener("wheel", this.onWheel);
     canvas.removeEventListener("dblclick", this.onDoubleClick);
+    canvas.removeEventListener("dragover", this.onDragOver);
+    canvas.removeEventListener("drop", this.onDrop);
   }
 }
