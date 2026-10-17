@@ -5,6 +5,8 @@ import { QueryProvider } from "@/providers/query-provider";
 import { ThemeProvider, type Theme } from "@/providers/theme-provider";
 import { I18nProvider, type Locale } from "@/i18n";
 
+import { Toaster } from "@/components/ui/toast";
+
 export interface AppProvidersProps {
   children: ReactNode;
   initialTheme?: Theme;
@@ -19,7 +21,10 @@ export function AppProviders({
   return (
     <ThemeProvider initialTheme={initialTheme}>
       <QueryProvider>
-        <I18nProvider initialLocale={initialLocale}>{children}</I18nProvider>
+        <I18nProvider initialLocale={initialLocale}>
+          {children}
+          <Toaster />
+        </I18nProvider>
       </QueryProvider>
     </ThemeProvider>
   );
