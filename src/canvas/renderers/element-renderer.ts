@@ -5,12 +5,31 @@ import { drawSticky } from "./sticky-renderer";
 import { drawText } from "./text-renderer";
 import { drawImageElement } from "./image-renderer";
 
+type ElementDrawHandler = (
+  ctx: CanvasRenderingContext2D,
+  el: ElementData,
+  getElementById?: (id: string) => ElementData | null,
+  onImageLoaded?: () => void,
+) => void;
+
+const ELEMENT_DRAW_REGISTRY: Partial<Record<ElementData["type"], ElementDrawHandler>> = {
+  rect: (ctx, el) => drawRect(ctx, el),
+  ellipse: (ctx, el) => drawEllipse(ctx, el),
+  diamond: (ctx, el) => drawDiamond(ctx, el),
+  line: (ctx, el, getElementById) => drawLine(ctx, el, getElementById),
+  arrow: (ctx, el, getElementById) => drawArrow(ctx, el, getElementById),
+  freehand: (ctx, el) => drawFreehand(ctx, el),
+  sticky: (ctx, el) => drawSticky(ctx, el),
+  text: (ctx, el) => drawText(ctx, el),
+  image: (ctx, el, _getById, onImageLoaded) => drawImageElement(ctx, el, onImageLoaded),
+};
+
 export function renderElement(
   ctx: CanvasRenderingContext2D,
   el: ElementData,
   getElementById?: (id: string) => ElementData | null,
   onImageLoaded?: () => void,
-) {
+): void {
   ctx.save();
   ctx.globalAlpha = el.style.opacity ?? 1;
 
@@ -22,35 +41,8 @@ export function renderElement(
     ctx.translate(-cx, -cy);
   }
 
-  switch (el.type) {
-    case "rect":
-      drawRect(ctx, el);
-      break;
-    case "ellipse":
-      drawEllipse(ctx, el);
-      break;
-    case "diamond":
-      drawDiamond(ctx, el);
-      break;
-    case "line":
-      drawLine(ctx, el, getElementById);
-      break;
-    case "arrow":
-      drawArrow(ctx, el, getElementById);
-      break;
-    case "freehand":
-      drawFreehand(ctx, el);
-      break;
-    case "sticky":
-      drawSticky(ctx, el);
-      break;
-    case "text":
-      drawText(ctx, el);
-      break;
-    case "image":
-      drawImageElement(ctx, el, onImageLoaded);
-      break;
-  }
+  const drawHandler = ELEMENT_DRAW_REGISTRY[el.type];
+  drawHandler?.(ctx, el, getElementById, onImageLoaded);
 
   ctx.restore();
 }

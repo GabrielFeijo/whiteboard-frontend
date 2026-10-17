@@ -4,6 +4,47 @@ import { ArrowBinding, ElementData } from "../../shared";
 import { useCanvasStore } from "../../store/canvas-store";
 import { findNearestAnchor, getNearbyAnchorPoints } from "@/canvas/connector-helper";
 
+function snapAnglePoint(
+  origin: { x: number; y: number },
+  target: { x: number; y: number },
+): { x: number; y: number } {
+  const dx = target.x - origin.x;
+  const dy = target.y - origin.y;
+  const angle = Math.atan2(dy, dx);
+  const snapAngle = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
+  const dist = Math.hypot(dx, dy);
+  return {
+    x: origin.x + dist * Math.cos(snapAngle),
+    y: origin.y + dist * Math.sin(snapAngle),
+  };
+}
+
+function computeBoxBounds(
+  startPt: { x: number; y: number },
+  targetPt: { x: number; y: number },
+  isSquare: boolean,
+): { x: number; y: number; w: number; h: number } {
+  const rawW = Math.abs(targetPt.x - startPt.x);
+  const rawH = Math.abs(targetPt.y - startPt.y);
+
+  if (!isSquare) {
+    return {
+      x: Math.min(startPt.x, targetPt.x),
+      y: Math.min(startPt.y, targetPt.y),
+      w: rawW,
+      h: rawH,
+    };
+  }
+
+  const side = Math.max(rawW, rawH);
+  return {
+    x: targetPt.x < startPt.x ? startPt.x - side : startPt.x,
+    y: targetPt.y < startPt.y ? startPt.y - side : startPt.y,
+    w: side,
+    h: side,
+  };
+}
+
 export class ShapeTool implements CanvasTool {
   private startPoint = { x: 0, y: 0 };
   private isDrawing = false;
@@ -15,37 +56,36 @@ export class ShapeTool implements CanvasTool {
     private readonly host: CanvasHost,
   ) {}
 
+  private isConnector(): boolean {
+    return this.id === "arrow" || this.id === "line";
+  }
+
   onPointerHover(ctx: ToolContext): void {
     if (this.host.role === "VIEWER") return;
-    if (this.id === "arrow" || this.id === "line") {
-      const others = this.host.getOtherElements([]);
-      const match = findNearestAnchor(ctx.worldPt, others, 36);
-      const candidates = getNearbyAnchorPoints(ctx.worldPt, others, 140);
-      this.host.setSnapIndicator({
-        active: match?.pt ?? null,
-        candidates,
-      });
-    } else {
+    if (!this.isConnector()) {
       this.host.setSnapIndicator(null);
+      return;
     }
+
+    const others = this.host.getOtherElements([]);
+    const match = findNearestAnchor(ctx.worldPt, others, 36);
+    const candidates = getNearbyAnchorPoints(ctx.worldPt, others, 140);
+    this.host.setSnapIndicator({
+      active: match?.pt ?? null,
+      candidates,
+    });
   }
 
   onPointerDown(ctx: ToolContext): void {
     if (this.host.role === "VIEWER") return;
 
-    if (this.id === "arrow" || this.id === "line") {
+    if (this.isConnector()) {
       const others = this.host.getOtherElements([]);
       const match = findNearestAnchor(ctx.worldPt, others, 36);
-      if (match) {
-        this.startPoint = { ...match.pt };
-        this.startBinding = {
-          elementId: match.elementId,
-          anchor: match.anchor,
-        };
-      } else {
-        this.startPoint = { ...ctx.worldPt };
-        this.startBinding = undefined;
-      }
+      this.startPoint = match ? { ...match.pt } : { ...ctx.worldPt };
+      this.startBinding = match
+        ? { elementId: match.elementId, anchor: match.anchor }
+        : undefined;
       const candidates = getNearbyAnchorPoints(ctx.worldPt, others, 140);
       this.host.setSnapIndicator({
         active: match?.pt ?? null,
@@ -70,80 +110,31 @@ export class ShapeTool implements CanvasTool {
   onPointerMove(ctx: ToolContext): void {
     if (!ctx.isPointerDown || !this.isDrawing) return;
 
-    let targetPt = { ...ctx.worldPt };
-
-    if (this.id === "arrow" || this.id === "line") {
-      const excludeIds = this.startBinding ? [this.startBinding.elementId] : [];
-      const others = this.host.getOtherElements(excludeIds);
-      const match = findNearestAnchor(ctx.worldPt, others, 36);
-      if (match) {
-        targetPt = { ...match.pt };
-        this.endBinding = {
-          elementId: match.elementId,
-          anchor: match.anchor,
-        };
-      } else {
-        this.endBinding = undefined;
-      }
-      const candidates = getNearbyAnchorPoints(ctx.worldPt, others, 140);
-      this.host.setSnapIndicator({
-        active: match?.pt ?? null,
-        candidates,
-      });
-
-      if (ctx.event.shiftKey) {
-        const dx = targetPt.x - this.startPoint.x;
-        const dy = targetPt.y - this.startPoint.y;
-        const angle = Math.atan2(dy, dx);
-        const snapAngle = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
-        const dist = Math.hypot(dx, dy);
-        targetPt = {
-          x: this.startPoint.x + dist * Math.cos(snapAngle),
-          y: this.startPoint.y + dist * Math.sin(snapAngle),
-        };
-      }
-    }
-
-    const w = targetPt.x - this.startPoint.x;
-    const h = targetPt.y - this.startPoint.y;
-
-    if (this.id === "line" || this.id === "arrow") {
+    if (this.isConnector()) {
+      const { targetPt, binding } = this.resolveConnectorTarget(
+        ctx.worldPt,
+        ctx.event.shiftKey,
+      );
+      this.endBinding = binding;
       this.host.setShapeDraft({
         type: this.id,
         x: this.startPoint.x,
         y: this.startPoint.y,
-        w,
-        h,
+        w: targetPt.x - this.startPoint.x,
+        h: targetPt.y - this.startPoint.y,
       });
-    } else {
-      let finalW = Math.abs(w);
-      let finalH = Math.abs(h);
-      let posX = Math.min(this.startPoint.x, targetPt.x);
-      let posY = Math.min(this.startPoint.y, targetPt.y);
-
-      if (ctx.event.shiftKey) {
-        const side = Math.max(finalW, finalH);
-        finalW = side;
-        finalH = side;
-        posX =
-          targetPt.x < this.startPoint.x
-            ? this.startPoint.x - side
-            : this.startPoint.x;
-        posY =
-          targetPt.y < this.startPoint.y
-            ? this.startPoint.y - side
-            : this.startPoint.y;
-      }
-
-      this.host.setShapeDraft({
-        type: this.id,
-        x: posX,
-        y: posY,
-        w: finalW,
-        h: finalH,
-      });
+      this.host.setDirty();
+      return;
     }
 
+    const bounds = computeBoxBounds(this.startPoint, ctx.worldPt, ctx.event.shiftKey);
+    this.host.setShapeDraft({
+      type: this.id,
+      x: bounds.x,
+      y: bounds.y,
+      w: bounds.w,
+      h: bounds.h,
+    });
     this.host.setDirty();
   }
 
@@ -152,92 +143,20 @@ export class ShapeTool implements CanvasTool {
     this.isDrawing = false;
     this.host.setShapeDraft(null);
 
-    const store = useCanvasStore.getState();
+    const isConnector = this.isConnector();
+    const { targetPt, binding } = isConnector
+      ? this.resolveConnectorTarget(ctx.worldPt, ctx.event.shiftKey)
+      : { targetPt: { ...ctx.worldPt }, binding: undefined };
 
-    let targetPt = { ...ctx.worldPt };
-    if (this.id === "arrow" || this.id === "line") {
-      const excludeIds = this.startBinding ? [this.startBinding.elementId] : [];
-      const others = this.host.getOtherElements(excludeIds);
-      const match = findNearestAnchor(ctx.worldPt, others, 36);
-      if (match) {
-        targetPt = { ...match.pt };
-        this.endBinding = {
-          elementId: match.elementId,
-          anchor: match.anchor,
-        };
-      }
-
-      if (ctx.event.shiftKey) {
-        const dx = targetPt.x - this.startPoint.x;
-        const dy = targetPt.y - this.startPoint.y;
-        const angle = Math.atan2(dy, dx);
-        const snapAngle = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
-        const dist = Math.hypot(dx, dy);
-        targetPt = {
-          x: this.startPoint.x + dist * Math.cos(snapAngle),
-          y: this.startPoint.y + dist * Math.sin(snapAngle),
-        };
-      }
+    if (isConnector) {
+      this.endBinding = binding;
     }
-
     this.host.setSnapIndicator(null);
 
-    const w = targetPt.x - this.startPoint.x;
-    const h = targetPt.y - this.startPoint.y;
-
-    if (Math.abs(w) > 5 || Math.abs(h) > 5) {
-      const id = nanoid(10);
-      const z = this.host.getNextZIndex();
-
-      let posX = Math.min(this.startPoint.x, targetPt.x);
-      let posY = Math.min(this.startPoint.y, targetPt.y);
-      let width = Math.max(1, Math.abs(w));
-      let height = Math.max(1, Math.abs(h));
-
-      if (ctx.event.shiftKey && this.id !== "line" && this.id !== "arrow") {
-        const side = Math.max(width, height);
-        width = side;
-        height = side;
-        posX =
-          targetPt.x < this.startPoint.x
-            ? this.startPoint.x - side
-            : this.startPoint.x;
-        posY =
-          targetPt.y < this.startPoint.y
-            ? this.startPoint.y - side
-            : this.startPoint.y;
-      }
-
-      const points =
-        this.id === "line" || this.id === "arrow"
-          ? [this.startPoint.x, this.startPoint.y, targetPt.x, targetPt.y]
-          : undefined;
-
-      const element: ElementData = {
-        id,
-        type: this.id,
-        x: Math.round(posX),
-        y: Math.round(posY),
-        w: Math.round(width),
-        h: Math.round(height),
-        rotation: 0,
-        z,
-        points,
-        style: {
-          fill: store.fillColor,
-          stroke: store.strokeColor,
-          strokeWidth: store.strokeWidth,
-          opacity: store.opacity,
-        },
-        createdBy: this.host.userId,
-        startBinding: this.startBinding,
-        endBinding: this.endBinding,
-      };
-
-      this.host.commitElement(element);
-      store.setSelectedIds([id]);
-      this.host.syncStoreWithSelection([id]);
-      store.setActiveTool("select");
+    const rawW = targetPt.x - this.startPoint.x;
+    const rawH = targetPt.y - this.startPoint.y;
+    if (Math.abs(rawW) > 5 || Math.abs(rawH) > 5) {
+      this.commitShape(targetPt, ctx.event.shiftKey);
     }
 
     this.startBinding = undefined;
@@ -255,5 +174,73 @@ export class ShapeTool implements CanvasTool {
     this.endBinding = undefined;
     this.host.setShapeDraft(null);
     this.host.setSnapIndicator(null);
+  }
+
+  private resolveConnectorTarget(
+    worldPt: { x: number; y: number },
+    isShift: boolean,
+  ): { targetPt: { x: number; y: number }; binding?: ArrowBinding } {
+    const excludeIds = this.startBinding ? [this.startBinding.elementId] : [];
+    const others = this.host.getOtherElements(excludeIds);
+    const match = findNearestAnchor(worldPt, others, 36);
+    const candidates = getNearbyAnchorPoints(worldPt, others, 140);
+    this.host.setSnapIndicator({
+      active: match?.pt ?? null,
+      candidates,
+    });
+
+    const basePt = match ? { ...match.pt } : { ...worldPt };
+    const targetPt = isShift ? snapAnglePoint(this.startPoint, basePt) : basePt;
+    const binding = match
+      ? { elementId: match.elementId, anchor: match.anchor }
+      : undefined;
+
+    return { targetPt, binding };
+  }
+
+  private commitShape(targetPt: { x: number; y: number }, isShift: boolean): void {
+    const store = useCanvasStore.getState();
+    const id = nanoid(10);
+    const z = this.host.getNextZIndex();
+    const isConnector = this.isConnector();
+
+    const bounds = isConnector
+      ? {
+          x: Math.min(this.startPoint.x, targetPt.x),
+          y: Math.min(this.startPoint.y, targetPt.y),
+          w: Math.max(1, Math.abs(targetPt.x - this.startPoint.x)),
+          h: Math.max(1, Math.abs(targetPt.y - this.startPoint.y)),
+        }
+      : computeBoxBounds(this.startPoint, targetPt, isShift);
+
+    const points = isConnector
+      ? [this.startPoint.x, this.startPoint.y, targetPt.x, targetPt.y]
+      : undefined;
+
+    const element: ElementData = {
+      id,
+      type: this.id,
+      x: Math.round(bounds.x),
+      y: Math.round(bounds.y),
+      w: Math.round(Math.max(1, bounds.w)),
+      h: Math.round(Math.max(1, bounds.h)),
+      rotation: 0,
+      z,
+      points,
+      style: {
+        fill: store.fillColor,
+        stroke: store.strokeColor,
+        strokeWidth: store.strokeWidth,
+        opacity: store.opacity,
+      },
+      createdBy: this.host.userId,
+      startBinding: this.startBinding,
+      endBinding: this.endBinding,
+    };
+
+    this.host.commitElement(element);
+    store.setSelectedIds([id]);
+    this.host.syncStoreWithSelection([id]);
+    store.setActiveTool("select");
   }
 }

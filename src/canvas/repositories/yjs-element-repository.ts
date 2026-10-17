@@ -14,8 +14,21 @@ import {
   DistributionType,
 } from "@/canvas/alignment-helper";
 import { getElementBoundingBox, resolveArrowEndpoints } from "@/canvas/connector-helper";
+import { translateGeometry } from "@/canvas/geometry-helper";
 
 export type ElementStylePatch = Partial<ElementData["style"]>;
+
+function offsetPoints(
+  points: number[] | undefined,
+  type: ElementData["type"],
+  offset = 20,
+): number[] | undefined {
+  if (!points) return undefined;
+  if (type === "line" || type === "arrow") {
+    return points.map((pt) => pt + offset);
+  }
+  return points.map((pt, i) => (i % 3 === 2 ? pt : pt + offset));
+}
 
 export class YjsElementRepository {
   constructor(
@@ -27,26 +40,39 @@ export class YjsElementRepository {
     return getDocRoots(this.doc).elements;
   }
 
+  private syncSpatialIndexForMap(map: Y.Map<unknown>, fallbackId?: string): void {
+    const data = YjsElementAdapter.toElementData(map);
+    const elementId = data?.id || fallbackId;
+    if (data && elementId) {
+      const box = getElementBoundingBox(data);
+      this.spatialIndex.insert(elementId, box.x, box.y, box.w, box.h);
+    }
+  }
+
   indexAllElements(): void {
     this.spatialIndex.clear();
     const elementsMap = this.getElementsMap();
     elementsMap.forEach((map, id) => {
       const data = YjsElementAdapter.toElementData(map);
-      if (data) {
-        const box = getElementBoundingBox(data);
-        if (
-          (data.type === "line" || data.type === "arrow") &&
-          (data.x !== box.x || data.y !== box.y || data.w !== box.w || data.h !== box.h)
-        ) {
-          YjsElementAdapter.updateYMap(map, {
-            x: box.x,
-            y: box.y,
-            w: box.w,
-            h: box.h,
-          });
-        }
-        this.spatialIndex.insert(id, box.x, box.y, box.w, box.h);
+      if (!data) return;
+
+      const box = getElementBoundingBox(data);
+      const isConnector = data.type === "line" || data.type === "arrow";
+      const boundsDiffer =
+        data.x !== box.x ||
+        data.y !== box.y ||
+        data.w !== box.w ||
+        data.h !== box.h;
+
+      if (isConnector && boundsDiffer) {
+        YjsElementAdapter.updateYMap(map, {
+          x: box.x,
+          y: box.y,
+          w: box.w,
+          h: box.h,
+        });
       }
+      this.spatialIndex.insert(id, box.x, box.y, box.w, box.h);
     });
   }
 
@@ -58,24 +84,16 @@ export class YjsElementRepository {
           event.keys.forEach((change, key) => {
             if (change.action === "delete") {
               this.spatialIndex.remove(key);
-            } else {
-              const childMap = elementsMap.get(key);
-              if (childMap) {
-                const data = YjsElementAdapter.toElementData(childMap);
-                const elementId = data?.id || key;
-                if (data && elementId) {
-                  const box = getElementBoundingBox(data);
-                  this.spatialIndex.insert(elementId, box.x, box.y, box.w, box.h);
-                }
-              }
+              return;
             }
+            const childMap = elementsMap.get(key);
+            if (childMap) this.syncSpatialIndexForMap(childMap, key);
           });
-        } else if (event.target instanceof Y.Map) {
-          const data = YjsElementAdapter.toElementData(event.target);
-          if (data?.id) {
-            const box = getElementBoundingBox(data);
-            this.spatialIndex.insert(data.id, box.x, box.y, box.w, box.h);
-          }
+          return;
+        }
+
+        if (event.target instanceof Y.Map) {
+          this.syncSpatialIndexForMap(event.target);
         }
       });
       onDirty?.();
@@ -231,22 +249,13 @@ export class YjsElementRepository {
           y: data.y + 20,
           z: newZ,
           createdBy: userId,
-          points:
-            data.type === "line" || data.type === "arrow"
-              ? data.points?.map((pt) => pt + 20)
-              : data.points?.map((pt, i) => (i % 3 === 2 ? pt : pt + 20)),
+          points: offsetPoints(data.points, data.type, 20),
         };
 
         const newMap = YjsElementAdapter.createYMap(duplicated);
         elementsMap.set(newId, newMap);
         const box = getElementBoundingBox(duplicated);
-        this.spatialIndex.insert(
-          newId,
-          box.x,
-          box.y,
-          box.w,
-          box.h,
-        );
+        this.spatialIndex.insert(newId, box.x, box.y, box.w, box.h);
         newSelectedIds.push(newId);
       });
     }, LOCAL_ORIGIN);
@@ -322,21 +331,17 @@ export class YjsElementRepository {
     });
 
     this.doc.transact(() => {
-      if (groupIdsToClear.size > 0) {
-        elementsMap.forEach((map) => {
-          const gid = map.get("groupId");
-          if (typeof gid === "string" && groupIdsToClear.has(gid)) {
-            YjsElementAdapter.updateYMap(map, { groupId: "" });
-          }
-        });
-      } else {
-        ids.forEach((id) => {
-          const map = elementsMap.get(id);
-          if (map) {
-            YjsElementAdapter.updateYMap(map, { groupId: "" });
-          }
-        });
-      }
+      const targetMaps =
+        groupIdsToClear.size > 0
+          ? Array.from(elementsMap.values()).filter((map) => {
+              const gid = map.get("groupId");
+              return typeof gid === "string" && groupIdsToClear.has(gid);
+            })
+          : (ids.map((id) => elementsMap.get(id)).filter(Boolean) as Y.Map<unknown>[]);
+
+      targetMaps.forEach((map) =>
+        YjsElementAdapter.updateYMap(map, { groupId: "" }),
+      );
     }, LOCAL_ORIGIN);
   }
 
@@ -410,13 +415,12 @@ export class YjsElementRepository {
     this.doc.transact(() => {
       updates.forEach((pos, id) => {
         const map = elementsMap.get(id);
-        if (map) {
-          YjsElementAdapter.updateYMap(map, pos);
-          const data = YjsElementAdapter.toElementData(map);
-          if (data) {
-            this.spatialIndex.remove(id);
-            this.spatialIndex.insert(id, data.x, data.y, data.w, data.h);
-          }
+        if (!map) return;
+        YjsElementAdapter.updateYMap(map, pos);
+        const data = YjsElementAdapter.toElementData(map);
+        if (data) {
+          this.spatialIndex.remove(id);
+          this.spatialIndex.insert(id, data.x, data.y, data.w, data.h);
         }
       });
     }, LOCAL_ORIGIN);
@@ -432,13 +436,12 @@ export class YjsElementRepository {
     this.doc.transact(() => {
       updates.forEach((pos, id) => {
         const map = elementsMap.get(id);
-        if (map) {
-          YjsElementAdapter.updateYMap(map, pos);
-          const data = YjsElementAdapter.toElementData(map);
-          if (data) {
-            this.spatialIndex.remove(id);
-            this.spatialIndex.insert(id, data.x, data.y, data.w, data.h);
-          }
+        if (!map) return;
+        YjsElementAdapter.updateYMap(map, pos);
+        const data = YjsElementAdapter.toElementData(map);
+        if (data) {
+          this.spatialIndex.remove(id);
+          this.spatialIndex.insert(id, data.x, data.y, data.w, data.h);
         }
       });
     }, LOCAL_ORIGIN);
@@ -448,47 +451,42 @@ export class YjsElementRepository {
     if (movedIds.length === 0) return;
     const movedSet = new Set(movedIds);
     const elementsMap = this.getElementsMap();
+
     this.doc.transact(() => {
       elementsMap.forEach((map, id) => {
         const type = YjsElementAdapter.getType(map);
-        if (type === "arrow" || type === "line") {
-          const el = YjsElementAdapter.toElementData(map);
-          if (!el) return;
-          const affectsStart =
-            el.startBinding && movedSet.has(el.startBinding.elementId);
-          const affectsEnd =
-            el.endBinding && movedSet.has(el.endBinding.elementId);
-          if (affectsStart || affectsEnd) {
-            const endpoints = resolveArrowEndpoints(el, (eid) =>
-              this.getById(eid),
-            );
-            const minX = Math.min(endpoints.from.x, endpoints.to.x);
-            const minY = Math.min(endpoints.from.y, endpoints.to.y);
-            const width = Math.max(1, Math.abs(endpoints.to.x - endpoints.from.x));
-            const height = Math.max(1, Math.abs(endpoints.to.y - endpoints.from.y));
-            const points = [
-              endpoints.from.x,
-              endpoints.from.y,
-              endpoints.to.x,
-              endpoints.to.y,
-            ];
-            YjsElementAdapter.updateYMap(map, {
-              x: minX,
-              y: minY,
-              w: width,
-              h: height,
-              points,
-            });
-            this.spatialIndex.remove(id);
-            this.spatialIndex.insert(
-              id,
-              minX,
-              minY,
-              width,
-              height,
-            );
-          }
-        }
+        if (type !== "arrow" && type !== "line") return;
+
+        const el = YjsElementAdapter.toElementData(map);
+        if (!el) return;
+
+        const affectsStart =
+          el.startBinding && movedSet.has(el.startBinding.elementId);
+        const affectsEnd =
+          el.endBinding && movedSet.has(el.endBinding.elementId);
+        if (!affectsStart && !affectsEnd) return;
+
+        const endpoints = resolveArrowEndpoints(el, (eid) => this.getById(eid));
+        const minX = Math.min(endpoints.from.x, endpoints.to.x);
+        const minY = Math.min(endpoints.from.y, endpoints.to.y);
+        const width = Math.max(1, Math.abs(endpoints.to.x - endpoints.from.x));
+        const height = Math.max(1, Math.abs(endpoints.to.y - endpoints.from.y));
+        const points = [
+          endpoints.from.x,
+          endpoints.from.y,
+          endpoints.to.x,
+          endpoints.to.y,
+        ];
+
+        YjsElementAdapter.updateYMap(map, {
+          x: minX,
+          y: minY,
+          w: width,
+          h: height,
+          points,
+        });
+        this.spatialIndex.remove(id);
+        this.spatialIndex.insert(id, minX, minY, width, height);
       });
     }, LOCAL_ORIGIN);
   }
@@ -518,56 +516,10 @@ export class YjsElementRepository {
         const el = YjsElementAdapter.toElementData(map);
         if (!el) return;
 
-        if (el.type === "line" || el.type === "arrow") {
-          const initPts =
-            el.points && el.points.length >= 4
-              ? el.points
-              : [el.x, el.y, el.x + el.w, el.y + el.h];
-          const p1x = Math.round(initPts[0] + dx);
-          const p1y = Math.round(initPts[1] + dy);
-          const p2x = Math.round(initPts[2] + dx);
-          const p2y = Math.round(initPts[3] + dy);
-          const newPoints = [p1x, p1y, p2x, p2y];
-          const newX = Math.min(p1x, p2x);
-          const newY = Math.min(p1y, p2y);
-          const newW = Math.max(1, Math.abs(p2x - p1x));
-          const newH = Math.max(1, Math.abs(p2y - p1y));
-          YjsElementAdapter.updateYMap(map, {
-            x: newX,
-            y: newY,
-            w: newW,
-            h: newH,
-            points: newPoints,
-          });
-          this.spatialIndex.remove(id);
-          this.spatialIndex.insert(id, newX, newY, newW, newH);
-        } else if (el.type === "freehand") {
-          const newPoints = el.points?.map((val, idx) =>
-            idx % 3 === 0
-              ? Math.round(val + dx)
-              : idx % 3 === 1
-                ? Math.round(val + dy)
-                : val,
-          );
-          const newX = Math.round(el.x + dx);
-          const newY = Math.round(el.y + dy);
-          YjsElementAdapter.updateYMap(map, {
-            x: newX,
-            y: newY,
-            points: newPoints,
-          });
-          this.spatialIndex.remove(id);
-          this.spatialIndex.insert(id, newX, newY, el.w, el.h);
-        } else {
-          const newX = Math.round(el.x + dx);
-          const newY = Math.round(el.y + dy);
-          YjsElementAdapter.updateYMap(map, {
-            x: newX,
-            y: newY,
-          });
-          this.spatialIndex.remove(id);
-          this.spatialIndex.insert(id, newX, newY, el.w, el.h);
-        }
+        const geom = translateGeometry(el, dx, dy);
+        YjsElementAdapter.updateYMap(map, geom);
+        this.spatialIndex.remove(id);
+        this.spatialIndex.insert(id, geom.x, geom.y, geom.w, geom.h);
       });
       this.syncConnectedArrows(ids);
     }, LOCAL_ORIGIN);

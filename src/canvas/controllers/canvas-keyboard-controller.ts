@@ -30,6 +30,19 @@ const SHORTCUT_TOOL_MAP: Record<string, Tool> = {
   e: "eraser",
 };
 
+const ARROW_DELTAS: Record<string, { dx: number; dy: number }> = {
+  ArrowLeft: { dx: -1, dy: 0 },
+  ArrowRight: { dx: 1, dy: 0 },
+  ArrowUp: { dx: 0, dy: -1 },
+  ArrowDown: { dx: 0, dy: 1 },
+};
+
+interface ShortcutContext {
+  event: KeyboardEvent;
+  store: ReturnType<typeof useCanvasStore.getState>;
+  target: KeyboardControllerTarget;
+}
+
 function isEditableDomElement(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return (
@@ -39,6 +52,63 @@ function isEditableDomElement(target: EventTarget | null): boolean {
   );
 }
 
+function tryHandleEscape(ctx: ShortcutContext): boolean {
+  if (ctx.event.key !== "Escape") return false;
+  ctx.event.preventDefault();
+  if (ctx.store.selectedIds.length > 0) {
+    ctx.store.setSelectedIds([]);
+    ctx.target.setDirty?.();
+  } else if (ctx.store.activeTool !== "select") {
+    ctx.store.setActiveTool("select");
+  }
+  return true;
+}
+
+function tryHandleNudge(ctx: ShortcutContext): boolean {
+  const dir = ARROW_DELTAS[ctx.event.key];
+  if (!dir || ctx.store.selectedIds.length === 0) return false;
+  if (ctx.target.role === "VIEWER") return true;
+  ctx.event.preventDefault();
+  const step = ctx.event.shiftKey ? 10 : 1;
+  ctx.target.nudgeSelected?.(dir.dx * step, dir.dy * step);
+  return true;
+}
+
+function tryHandleDelete(ctx: ShortcutContext): boolean {
+  if (ctx.event.key !== "Delete" && ctx.event.key !== "Backspace") return false;
+  if (ctx.store.selectedIds.length === 0) return false;
+  if (ctx.target.role !== "VIEWER") {
+    ctx.target.deleteSelected();
+  }
+  return true;
+}
+
+type ModifierAction = (ctx: ShortcutContext) => void;
+
+const MODIFIER_ACTIONS: Record<string, ModifierAction> = {
+  "ctrl+a": (ctx) => {
+    if (!ctx.event.shiftKey) ctx.target.selectAll?.();
+  },
+  "ctrl+d": (ctx) => {
+    if (ctx.store.selectedIds.length > 0) ctx.target.duplicateSelected();
+  },
+  "ctrl+z": (ctx) => {
+    if (ctx.event.shiftKey) ctx.target.redo();
+    else ctx.target.undo();
+  },
+  "ctrl+y": (ctx) => {
+    ctx.target.redo();
+  },
+  "ctrl+g": (ctx) => {
+    if (ctx.store.selectedIds.length === 0) return;
+    if (ctx.event.shiftKey) ctx.target.ungroupSelected?.();
+    else ctx.target.groupSelected?.();
+  },
+  "ctrl+shift+l": (ctx) => {
+    if (ctx.store.selectedIds.length > 0) ctx.target.toggleLockSelected?.();
+  },
+};
+
 export class CanvasKeyboardController {
   constructor(private readonly target: KeyboardControllerTarget) {
     window.addEventListener("keydown", this.onKeyDown);
@@ -46,124 +116,39 @@ export class CanvasKeyboardController {
   }
 
   private onKeyDown = (e: KeyboardEvent): void => {
-    if (isEditableDomElement(e.target)) {
-      return;
-    }
+    if (isEditableDomElement(e.target)) return;
 
-    const store = useCanvasStore.getState();
+    const ctx: ShortcutContext = {
+      event: e,
+      store: useCanvasStore.getState(),
+      target: this.target,
+    };
 
-    if (e.key === "Escape") {
-      e.preventDefault();
-      if (store.selectedIds.length > 0) {
-        store.setSelectedIds([]);
-        this.target.setDirty?.();
-      } else if (store.activeTool !== "select") {
-        store.setActiveTool("select");
+    if (tryHandleEscape(ctx)) return;
+    if (tryHandleNudge(ctx)) return;
+    if (tryHandleDelete(ctx)) return;
+
+    const isModifier = e.ctrlKey || e.metaKey;
+    if (isModifier) {
+      const parts: string[] = ["ctrl"];
+      if (e.shiftKey) parts.push("shift");
+      parts.push(e.key.toLowerCase());
+      const action = MODIFIER_ACTIONS[parts.join("+")];
+      if (action) {
+        e.preventDefault();
+        action(ctx);
+        return;
       }
-      return;
     }
 
-    if (
-      (e.ctrlKey || e.metaKey) &&
-      e.key.toLowerCase() === "a" &&
-      !e.shiftKey
-    ) {
-      e.preventDefault();
-      this.target.selectAll?.();
-      return;
-    }
-
-    if (
-      (e.key === "ArrowUp" ||
-        e.key === "ArrowDown" ||
-        e.key === "ArrowLeft" ||
-        e.key === "ArrowRight") &&
-      store.selectedIds.length > 0
-    ) {
-      if (this.target.role === "VIEWER") return;
-      e.preventDefault();
-      const step = e.shiftKey ? 10 : 1;
-      const dx =
-        e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
-      const dy =
-        e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0;
-      this.target.nudgeSelected?.(dx, dy);
-      return;
-    }
-
-    if (
-      (e.key === "Delete" || e.key === "Backspace") &&
-      store.selectedIds.length > 0
-    ) {
-      if (this.target.role === "VIEWER") return;
-      this.target.deleteSelected();
-      return;
-    }
-
-    if (
-      (e.ctrlKey || e.metaKey) &&
-      e.key.toLowerCase() === "d" &&
-      store.selectedIds.length > 0
-    ) {
-      e.preventDefault();
-      this.target.duplicateSelected();
-      return;
-    }
-
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
-      e.preventDefault();
-      if (e.shiftKey) {
-        this.target.redo();
-      } else {
-        this.target.undo();
-      }
-      return;
-    }
-
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
-      e.preventDefault();
-      this.target.redo();
-      return;
-    }
-
-    if (
-      (e.ctrlKey || e.metaKey) &&
-      e.key.toLowerCase() === "g" &&
-      store.selectedIds.length > 0
-    ) {
-      e.preventDefault();
-      if (e.shiftKey) {
-        this.target.ungroupSelected?.();
-      } else {
-        this.target.groupSelected?.();
-      }
-      return;
-    }
-
-    if (
-      (e.ctrlKey || e.metaKey) &&
-      e.shiftKey &&
-      e.key.toLowerCase() === "l" &&
-      store.selectedIds.length > 0
-    ) {
-      e.preventDefault();
-      this.target.toggleLockSelected?.();
-      return;
-    }
-
-    if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (!isModifier && !e.altKey) {
       const tool = SHORTCUT_TOOL_MAP[e.key.toLowerCase()];
-      if (tool) {
-        store.setActiveTool(tool);
-      }
+      if (tool) ctx.store.setActiveTool(tool);
     }
   };
 
   private onPaste = (e: ClipboardEvent): void => {
-    if (isEditableDomElement(e.target)) {
-      return;
-    }
-    if (this.target.role === "VIEWER") return;
+    if (isEditableDomElement(e.target) || this.target.role === "VIEWER") return;
 
     const files = e.clipboardData?.files;
     if (files && files.length > 0) {

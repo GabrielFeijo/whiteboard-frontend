@@ -213,6 +213,17 @@ export class CanvasEngine
     void this.insertImage(file);
   }
 
+  private syncSpatialIndexForMap(
+    map: Y.Map<unknown>,
+    fallbackId?: string,
+  ): void {
+    const data = YjsElementAdapter.toElementData(map);
+    const elementId = data?.id || fallbackId;
+    if (!data || !elementId) return;
+    const box = getElementBoundingBox(data);
+    this.spatialIndex.insert(elementId, box.x, box.y, box.w, box.h);
+  }
+
   private setupListeners(): void {
     const roots = getDocRoots(this.doc);
     this.elementsObserver = (events) => {
@@ -221,30 +232,18 @@ export class CanvasEngine
           event.keys.forEach((change, key) => {
             if (change.action === "delete") {
               this.spatialIndex.remove(key);
-            } else {
-              const childMap = roots.elements.get(key);
-              if (childMap) {
-                const data = YjsElementAdapter.toElementData(childMap);
-                const elementId = data?.id || key;
-                if (data && elementId) {
-                  const box = getElementBoundingBox(data);
-                  this.spatialIndex.insert(
-                    elementId,
-                    box.x,
-                    box.y,
-                    box.w,
-                    box.h,
-                  );
-                }
-              }
+              return;
+            }
+            const childMap = roots.elements.get(key);
+            if (childMap) {
+              this.syncSpatialIndexForMap(childMap, key);
             }
           });
-        } else if (event.target instanceof Y.Map) {
-          const data = YjsElementAdapter.toElementData(event.target);
-          if (data?.id) {
-            const box = getElementBoundingBox(data);
-            this.spatialIndex.insert(data.id, box.x, box.y, box.w, box.h);
-          }
+          return;
+        }
+
+        if (event.target instanceof Y.Map) {
+          this.syncSpatialIndexForMap(event.target);
         }
       });
       this.isDirty = true;
@@ -620,10 +619,9 @@ export class CanvasEngine
     const elementsMap = this.repository.getElementsMap();
     const result: ElementData[] = [];
     elementsMap.forEach((map, id) => {
-      if (!excludeSet.has(id)) {
-        const el = YjsElementAdapter.toElementData(map);
-        if (el) result.push(el);
-      }
+      if (excludeSet.has(id)) return;
+      const el = YjsElementAdapter.toElementData(map);
+      if (el) result.push(el);
     });
     return result;
   }

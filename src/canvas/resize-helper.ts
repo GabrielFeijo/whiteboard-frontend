@@ -102,6 +102,22 @@ export interface ResizeOptions {
   keepAspectRatio?: boolean;
 }
 
+interface HandleDirection {
+  dirX: -1 | 0 | 1;
+  dirY: -1 | 0 | 1;
+}
+
+const HANDLE_DIRECTIONS: Record<string, HandleDirection> = {
+  nw: { dirX: -1, dirY: -1 },
+  n: { dirX: 0, dirY: -1 },
+  ne: { dirX: 1, dirY: -1 },
+  e: { dirX: 1, dirY: 0 },
+  se: { dirX: 1, dirY: 1 },
+  s: { dirX: 0, dirY: 1 },
+  sw: { dirX: -1, dirY: 1 },
+  w: { dirX: -1, dirY: 0 },
+};
+
 export function calculateResizedBounds({
   handle,
   initialBounds,
@@ -118,78 +134,36 @@ export function calculateResizedBounds({
   let newH = h;
 
   const ratio = w > 0 && h > 0 ? w / h : 1;
+  const config = HANDLE_DIRECTIONS[handle] ?? { dirX: 1, dirY: 1 };
 
-  switch (handle) {
-    case "se": {
-      newW = Math.max(minWidth, w + dx);
-      newH = Math.max(minHeight, h + dy);
-      if (keepAspectRatio) {
-        if (newW / ratio >= minHeight) {
-          newH = newW / ratio;
-        } else {
-          newW = newH * ratio;
-        }
-      }
-      break;
-    }
-    case "e": {
-      newW = Math.max(minWidth, w + dx);
-      if (keepAspectRatio) {
-        newH = Math.max(minHeight, newW / ratio);
-      }
-      break;
-    }
-    case "s": {
-      newH = Math.max(minHeight, h + dy);
-      if (keepAspectRatio) {
-        newW = Math.max(minWidth, newH * ratio);
-      }
-      break;
-    }
-    case "ne": {
-      newW = Math.max(minWidth, w + dx);
-      newH = Math.max(minHeight, h - dy);
-      if (keepAspectRatio) {
+  if (config.dirX !== 0) {
+    newW = Math.max(minWidth, w + config.dirX * dx);
+  }
+  if (config.dirY !== 0) {
+    newH = Math.max(minHeight, h + config.dirY * dy);
+  }
+
+  if (keepAspectRatio) {
+    if (config.dirX !== 0 && config.dirY === 0) {
+      newH = Math.max(minHeight, newW / ratio);
+    } else if (config.dirX === 0 && config.dirY !== 0) {
+      newW = Math.max(minWidth, newH * ratio);
+    } else if (handle === "se") {
+      if (newW / ratio >= minHeight) {
         newH = newW / ratio;
+      } else {
+        newW = newH * ratio;
       }
-      newY = y + (h - newH);
-      break;
+    } else {
+      newH = newW / ratio;
     }
-    case "n": {
-      newH = Math.max(minHeight, h - dy);
-      if (keepAspectRatio) {
-        newW = Math.max(minWidth, newH * ratio);
-      }
-      newY = y + (h - newH);
-      break;
-    }
-    case "nw": {
-      newW = Math.max(minWidth, w - dx);
-      newH = Math.max(minHeight, h - dy);
-      if (keepAspectRatio) {
-        newH = newW / ratio;
-      }
-      newX = x + (w - newW);
-      newY = y + (h - newH);
-      break;
-    }
-    case "w": {
-      newW = Math.max(minWidth, w - dx);
-      if (keepAspectRatio) {
-        newH = Math.max(minHeight, newW / ratio);
-      }
-      newX = x + (w - newW);
-      break;
-    }
-    case "sw": {
-      newW = Math.max(minWidth, w - dx);
-      newH = Math.max(minHeight, h + dy);
-      if (keepAspectRatio) {
-        newH = newW / ratio;
-      }
-      newX = x + (w - newW);
-      break;
-    }
+  }
+
+  if (config.dirX === -1) {
+    newX = x + (w - newW);
+  }
+  if (config.dirY === -1) {
+    newY = y + (h - newH);
   }
 
   return {
@@ -222,72 +196,81 @@ export function scaleFreehandPoints(
   });
 }
 
-export function isPointInElement(point: Point, el: ElementData): boolean {
-  let px = point.x;
-  let py = point.y;
+function applyInverseRotation(point: Point, el: ElementData): Point {
+  if (!el.rotation || el.rotation === 0) {
+    return point;
+  }
   const cx = el.x + el.w / 2;
   const cy = el.y + el.h / 2;
+  const rad = (-el.rotation * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const dx = point.x - cx;
+  const dy = point.y - cy;
+  return {
+    x: cx + dx * cos - dy * sin,
+    y: cy + dx * sin + dy * cos,
+  };
+}
 
-  if (el.rotation && el.rotation !== 0) {
-    const rad = (-el.rotation * Math.PI) / 180;
-    const cos = Math.cos(rad);
-    const sin = Math.sin(rad);
-    const dx = px - cx;
-    const dy = py - cy;
-    px = cx + dx * cos - dy * sin;
-    py = cy + dx * sin + dy * cos;
+function testRectHit(p: Point, el: ElementData): boolean {
+  return p.x >= el.x && p.x <= el.x + el.w && p.y >= el.y && p.y <= el.y + el.h;
+}
+
+function testLineHit(p: Point, el: ElementData): boolean {
+  const x1 = el.points && el.points.length >= 4 ? el.points[0] : el.x;
+  const y1 = el.points && el.points.length >= 4 ? el.points[1] : el.y;
+  const x2 = el.points && el.points.length >= 4 ? el.points[2] : el.x + el.w;
+  const y2 = el.points && el.points.length >= 4 ? el.points[3] : el.y + el.h;
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  const tolerance = Math.max((el.style?.strokeWidth || 2) + 8, 12);
+
+  if (lenSq === 0) {
+    return Math.hypot(p.x - x1, p.y - y1) <= tolerance;
   }
 
-  if (el.type === "ellipse") {
+  const t = Math.max(0, Math.min(1, ((p.x - x1) * dx + (p.y - y1) * dy) / lenSq));
+  const projX = x1 + t * dx;
+  const projY = y1 + t * dy;
+  return Math.hypot(p.x - projX, p.y - projY) <= tolerance;
+}
+
+type ShapeHitTester = (p: Point, el: ElementData, cx: number, cy: number) => boolean;
+
+const SHAPE_HIT_TESTERS: Partial<Record<ElementData["type"], ShapeHitTester>> = {
+  ellipse: (p, el, cx, cy) => {
     const rx = Math.abs(el.w / 2);
     const ry = Math.abs(el.h / 2);
     if (rx <= 0 || ry <= 0) return false;
-    const normX = (px - cx) / rx;
-    const normY = (py - cy) / ry;
+    const normX = (p.x - cx) / rx;
+    const normY = (p.y - cy) / ry;
     return normX * normX + normY * normY <= 1;
-  }
-
-  if (el.type === "diamond") {
+  },
+  diamond: (p, el, cx, cy) => {
     const rx = Math.abs(el.w / 2);
     const ry = Math.abs(el.h / 2);
     if (rx <= 0 || ry <= 0) return false;
-    return Math.abs(px - cx) / rx + Math.abs(py - cy) / ry <= 1;
-  }
-
-  if (el.type === "line" || el.type === "arrow") {
-    const x1 = el.points && el.points.length >= 4 ? el.points[0] : el.x;
-    const y1 = el.points && el.points.length >= 4 ? el.points[1] : el.y;
-    const x2 = el.points && el.points.length >= 4 ? el.points[2] : el.x + el.w;
-    const y2 = el.points && el.points.length >= 4 ? el.points[3] : el.y + el.h;
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const lenSq = dx * dx + dy * dy;
-    const tolerance = Math.max((el.style?.strokeWidth || 2) + 8, 12);
-
-    if (lenSq === 0) {
-      return Math.hypot(px - x1, py - y1) <= tolerance;
-    }
-
-    const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lenSq));
-    const projX = x1 + t * dx;
-    const projY = y1 + t * dy;
-    return Math.hypot(px - projX, py - projY) <= tolerance;
-  }
-
-  if (el.type === "freehand") {
+    return Math.abs(p.x - cx) / rx + Math.abs(p.y - cy) / ry <= 1;
+  },
+  line: testLineHit,
+  arrow: testLineHit,
+  freehand: (p, el) => {
     const pad = Math.max((el.style?.strokeWidth || 2) + 4, 6);
     return (
-      px >= el.x - pad &&
-      px <= el.x + el.w + pad &&
-      py >= el.y - pad &&
-      py <= el.y + el.h + pad
+      p.x >= el.x - pad &&
+      p.x <= el.x + el.w + pad &&
+      p.y >= el.y - pad &&
+      p.y <= el.y + el.h + pad
     );
-  }
+  },
+};
 
-  return (
-    px >= el.x &&
-    px <= el.x + el.w &&
-    py >= el.y &&
-    py <= el.y + el.h
-  );
+export function isPointInElement(point: Point, el: ElementData): boolean {
+  const transformed = applyInverseRotation(point, el);
+  const cx = el.x + el.w / 2;
+  const cy = el.y + el.h / 2;
+  const tester = SHAPE_HIT_TESTERS[el.type] ?? testRectHit;
+  return tester(transformed, el, cx, cy);
 }

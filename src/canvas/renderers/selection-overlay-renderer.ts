@@ -31,326 +31,376 @@ export interface SelectionOverlayRenderParams {
   getElementById?: (id: string) => ElementData | null;
 }
 
+function renderSmartGuides(
+  ctx: CanvasRenderingContext2D,
+  guides: SelectionOverlayRenderParams["guides"],
+  zoom: number,
+): void {
+  if (!guides) return;
+
+  ctx.save();
+  ctx.strokeStyle = "#ef4444";
+  ctx.lineWidth = 1 / zoom;
+  ctx.setLineDash([4 / zoom, 4 / zoom]);
+
+  guides.vertical?.forEach((x) => {
+    ctx.beginPath();
+    ctx.moveTo(x, -1e6);
+    ctx.lineTo(x, 1e6);
+    ctx.stroke();
+  });
+
+  guides.horizontal?.forEach((y) => {
+    ctx.beginPath();
+    ctx.moveTo(-1e6, y);
+    ctx.lineTo(1e6, y);
+    ctx.stroke();
+  });
+
+  ctx.restore();
+}
+
+function renderLockBadge(
+  ctx: CanvasRenderingContext2D,
+  bx: number,
+  by: number,
+  badgeSize: number,
+  zoom: number,
+): void {
+  ctx.fillStyle = "#f43f5e";
+  ctx.beginPath();
+  ctx.roundRect(bx, by, badgeSize, badgeSize, 4 / zoom);
+  ctx.fill();
+
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 1.2 / zoom;
+  ctx.beginPath();
+  ctx.arc(
+    bx + badgeSize / 2,
+    by + badgeSize * 0.42,
+    badgeSize * 0.18,
+    Math.PI,
+    0,
+    false,
+  );
+  ctx.stroke();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(
+    bx + badgeSize * 0.28,
+    by + badgeSize * 0.42,
+    badgeSize * 0.44,
+    badgeSize * 0.36,
+  );
+}
+
+function renderConnectorSelection(
+  ctx: CanvasRenderingContext2D,
+  el: ElementData,
+  zoom: number,
+  isSingleSelection: boolean,
+  getElementById?: (id: string) => ElementData | null,
+): void {
+  const { from, to } = resolveArrowEndpoints(el, getElementById);
+  ctx.save();
+  ctx.strokeStyle = el.locked
+    ? "rgba(244, 63, 94, 0.4)"
+    : "rgba(79, 70, 229, 0.4)";
+  ctx.lineWidth = Math.max((el.style.strokeWidth || 2) + 8 / zoom, 12 / zoom);
+  ctx.lineCap = "round";
+
+  if (el.startBinding || el.endBinding) {
+    drawCurvedConnector(
+      ctx,
+      from,
+      to,
+      {
+        ...el.style,
+        stroke: ctx.strokeStyle,
+        strokeWidth: ctx.lineWidth,
+      },
+      el.startBinding?.anchor,
+      el.endBinding?.anchor,
+      el.type === "arrow",
+    );
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  if (el.locked) {
+    const badgeSize = 16 / zoom;
+    const bx = (from.x + to.x) / 2 - badgeSize / 2;
+    const by = (from.y + to.y) / 2 - badgeSize / 2;
+    renderLockBadge(ctx, bx, by, badgeSize, zoom);
+  } else if (isSingleSelection) {
+    const handleRadius = 5 / zoom;
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = "#4f46e5";
+    ctx.lineWidth = 1.5 / zoom;
+    [from, to].forEach((pt) => {
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, handleRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
+  }
+}
+
+function renderBoundingBoxSelection(
+  ctx: CanvasRenderingContext2D,
+  el: ElementData,
+  zoom: number,
+  isSingleSelection: boolean,
+): void {
+  ctx.strokeStyle = el.locked ? "#f43f5e" : "#4f46e5";
+  ctx.lineWidth = 1.5 / zoom;
+  ctx.strokeRect(el.x, el.y, el.w, el.h);
+
+  if (el.locked) {
+    const badgeSize = 16 / zoom;
+    const bx = el.x + el.w - badgeSize;
+    const by = el.y - badgeSize - 4 / zoom;
+    renderLockBadge(ctx, bx, by, badgeSize, zoom);
+  } else if (isSingleSelection) {
+    const handleSize = 8 / zoom;
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = "#4f46e5";
+    ctx.lineWidth = 1.5 / zoom;
+    const handles = getElementHandles(el);
+    handles.forEach((handle) => {
+      ctx.fillRect(
+        handle.x - handleSize / 2,
+        handle.y - handleSize / 2,
+        handleSize,
+        handleSize,
+      );
+      ctx.strokeRect(
+        handle.x - handleSize / 2,
+        handle.y - handleSize / 2,
+        handleSize,
+        handleSize,
+      );
+    });
+  }
+}
+
+function renderSelectedElements(
+  ctx: CanvasRenderingContext2D,
+  selectedElements: ElementData[],
+  zoom: number,
+  getElementById?: (id: string) => ElementData | null,
+): void {
+  if (selectedElements.length === 0) return;
+  const isSingle = selectedElements.length === 1;
+
+  selectedElements.forEach((el) => {
+    if (el.type === "line" || el.type === "arrow") {
+      renderConnectorSelection(ctx, el, zoom, isSingle, getElementById);
+    } else {
+      renderBoundingBoxSelection(ctx, el, zoom, isSingle);
+    }
+  });
+}
+
+function renderSelectionBox(
+  ctx: CanvasRenderingContext2D,
+  selectBox: SelectionOverlayRenderParams["selectBox"],
+  zoom: number,
+): void {
+  if (!selectBox) return;
+  ctx.fillStyle = "rgba(99, 102, 241, 0.08)";
+  ctx.strokeStyle = "#6366f1";
+  ctx.lineWidth = 1 / zoom;
+  ctx.fillRect(selectBox.x, selectBox.y, selectBox.w, selectBox.h);
+  ctx.strokeRect(selectBox.x, selectBox.y, selectBox.w, selectBox.h);
+}
+
+function renderSnapIndicators(
+  ctx: CanvasRenderingContext2D,
+  snapIndicator: SelectionOverlayRenderParams["snapIndicator"],
+  zoom: number,
+): void {
+  if (!snapIndicator) return;
+
+  if (snapIndicator.candidates.length > 0) {
+    const candRadius = 4.5 / zoom;
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = "#6366f1";
+    ctx.lineWidth = 1.5 / zoom;
+    snapIndicator.candidates.forEach((pt) => {
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, candRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
+  }
+
+  if (snapIndicator.active) {
+    const activePt = snapIndicator.active;
+    ctx.fillStyle = "rgba(99, 102, 241, 0.25)";
+    ctx.beginPath();
+    ctx.arc(activePt.x, activePt.y, 9 / zoom, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#4f46e5";
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1.5 / zoom;
+    ctx.beginPath();
+    ctx.arc(activePt.x, activePt.y, 5 / zoom, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(activePt.x, activePt.y, 2 / zoom, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+type DraftRenderer = (
+  ctx: CanvasRenderingContext2D,
+  draft: NonNullable<SelectionOverlayRenderParams["shapeDraft"]>,
+  style: SelectionOverlayRenderParams["draftStyle"],
+  zoom: number,
+) => void;
+
+const SHAPE_DRAFT_RENDERERS: Record<string, DraftRenderer> = {
+  arrow: (ctx, draft, style) => {
+    const fromX = draft.x;
+    const fromY = draft.y;
+    const toX = draft.x + draft.w;
+    const toY = draft.y + draft.h;
+    const headLen = Math.max(10, Math.min(16, (style.strokeWidth || 2) * 5));
+    const angle = Math.atan2(toY - fromY, toX - fromX);
+
+    ctx.beginPath();
+    ctx.moveTo(fromX, fromY);
+    ctx.lineTo(toX, toY);
+    ctx.strokeStyle = style.strokeColor || "#4f46e5";
+    ctx.lineWidth = style.strokeWidth || 2;
+    ctx.lineCap = "round";
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(toX, toY);
+    ctx.lineTo(
+      toX - headLen * Math.cos(angle - Math.PI / 6),
+      toY - headLen * Math.sin(angle - Math.PI / 6),
+    );
+    ctx.lineTo(
+      toX - headLen * Math.cos(angle + Math.PI / 6),
+      toY - headLen * Math.sin(angle + Math.PI / 6),
+    );
+    ctx.closePath();
+    ctx.fillStyle = style.strokeColor || "#4f46e5";
+    ctx.fill();
+  },
+  line: (ctx, draft, style) => {
+    ctx.beginPath();
+    ctx.moveTo(draft.x, draft.y);
+    ctx.lineTo(draft.x + draft.w, draft.y + draft.h);
+    ctx.strokeStyle = style.strokeColor || "#4f46e5";
+    ctx.lineWidth = style.strokeWidth || 2;
+    ctx.lineCap = "round";
+    ctx.stroke();
+  },
+  ellipse: (ctx, draft, _style, zoom) => {
+    ctx.strokeStyle = "#4f46e5";
+    ctx.lineWidth = 1.5 / zoom;
+    ctx.setLineDash([4 / zoom, 4 / zoom]);
+    ctx.beginPath();
+    const rx = Math.abs(draft.w / 2);
+    const ry = Math.abs(draft.h / 2);
+    ctx.ellipse(draft.x + rx, draft.y + ry, rx, ry, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  },
+  diamond: (ctx, draft, _style, zoom) => {
+    ctx.strokeStyle = "#4f46e5";
+    ctx.lineWidth = 1.5 / zoom;
+    ctx.setLineDash([4 / zoom, 4 / zoom]);
+    ctx.beginPath();
+    const midX = draft.x + draft.w / 2;
+    const midY = draft.y + draft.h / 2;
+    ctx.moveTo(midX, draft.y);
+    ctx.lineTo(draft.x + draft.w, midY);
+    ctx.lineTo(midX, draft.y + draft.h);
+    ctx.lineTo(draft.x, midY);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.setLineDash([]);
+  },
+  rect: (ctx, draft, _style, zoom) => {
+    ctx.strokeStyle = "#4f46e5";
+    ctx.lineWidth = 1.5 / zoom;
+    ctx.setLineDash([4 / zoom, 4 / zoom]);
+    ctx.beginPath();
+    ctx.roundRect(draft.x, draft.y, draft.w, draft.h, 6);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  },
+};
+
+function renderShapeDraft(
+  ctx: CanvasRenderingContext2D,
+  shapeDraft: SelectionOverlayRenderParams["shapeDraft"],
+  draftStyle: SelectionOverlayRenderParams["draftStyle"],
+  zoom: number,
+): void {
+  if (!shapeDraft) return;
+  const renderer = SHAPE_DRAFT_RENDERERS[shapeDraft.type] ?? SHAPE_DRAFT_RENDERERS.rect;
+  renderer(ctx, shapeDraft, draftStyle, zoom);
+}
+
+function renderFreehandDraft(
+  ctx: CanvasRenderingContext2D,
+  freehandDraft: number[],
+  draftStyle: SelectionOverlayRenderParams["draftStyle"],
+  userId: string,
+): void {
+  if (freehandDraft.length < 6) return;
+  const draftEl: ElementData = {
+    id: "draft",
+    type: "freehand",
+    x: 0,
+    y: 0,
+    w: 0,
+    h: 0,
+    rotation: 0,
+    z: "a0",
+    style: {
+      fill: "transparent",
+      stroke: draftStyle.strokeColor,
+      strokeWidth: draftStyle.strokeWidth,
+      opacity: draftStyle.opacity,
+    },
+    points: freehandDraft,
+    createdBy: userId,
+  };
+  drawFreehand(ctx, draftEl);
+}
+
 export function renderSelectionAndDraftsOverlay(
   params: SelectionOverlayRenderParams,
 ): void {
-  const {
-    ctx,
-    zoom,
-    selectedElements,
-    selectBox,
-    shapeDraft,
-    freehandDraft,
-    draftStyle,
-    userId,
-    guides,
-    snapIndicator,
-    getElementById,
-  } = params;
-
-  if (guides) {
-    ctx.save();
-    ctx.strokeStyle = "#ef4444";
-    ctx.lineWidth = 1 / zoom;
-    ctx.setLineDash([4 / zoom, 4 / zoom]);
-
-    guides.vertical?.forEach((x) => {
-      ctx.beginPath();
-      ctx.moveTo(x, -1e6);
-      ctx.lineTo(x, 1e6);
-      ctx.stroke();
-    });
-
-    guides.horizontal?.forEach((y) => {
-      ctx.beginPath();
-      ctx.moveTo(-1e6, y);
-      ctx.lineTo(1e6, y);
-      ctx.stroke();
-    });
-
-    ctx.restore();
-  }
-
-  if (selectedElements.length > 0) {
-    selectedElements.forEach((el) => {
-      if (el.type === "line" || el.type === "arrow") {
-        const { from, to } = resolveArrowEndpoints(el, getElementById);
-        ctx.save();
-        ctx.strokeStyle = el.locked
-          ? "rgba(244, 63, 94, 0.4)"
-          : "rgba(79, 70, 229, 0.4)";
-        ctx.lineWidth = Math.max((el.style.strokeWidth || 2) + 8 / zoom, 12 / zoom);
-        ctx.lineCap = "round";
-
-        if (el.startBinding || el.endBinding) {
-          drawCurvedConnector(
-            ctx,
-            from,
-            to,
-            {
-              ...el.style,
-              stroke: ctx.strokeStyle,
-              strokeWidth: ctx.lineWidth,
-            },
-            el.startBinding?.anchor,
-            el.endBinding?.anchor,
-            el.type === "arrow",
-          );
-        } else {
-          ctx.beginPath();
-          ctx.moveTo(from.x, from.y);
-          ctx.lineTo(to.x, to.y);
-          ctx.stroke();
-        }
-        ctx.restore();
-
-        if (el.locked) {
-          const badgeSize = 16 / zoom;
-          const bx = (from.x + to.x) / 2 - badgeSize / 2;
-          const by = (from.y + to.y) / 2 - badgeSize / 2;
-          ctx.fillStyle = "#f43f5e";
-          ctx.beginPath();
-          ctx.roundRect(bx, by, badgeSize, badgeSize, 4 / zoom);
-          ctx.fill();
-
-          ctx.strokeStyle = "#ffffff";
-          ctx.lineWidth = 1.2 / zoom;
-          ctx.beginPath();
-          ctx.arc(
-            bx + badgeSize / 2,
-            by + badgeSize * 0.42,
-            badgeSize * 0.18,
-            Math.PI,
-            0,
-            false,
-          );
-          ctx.stroke();
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(
-            bx + badgeSize * 0.28,
-            by + badgeSize * 0.42,
-            badgeSize * 0.44,
-            badgeSize * 0.36,
-          );
-        } else if (selectedElements.length === 1) {
-          const handleRadius = 5 / zoom;
-          ctx.fillStyle = "#ffffff";
-          ctx.strokeStyle = "#4f46e5";
-          ctx.lineWidth = 1.5 / zoom;
-          [from, to].forEach((pt) => {
-            ctx.beginPath();
-            ctx.arc(pt.x, pt.y, handleRadius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-          });
-        }
-        return;
-      }
-
-      ctx.strokeStyle = el.locked ? "#f43f5e" : "#4f46e5";
-      ctx.lineWidth = 1.5 / zoom;
-      ctx.strokeRect(el.x, el.y, el.w, el.h);
-
-      if (el.locked) {
-        const badgeSize = 16 / zoom;
-        const bx = el.x + el.w - badgeSize;
-        const by = el.y - badgeSize - 4 / zoom;
-        ctx.fillStyle = "#f43f5e";
-        ctx.beginPath();
-        ctx.roundRect(bx, by, badgeSize, badgeSize, 4 / zoom);
-        ctx.fill();
-
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 1.2 / zoom;
-        ctx.beginPath();
-        ctx.arc(
-          bx + badgeSize / 2,
-          by + badgeSize * 0.42,
-          badgeSize * 0.18,
-          Math.PI,
-          0,
-          false,
-        );
-        ctx.stroke();
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(
-          bx + badgeSize * 0.28,
-          by + badgeSize * 0.42,
-          badgeSize * 0.44,
-          badgeSize * 0.36,
-        );
-      } else if (selectedElements.length === 1) {
-        const handleSize = 8 / zoom;
-        ctx.fillStyle = "#ffffff";
-        ctx.strokeStyle = "#4f46e5";
-        ctx.lineWidth = 1.5 / zoom;
-        const handles = getElementHandles(el);
-        handles.forEach((handle) => {
-          ctx.fillRect(
-            handle.x - handleSize / 2,
-            handle.y - handleSize / 2,
-            handleSize,
-            handleSize,
-          );
-          ctx.strokeRect(
-            handle.x - handleSize / 2,
-            handle.y - handleSize / 2,
-            handleSize,
-            handleSize,
-          );
-        });
-      }
-    });
-  }
-
-  if (selectBox) {
-    ctx.fillStyle = "rgba(99, 102, 241, 0.08)";
-    ctx.strokeStyle = "#6366f1";
-    ctx.lineWidth = 1 / zoom;
-    ctx.fillRect(selectBox.x, selectBox.y, selectBox.w, selectBox.h);
-    ctx.strokeRect(selectBox.x, selectBox.y, selectBox.w, selectBox.h);
-  }
-
-  if (snapIndicator) {
-    if (snapIndicator.candidates.length > 0) {
-      const candRadius = 4.5 / zoom;
-      ctx.fillStyle = "#ffffff";
-      ctx.strokeStyle = "#6366f1";
-      ctx.lineWidth = 1.5 / zoom;
-      snapIndicator.candidates.forEach((pt) => {
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, candRadius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-      });
-    }
-
-    if (snapIndicator.active) {
-      const activePt = snapIndicator.active;
-      const pulseRadius = 9 / zoom;
-      const dotRadius = 5 / zoom;
-      const innerRadius = 2 / zoom;
-
-      ctx.fillStyle = "rgba(99, 102, 241, 0.25)";
-      ctx.beginPath();
-      ctx.arc(activePt.x, activePt.y, pulseRadius, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = "#4f46e5";
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 1.5 / zoom;
-      ctx.beginPath();
-      ctx.arc(activePt.x, activePt.y, dotRadius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = "#ffffff";
-      ctx.beginPath();
-      ctx.arc(activePt.x, activePt.y, innerRadius, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  if (shapeDraft) {
-    if (shapeDraft.type === "arrow") {
-      const fromX = shapeDraft.x;
-      const fromY = shapeDraft.y;
-      const toX = shapeDraft.x + shapeDraft.w;
-      const toY = shapeDraft.y + shapeDraft.h;
-      const headLen = Math.max(10, Math.min(16, (draftStyle.strokeWidth || 2) * 5));
-      const angle = Math.atan2(toY - fromY, toX - fromX);
-
-      ctx.beginPath();
-      ctx.moveTo(fromX, fromY);
-      ctx.lineTo(toX, toY);
-      ctx.strokeStyle = draftStyle.strokeColor || "#4f46e5";
-      ctx.lineWidth = draftStyle.strokeWidth || 2;
-      ctx.lineCap = "round";
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(toX, toY);
-      ctx.lineTo(
-        toX - headLen * Math.cos(angle - Math.PI / 6),
-        toY - headLen * Math.sin(angle - Math.PI / 6),
-      );
-      ctx.lineTo(
-        toX - headLen * Math.cos(angle + Math.PI / 6),
-        toY - headLen * Math.sin(angle + Math.PI / 6),
-      );
-      ctx.closePath();
-      ctx.fillStyle = draftStyle.strokeColor || "#4f46e5";
-      ctx.fill();
-    } else if (shapeDraft.type === "line") {
-      ctx.beginPath();
-      ctx.moveTo(shapeDraft.x, shapeDraft.y);
-      ctx.lineTo(shapeDraft.x + shapeDraft.w, shapeDraft.y + shapeDraft.h);
-      ctx.strokeStyle = draftStyle.strokeColor || "#4f46e5";
-      ctx.lineWidth = draftStyle.strokeWidth || 2;
-      ctx.lineCap = "round";
-      ctx.stroke();
-    } else if (shapeDraft.type === "ellipse") {
-      ctx.strokeStyle = "#4f46e5";
-      ctx.lineWidth = 1.5 / zoom;
-      ctx.setLineDash([4 / zoom, 4 / zoom]);
-      ctx.beginPath();
-      const rx = Math.abs(shapeDraft.w / 2);
-      const ry = Math.abs(shapeDraft.h / 2);
-      ctx.ellipse(
-        shapeDraft.x + rx,
-        shapeDraft.y + ry,
-        rx,
-        ry,
-        0,
-        0,
-        Math.PI * 2,
-      );
-      ctx.stroke();
-      ctx.setLineDash([]);
-    } else if (shapeDraft.type === "diamond") {
-      ctx.strokeStyle = "#4f46e5";
-      ctx.lineWidth = 1.5 / zoom;
-      ctx.setLineDash([4 / zoom, 4 / zoom]);
-      ctx.beginPath();
-      const midX = shapeDraft.x + shapeDraft.w / 2;
-      const midY = shapeDraft.y + shapeDraft.h / 2;
-      ctx.moveTo(midX, shapeDraft.y);
-      ctx.lineTo(shapeDraft.x + shapeDraft.w, midY);
-      ctx.lineTo(midX, shapeDraft.y + shapeDraft.h);
-      ctx.lineTo(shapeDraft.x, midY);
-      ctx.closePath();
-      ctx.stroke();
-      ctx.setLineDash([]);
-    } else {
-      ctx.strokeStyle = "#4f46e5";
-      ctx.lineWidth = 1.5 / zoom;
-      ctx.setLineDash([4 / zoom, 4 / zoom]);
-      ctx.beginPath();
-      ctx.roundRect(shapeDraft.x, shapeDraft.y, shapeDraft.w, shapeDraft.h, 6);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-  }
-
-  if (freehandDraft.length >= 6) {
-    const draftEl: ElementData = {
-      id: "draft",
-      type: "freehand",
-      x: 0,
-      y: 0,
-      w: 0,
-      h: 0,
-      rotation: 0,
-      z: "a0",
-      style: {
-        fill: "transparent",
-        stroke: draftStyle.strokeColor,
-        strokeWidth: draftStyle.strokeWidth,
-        opacity: draftStyle.opacity,
-      },
-      points: freehandDraft,
-      createdBy: userId,
-    };
-    drawFreehand(ctx, draftEl);
-  }
+  renderSmartGuides(params.ctx, params.guides, params.zoom);
+  renderSelectedElements(
+    params.ctx,
+    params.selectedElements,
+    params.zoom,
+    params.getElementById,
+  );
+  renderSelectionBox(params.ctx, params.selectBox, params.zoom);
+  renderSnapIndicators(params.ctx, params.snapIndicator, params.zoom);
+  renderShapeDraft(params.ctx, params.shapeDraft, params.draftStyle, params.zoom);
+  renderFreehandDraft(
+    params.ctx,
+    params.freehandDraft,
+    params.draftStyle,
+    params.userId,
+  );
 }

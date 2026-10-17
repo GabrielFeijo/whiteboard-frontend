@@ -139,6 +139,32 @@ export function resolveArrowEndpoints(
   return { from, to };
 }
 
+const ANCHOR_VECTORS: Record<AnchorPoint, { x: number; y: number }> = {
+  top: { x: 0, y: -1 },
+  bottom: { x: 0, y: 1 },
+  left: { x: -1, y: 0 },
+  right: { x: 1, y: 0 },
+};
+
+function computeControlPoint(
+  origin: Point,
+  anchor: AnchorPoint | undefined,
+  curvature: number,
+  fallbackDelta: { x: number; y: number },
+): Point {
+  if (anchor && ANCHOR_VECTORS[anchor]) {
+    const vec = ANCHOR_VECTORS[anchor];
+    return {
+      x: origin.x + vec.x * curvature,
+      y: origin.y + vec.y * curvature,
+    };
+  }
+  return {
+    x: origin.x + fallbackDelta.x,
+    y: origin.y + fallbackDelta.y,
+  };
+}
+
 export function drawCurvedConnector(
   ctx: CanvasRenderingContext2D,
   from: Point,
@@ -151,42 +177,27 @@ export function drawCurvedConnector(
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const dist = Math.hypot(dx, dy);
-
-  let cp1x = from.x;
-  let cp1y = from.y;
-  let cp2x = to.x;
-  let cp2y = to.y;
-
   const curvature = Math.max(30, dist * 0.35);
 
-  if (startAnchor === "top") cp1y -= curvature;
-  else if (startAnchor === "bottom") cp1y += curvature;
-  else if (startAnchor === "left") cp1x -= curvature;
-  else if (startAnchor === "right") cp1x += curvature;
-  else {
-    cp1x += dx * 0.25;
-    cp1y += dy * 0.1;
-  }
-
-  if (endAnchor === "top") cp2y -= curvature;
-  else if (endAnchor === "bottom") cp2y += curvature;
-  else if (endAnchor === "left") cp2x -= curvature;
-  else if (endAnchor === "right") cp2x += curvature;
-  else {
-    cp2x -= dx * 0.25;
-    cp2y -= dy * 0.1;
-  }
+  const cp1 = computeControlPoint(from, startAnchor, curvature, {
+    x: dx * 0.25,
+    y: dy * 0.1,
+  });
+  const cp2 = computeControlPoint(to, endAnchor, curvature, {
+    x: -dx * 0.25,
+    y: -dy * 0.1,
+  });
 
   ctx.beginPath();
   ctx.moveTo(from.x, from.y);
-  ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, to.x, to.y);
+  ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, to.x, to.y);
   ctx.strokeStyle = style.stroke || "#000000";
   ctx.lineWidth = style.strokeWidth || 2;
   ctx.lineCap = "round";
   ctx.stroke();
 
   if (withArrow) {
-    const arrowAngle = Math.atan2(to.y - cp2y, to.x - cp2x);
+    const arrowAngle = Math.atan2(to.y - cp2.y, to.x - cp2.x);
     const headLen = Math.max(10, Math.min(16, (style.strokeWidth || 2) * 5));
 
     ctx.beginPath();

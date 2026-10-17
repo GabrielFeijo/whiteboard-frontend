@@ -17,15 +17,32 @@ function isElementType(value: unknown): value is ElementType {
   );
 }
 
+function setIfDefined(map: Y.Map<unknown>, key: string, value: unknown): void {
+  if (value !== undefined) {
+    map.set(key, value);
+  }
+}
+
+function setOrDelete<T>(
+  map: Y.Map<unknown>,
+  key: string,
+  value: T | undefined | null,
+  isRemovable: (val: T) => boolean = (v) => v === null,
+): void {
+  if (value === undefined) return;
+  if (value === null || isRemovable(value)) {
+    map.delete(key);
+  } else {
+    map.set(key, value);
+  }
+}
+
 export class YjsElementAdapter {
   static toElementData(map: Y.Map<unknown>): ElementData | null {
     try {
       const raw = map.toJSON();
       const parsed = ElementDataSchema.safeParse(raw);
-      if (parsed.success) {
-        return parsed.data;
-      }
-      return null;
+      return parsed.success ? parsed.data : null;
     } catch {
       return null;
     }
@@ -52,14 +69,30 @@ export class YjsElementAdapter {
 
   static createYMap(data: ElementData): Y.Map<unknown> {
     const elementMap = new Y.Map<unknown>();
-    elementMap.set("id", data.id);
-    elementMap.set("type", data.type);
-    elementMap.set("x", Math.round(data.x));
-    elementMap.set("y", Math.round(data.y));
-    elementMap.set("w", Math.round(data.w));
-    elementMap.set("h", Math.round(data.h));
-    elementMap.set("rotation", data.rotation ?? 0);
-    elementMap.set("z", data.z);
+    const fields: Record<string, unknown> = {
+      id: data.id,
+      type: data.type,
+      x: Math.round(data.x),
+      y: Math.round(data.y),
+      w: Math.round(data.w),
+      h: Math.round(data.h),
+      rotation: data.rotation ?? 0,
+      z: data.z,
+      createdBy: data.createdBy,
+      text: data.text,
+      points: data.points,
+      parentId: data.parentId,
+      assetId: data.assetId,
+      groupId: data.groupId,
+      locked: data.locked,
+      startBinding: data.startBinding,
+      endBinding: data.endBinding,
+      src: data.src,
+    };
+
+    for (const [key, value] of Object.entries(fields)) {
+      setIfDefined(elementMap, key, value);
+    }
 
     const styleMap = new Y.Map<unknown>();
     styleMap.set("fill", data.style.fill);
@@ -68,20 +101,17 @@ export class YjsElementAdapter {
     styleMap.set("opacity", data.style.opacity);
     elementMap.set("style", styleMap);
 
-    if (data.text !== undefined) elementMap.set("text", data.text);
-    if (data.points !== undefined) elementMap.set("points", data.points);
-    if (data.parentId !== undefined) elementMap.set("parentId", data.parentId);
-    if (data.assetId !== undefined) elementMap.set("assetId", data.assetId);
-    if (data.groupId !== undefined) elementMap.set("groupId", data.groupId);
-    if (data.locked !== undefined) elementMap.set("locked", data.locked);
-    if (data.startBinding !== undefined)
-      elementMap.set("startBinding", data.startBinding);
-    if (data.endBinding !== undefined)
-      elementMap.set("endBinding", data.endBinding);
-    if (data.src !== undefined) elementMap.set("src", data.src);
-    elementMap.set("createdBy", data.createdBy);
-
     return elementMap;
+  }
+
+  static updateStyle(
+    styleMap: Y.Map<unknown>,
+    stylePatch?: Partial<ElementData["style"]>,
+  ): void {
+    if (!stylePatch) return;
+    for (const [key, value] of Object.entries(stylePatch)) {
+      setIfDefined(styleMap, key, value);
+    }
   }
 
   static updateYMap(
@@ -94,56 +124,23 @@ export class YjsElementAdapter {
     if (patch.y !== undefined) map.set("y", Math.round(patch.y));
     if (patch.w !== undefined) map.set("w", Math.round(patch.w));
     if (patch.h !== undefined) map.set("h", Math.round(patch.h));
-    if (patch.rotation !== undefined) map.set("rotation", patch.rotation);
-    if (patch.z !== undefined) map.set("z", patch.z);
-    if (patch.text !== undefined) map.set("text", patch.text);
-    if (patch.points !== undefined) map.set("points", patch.points);
-    if (patch.groupId !== undefined) {
-      if (patch.groupId === null || patch.groupId === "") {
-        map.delete("groupId");
-      } else {
-        map.set("groupId", patch.groupId);
-      }
-    }
-    if (patch.locked !== undefined) {
-      if (!patch.locked) {
-        map.delete("locked");
-      } else {
-        map.set("locked", true);
-      }
-    }
-    if (patch.startBinding !== undefined) {
-      if (patch.startBinding === null) {
-        map.delete("startBinding");
-      } else {
-        map.set("startBinding", patch.startBinding);
-      }
-    }
-    if (patch.endBinding !== undefined) {
-      if (patch.endBinding === null) {
-        map.delete("endBinding");
-      } else {
-        map.set("endBinding", patch.endBinding);
-      }
-    }
-    if (patch.src !== undefined) map.set("src", patch.src);
+
+    setIfDefined(map, "rotation", patch.rotation);
+    setIfDefined(map, "z", patch.z);
+    setIfDefined(map, "text", patch.text);
+    setIfDefined(map, "points", patch.points);
+    setIfDefined(map, "src", patch.src);
+
+    setOrDelete(map, "groupId", patch.groupId, (v) => !v);
+    setOrDelete(map, "locked", patch.locked, (v) => !v);
+    setOrDelete(map, "startBinding", patch.startBinding);
+    setOrDelete(map, "endBinding", patch.endBinding);
 
     if (patch.style) {
       const rawStyle = map.get("style");
-      let styleMap: Y.Map<unknown>;
-      if (isYMap(rawStyle)) {
-        styleMap = rawStyle;
-      } else {
-        styleMap = new Y.Map<unknown>();
-        map.set("style", styleMap);
-      }
-      if (patch.style.fill !== undefined) styleMap.set("fill", patch.style.fill);
-      if (patch.style.stroke !== undefined)
-        styleMap.set("stroke", patch.style.stroke);
-      if (patch.style.strokeWidth !== undefined)
-        styleMap.set("strokeWidth", patch.style.strokeWidth);
-      if (patch.style.opacity !== undefined)
-        styleMap.set("opacity", patch.style.opacity);
+      const styleMap = isYMap(rawStyle) ? rawStyle : new Y.Map<unknown>();
+      if (!isYMap(rawStyle)) map.set("style", styleMap);
+      YjsElementAdapter.updateStyle(styleMap, patch.style);
     }
   }
 }
