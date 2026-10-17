@@ -309,8 +309,10 @@ export class CanvasEngine
     const bounds = this.viewport.getVisibleWorldBounds(w, h);
     const elements = this.repository.getVisibleElements(bounds);
 
+    const getEl = (id: string) => this.repository.getById(id);
+    const onImgLoaded = () => this.setDirty();
     elements.forEach((el) => {
-      renderElement(this.contentCtx, el);
+      renderElement(this.contentCtx, el, getEl, onImgLoaded);
     });
 
     this.contentCtx.restore();
@@ -582,6 +584,11 @@ export class CanvasEngine
     if (this.role === "VIEWER") return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.distributeElements(selectedIds, direction);
+    this.isDirty = true;
+  }
+
+  syncConnectedArrows(movedIds: readonly string[]): void {
+    this.repository.syncConnectedArrows(movedIds);
     this.isDirty = true;
   }
 

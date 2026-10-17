@@ -3,8 +3,14 @@ import { drawArrow, drawDiamond, drawEllipse, drawLine, drawRect } from "./shape
 import { drawFreehand } from "./freehand-renderer";
 import { drawSticky } from "./sticky-renderer";
 import { drawText } from "./text-renderer";
+import { drawImageElement } from "./image-renderer";
 
-export function renderElement(ctx: CanvasRenderingContext2D, el: ElementData) {
+export function renderElement(
+  ctx: CanvasRenderingContext2D,
+  el: ElementData,
+  getElementById?: (id: string) => ElementData | null,
+  onImageLoaded?: () => void,
+) {
   ctx.save();
   ctx.globalAlpha = el.style.opacity ?? 1;
 
@@ -30,7 +36,7 @@ export function renderElement(ctx: CanvasRenderingContext2D, el: ElementData) {
       drawLine(ctx, el);
       break;
     case "arrow":
-      drawArrow(ctx, el);
+      drawArrow(ctx, el, getElementById);
       break;
     case "freehand":
       drawFreehand(ctx, el);
@@ -40,6 +46,9 @@ export function renderElement(ctx: CanvasRenderingContext2D, el: ElementData) {
       break;
     case "text":
       drawText(ctx, el);
+      break;
+    case "image":
+      drawImageElement(ctx, el, onImageLoaded);
       break;
   }
 

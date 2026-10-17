@@ -256,9 +256,11 @@ export class SelectTool implements CanvasTool {
     } else if (this.dragMode === "move") {
       this.host.undoManager.stopCapturing();
       this.moveInitialPositions.clear();
+      this.host.syncConnectedArrows(useCanvasStore.getState().selectedIds);
     } else if (this.dragMode === "resize") {
       this.host.undoManager.stopCapturing();
       this.resizeInfo = null;
+      this.host.syncConnectedArrows(useCanvasStore.getState().selectedIds);
     }
 
     this.dragMode = "none";

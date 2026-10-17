@@ -38,6 +38,7 @@ export interface CanvasHost {
   setGuides(guides: { vertical?: number[]; horizontal?: number[] } | null): void;
   getGuides(): { vertical?: number[]; horizontal?: number[] } | null;
   getOtherElements(excludeIds: readonly string[]): ElementData[];
+  syncConnectedArrows(movedIds: readonly string[]): void;
 }
 
 export interface CanvasTool {

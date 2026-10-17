@@ -1,4 +1,8 @@
 import { ElementData } from "../../shared";
+import {
+  drawCurvedArrow,
+  resolveArrowEndpoints,
+} from "@/canvas/connector-helper";
 
 export function drawRect(ctx: CanvasRenderingContext2D, el: ElementData) {
   ctx.beginPath();
@@ -62,12 +66,30 @@ export function drawLine(ctx: CanvasRenderingContext2D, el: ElementData) {
   ctx.stroke();
 }
 
-export function drawArrow(ctx: CanvasRenderingContext2D, el: ElementData) {
-  const fromX = el.x;
-  const fromY = el.y;
-  const toX = el.x + el.w;
-  const toY = el.y + el.h;
-  const headLen = 14;
+export function drawArrow(
+  ctx: CanvasRenderingContext2D,
+  el: ElementData,
+  getElementById?: (id: string) => ElementData | null,
+) {
+  const { from, to } = resolveArrowEndpoints(el, getElementById);
+
+  if (el.startBinding || el.endBinding) {
+    drawCurvedArrow(
+      ctx,
+      from,
+      to,
+      el.style,
+      el.startBinding?.anchor,
+      el.endBinding?.anchor,
+    );
+    return;
+  }
+
+  const fromX = from.x;
+  const fromY = from.y;
+  const toX = to.x;
+  const toY = to.y;
+  const headLen = Math.max(10, Math.min(16, (el.style.strokeWidth || 2) * 5));
   const angle = Math.atan2(toY - fromY, toX - fromX);
 
   ctx.beginPath();

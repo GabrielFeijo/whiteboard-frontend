@@ -13,6 +13,7 @@ import {
   calculateDistributedPositions,
   DistributionType,
 } from "@/canvas/alignment-helper";
+import { resolveArrowEndpoints } from "@/canvas/connector-helper";
 
 export type ElementStylePatch = Partial<ElementData["style"]>;
 
@@ -416,6 +417,55 @@ export class YjsElementRepository {
           if (data) {
             this.spatialIndex.remove(id);
             this.spatialIndex.insert(id, data.x, data.y, data.w, data.h);
+          }
+        }
+      });
+    }, LOCAL_ORIGIN);
+  }
+
+  syncConnectedArrows(movedIds: readonly string[]): void {
+    if (movedIds.length === 0) return;
+    const movedSet = new Set(movedIds);
+    const elementsMap = this.getElementsMap();
+    this.doc.transact(() => {
+      elementsMap.forEach((map, id) => {
+        const type = YjsElementAdapter.getType(map);
+        if (type === "arrow" || type === "line") {
+          const el = YjsElementAdapter.toElementData(map);
+          if (!el) return;
+          const affectsStart =
+            el.startBinding && movedSet.has(el.startBinding.elementId);
+          const affectsEnd =
+            el.endBinding && movedSet.has(el.endBinding.elementId);
+          if (affectsStart || affectsEnd) {
+            const endpoints = resolveArrowEndpoints(el, (eid) =>
+              this.getById(eid),
+            );
+            const minX = Math.min(endpoints.from.x, endpoints.to.x);
+            const minY = Math.min(endpoints.from.y, endpoints.to.y);
+            const width = Math.max(1, Math.abs(endpoints.to.x - endpoints.from.x));
+            const height = Math.max(1, Math.abs(endpoints.to.y - endpoints.from.y));
+            const points = [
+              endpoints.from.x,
+              endpoints.from.y,
+              endpoints.to.x,
+              endpoints.to.y,
+            ];
+            YjsElementAdapter.updateYMap(map, {
+              x: minX,
+              y: minY,
+              w: width,
+              h: height,
+              points,
+            });
+            this.spatialIndex.remove(id);
+            this.spatialIndex.insert(
+              id,
+              minX,
+              minY,
+              width,
+              height,
+            );
           }
         }
       });
