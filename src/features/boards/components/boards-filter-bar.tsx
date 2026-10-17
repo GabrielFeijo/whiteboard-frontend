@@ -1,5 +1,6 @@
 "use client";
 
+import { LayoutGrid, List, Search } from "lucide-react";
 import {
   useDashboardPrefsStore,
   type DashboardRoleFilter,
@@ -30,16 +31,7 @@ export function BoardsFilterBar({
     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-border-subtle">
       <div className="flex items-center gap-2">
         <div className="relative flex-1 sm:w-64">
-          <svg
-            className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-text-muted pointer-events-none"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.35-4.35" />
-          </svg>
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-text-muted pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
@@ -87,18 +79,7 @@ export function BoardsFilterBar({
                 : "text-text-muted hover:text-text-primary"
             }`}
           >
-            <svg
-              className="h-3.5 w-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <rect x="3" y="3" width="7" height="7" rx="1" />
-              <rect x="14" y="3" width="7" height="7" rx="1" />
-              <rect x="14" y="14" width="7" height="7" rx="1" />
-              <rect x="3" y="14" width="7" height="7" rx="1" />
-            </svg>
+            <LayoutGrid className="h-3.5 w-3.5" />
           </button>
           <button
             type="button"
@@ -111,20 +92,7 @@ export function BoardsFilterBar({
                 : "text-text-muted hover:text-text-primary"
             }`}
           >
-            <svg
-              className="h-3.5 w-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <line x1="8" y1="6" x2="21" y2="6" />
-              <line x1="8" y1="12" x2="21" y2="12" />
-              <line x1="8" y1="18" x2="21" y2="18" />
-              <line x1="3" y1="6" x2="3.01" y2="6" />
-              <line x1="3" y1="12" x2="3.01" y2="12" />
-              <line x1="3" y1="18" x2="3.01" y2="18" />
-            </svg>
+            <List className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { ArrowLeft, Download, History, Share2 } from "lucide-react";
 import type { Role } from "@/shared";
 import { LanguageSwitcher } from "@/components/preferences/language-switcher";
 import { Badge } from "@/components/ui/badge";
@@ -48,15 +49,7 @@ export function StudioHeader({
           aria-label={t("studio.header.backToBoards")}
           className="rounded-lg p-1 text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"
         >
-          <svg
-            className="h-4 w-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
+          <ArrowLeft className="h-4 w-4" />
         </button>
 
         <div className="h-3.5 w-px bg-border-subtle" />
@@ -94,16 +87,7 @@ export function StudioHeader({
             aria-label={t("studio.header.versionHistory")}
             className="rounded-lg p-1.5 text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors"
           >
-            <svg
-              className="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 14 14" />
-            </svg>
+            <History className="h-4 w-4" />
           </button>
 
           <button
@@ -113,15 +97,7 @@ export function StudioHeader({
             aria-label={t("studio.header.exportCanvas")}
             className="rounded-lg p-1.5 text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors"
           >
-            <svg
-              className="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
-            </svg>
+            <Download className="h-4 w-4" />
           </button>
 
           {boardRole === "OWNER" && (
@@ -131,15 +107,7 @@ export function StudioHeader({
               onClick={onOpenShare}
               className="gap-1.5 text-xs font-semibold"
             >
-              <svg
-                className="h-3.5 w-3.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13" />
-              </svg>
+              <Share2 className="h-3.5 w-3.5" />
               <span>{t("studio.header.share")}</span>
             </Button>
           )}

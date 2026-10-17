@@ -33,6 +33,10 @@
       "toggle": "Idioma",
       "select": "Selecionar Idioma"
     },
+    "theme": {
+      "toLight": "Mudar para modo claro",
+      "toDark": "Mudar para modo escuro"
+    },
     "toasts": {
       "linkCopied": "Link copiado para a área de transferência!",
       "boardDuplicated": "Quadro duplicado com sucesso!",

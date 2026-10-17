@@ -33,6 +33,10 @@
       "toggle": "Language",
       "select": "Select Language"
     },
+    "theme": {
+      "toLight": "Switch to light mode",
+      "toDark": "Switch to dark mode"
+    },
     "toasts": {
       "linkCopied": "Link copied to clipboard!",
       "boardDuplicated": "Board duplicated successfully!",

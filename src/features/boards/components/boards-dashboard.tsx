@@ -4,6 +4,7 @@ import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { Plus } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
@@ -112,15 +113,7 @@ export function BoardsDashboard({ user, initialBoards }: BoardsDashboardProps) {
             onClick={() => setIsCreating(true)}
             className="self-start sm:self-auto gap-2 shadow-sm font-medium"
           >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
+            <Plus className="h-4 w-4" />
             <span>{t("navigation.links.newBoard")}</span>
           </Button>
         </div>
