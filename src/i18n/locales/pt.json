@@ -57,11 +57,13 @@
   },
   "landing": {
     "hero": {
-      "badge": "Colaboração CRDT em Tempo Real • Latência Sub-100ms",
+      "badge": "Colaboração CRDT em Tempo Real • Latência Sub-15ms",
       "title": "Quadro Infinito Colaborativo para Equipes",
       "description": "Desenhe, escreva, faça brainstorming e crie em tempo real com sincronização sem conflitos, suporte offline e presença ao vivo.",
       "openDashboard": "Abrir Painel de Quadros",
-      "signIn": "Entrar"
+      "signIn": "Entrar",
+      "exploreMore": "Explorar Recursos",
+      "subnote": "Sem necessidade de cartão de crédito • 100% colaborativo"
     },
     "preview": {
       "noteTitle": "Arquitetura 2026",
@@ -69,9 +71,74 @@
       "restApi": "API REST",
       "collabServer": "Collab Server"
     },
+    "interactive": {
+      "toolSelect": "Selecionar",
+      "toolPen": "Caneta",
+      "toolRect": "Retângulo",
+      "toolSticky": "Nota Adesiva",
+      "activeUsers": "3 colaboradores ativos",
+      "latency": "12ms de latência",
+      "stickyNote": "Reunião de Planejamento 2026: Definir arquitetura CRDT distribuída",
+      "backendNode": "API Gateway",
+      "collabNode": "Cluster WebSocket",
+      "dbNode": "Armazenamento Yjs",
+      "tryDrag": "Arraste os nós e notas para interagir"
+    },
+    "features": {
+      "title": "Projetado para Velocidade e Precisão Criativa",
+      "subtitle": "Uma suíte de ferramentas visuais pensada para desenvolvedores, arquitetos de software e equipes de produto.",
+      "crdt": {
+        "title": "Sincronização CRDT Yjs",
+        "desc": "Resolução matemática de conflitos em tempo real. Edições simultâneas sem perdas ou bloqueios de tela."
+      },
+      "canvas": {
+        "title": "Canvas Infinito a 60 FPS",
+        "desc": "Navegação suave com pan e zoom acelerados por hardware. Renderização ultra veloz em qualquer resolução."
+      },
+      "presence": {
+        "title": "Presença & Modo Seguir",
+        "desc": "Acompanhe cursores ao vivo com cores individuais e navegue pelo ponto de vista de outro membro da equipe."
+      },
+      "history": {
+        "title": "Histórico & Exportação Vetorial",
+        "desc": "Viaje no tempo com snapshots imutáveis e exporte seus diagramas em SVG vetorial ou PNG de alta definição."
+      }
+    },
+    "useCases": {
+      "title": "Tudo o que sua equipe precisa em um só lugar",
+      "subtitle": "De rascunhos rápidos a diagramas arquiteturais complexos prontos para produção.",
+      "architecture": {
+        "tag": "Sistemas",
+        "title": "Diagramas de Arquitetura",
+        "desc": "Mapeie microserviços, fluxos de dados e APIs com formas geométricas e conexões ortogonais."
+      },
+      "brainstorming": {
+        "tag": "Ideação",
+        "title": "Brainstorming & Notas Rápidas",
+        "desc": "Organize ideias de sprints e dinâmicas com notas adesivas coloridas e votos colaborativos."
+      },
+      "wireframes": {
+        "tag": "Design",
+        "title": "Wireframes & Fluxogramas",
+        "desc": "Rascunhe interfaces, fluxos de decisão e jornadas de usuários de forma rápida e intuitiva."
+      }
+    },
+    "cta": {
+      "title": "Pronto para criar juntos em tempo real?",
+      "subtitle": "Crie sua conta gratuita em segundos ou abra seus quadros existentes diretamente no navegador.",
+      "primary": "Começar a Criar Gratuitamente",
+      "secondary": "Explorar Meus Quadros",
+      "badge": "Sem necessidade de cartão • 100% colaborativo"
+    },
     "footer": {
-      "brand": "Whiteboard Colaborativo em Tempo Real — Yjs CRDT",
-      "rights": "© 2026. Todos os direitos reservados."
+      "brand": "Whiteboard — Espaço Visual Colaborativo Infinito",
+      "rights": "© 2026 Whiteboard. Todos os direitos reservados.",
+      "status": "Todos os sistemas operacionais",
+      "links": {
+        "dashboard": "Painel de Quadros",
+        "login": "Entrar",
+        "register": "Criar Conta"
+      }
     }
   },
   "auth": {
