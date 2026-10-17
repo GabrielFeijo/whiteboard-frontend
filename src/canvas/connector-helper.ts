@@ -1,27 +1,25 @@
-import { AnchorPoint, ElementData } from "@/shared";
+import { AnchorPoint, ElementData, ElementType } from "@/shared";
 import { Point } from "@/canvas/viewport";
 
+const ANCHOR_CALCULATORS: Record<AnchorPoint, (el: ElementData) => Point> = {
+  [AnchorPoint.TOP]: (el) => ({ x: el.x + el.w / 2, y: el.y }),
+  [AnchorPoint.BOTTOM]: (el) => ({ x: el.x + el.w / 2, y: el.y + el.h }),
+  [AnchorPoint.LEFT]: (el) => ({ x: el.x, y: el.y + el.h / 2 }),
+  [AnchorPoint.RIGHT]: (el) => ({ x: el.x + el.w, y: el.y + el.h / 2 }),
+};
+
 export function getAnchorPoint(el: ElementData, anchor: AnchorPoint): Point {
-  switch (anchor) {
-    case "top":
-      return { x: el.x + el.w / 2, y: el.y };
-    case "bottom":
-      return { x: el.x + el.w / 2, y: el.y + el.h };
-    case "left":
-      return { x: el.x, y: el.y + el.h / 2 };
-    case "right":
-      return { x: el.x + el.w, y: el.y + el.h / 2 };
-  }
+  return ANCHOR_CALCULATORS[anchor](el);
 }
 
 export function getAllAnchorPoints(
   el: ElementData,
 ): { anchor: AnchorPoint; pt: Point }[] {
   return [
-    { anchor: "top", pt: getAnchorPoint(el, "top") },
-    { anchor: "right", pt: getAnchorPoint(el, "right") },
-    { anchor: "bottom", pt: getAnchorPoint(el, "bottom") },
-    { anchor: "left", pt: getAnchorPoint(el, "left") },
+    { anchor: AnchorPoint.TOP, pt: getAnchorPoint(el, AnchorPoint.TOP) },
+    { anchor: AnchorPoint.RIGHT, pt: getAnchorPoint(el, AnchorPoint.RIGHT) },
+    { anchor: AnchorPoint.BOTTOM, pt: getAnchorPoint(el, AnchorPoint.BOTTOM) },
+    { anchor: AnchorPoint.LEFT, pt: getAnchorPoint(el, AnchorPoint.LEFT) },
   ];
 }
 
@@ -34,7 +32,11 @@ export function findNearestAnchor(
   let minDistance = threshold;
 
   for (const el of elements) {
-    if (el.type === "arrow" || el.type === "line" || el.type === "freehand") {
+    if (
+      el.type === ElementType.ARROW ||
+      el.type === ElementType.LINE ||
+      el.type === ElementType.FREEHAND
+    ) {
       continue;
     }
 
@@ -94,7 +96,11 @@ export function getNearbyAnchorPoints(
 ): Point[] {
   const points: Point[] = [];
   for (const el of elements) {
-    if (el.type === "arrow" || el.type === "line" || el.type === "freehand") {
+    if (
+      el.type === ElementType.ARROW ||
+      el.type === ElementType.LINE ||
+      el.type === ElementType.FREEHAND
+    ) {
       continue;
     }
     const dx = Math.max(el.x - worldPt.x, 0, worldPt.x - (el.x + el.w));
@@ -140,10 +146,10 @@ export function resolveArrowEndpoints(
 }
 
 const ANCHOR_VECTORS: Record<AnchorPoint, { x: number; y: number }> = {
-  top: { x: 0, y: -1 },
-  bottom: { x: 0, y: 1 },
-  left: { x: -1, y: 0 },
-  right: { x: 1, y: 0 },
+  [AnchorPoint.TOP]: { x: 0, y: -1 },
+  [AnchorPoint.BOTTOM]: { x: 0, y: 1 },
+  [AnchorPoint.LEFT]: { x: -1, y: 0 },
+  [AnchorPoint.RIGHT]: { x: 1, y: 0 },
 };
 
 function computeControlPoint(
@@ -245,7 +251,7 @@ export function getElementBoundingBox(data: ElementData): {
   h: number;
 } {
   if (
-    (data.type === "line" || data.type === "arrow") &&
+    (data.type === ElementType.LINE || data.type === ElementType.ARROW) &&
     data.points &&
     data.points.length >= 4
   ) {

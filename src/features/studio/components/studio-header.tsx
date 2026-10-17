@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Download, History, Pencil, Share2, X } from "lucide-react";
-import type { Role } from "@/shared";
+import { Role } from "@/shared";
 import { LanguageSwitcher } from "@/components/preferences/language-switcher";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,7 @@ export function StudioHeader({
 }: StudioHeaderProps) {
   const { t } = useI18n();
   const router = useRouter();
-  const isReadOnly = boardRole === "VIEWER";
+  const isReadOnly = boardRole === Role.VIEWER;
 
   const [isEditing, setIsEditing] = useState(false);
   const [titleInput, setTitleInput] = useState(boardTitle);
@@ -191,7 +191,7 @@ export function StudioHeader({
             <Download className="h-4 w-4" />
           </button>
 
-          {boardRole === "OWNER" && (
+          {boardRole === Role.OWNER && (
             <Button
               variant="primary"
               size="sm"

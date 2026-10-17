@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getRoleBadgeVariant } from "@/features/boards/components/board-grid-card";
 import { useI18n } from "@/i18n/context";
+import type { TranslationKey } from "@/i18n/types";
+import { Role } from "@/shared";
 import type { BoardItem } from "@/server/dal/boards.dal";
 
 interface BoardListRowProps {
@@ -17,6 +19,12 @@ interface BoardListRowProps {
   onRename?: (board: BoardItem, e: React.MouseEvent) => void;
 }
 
+const ROLE_LABEL_KEYS: Record<Role, TranslationKey> = {
+  [Role.OWNER]: "dashboard.roles.OWNER",
+  [Role.EDITOR]: "dashboard.roles.EDITOR",
+  [Role.VIEWER]: "dashboard.roles.VIEWER",
+};
+
 export function BoardListRow({
   board,
   onOpen,
@@ -27,12 +35,8 @@ export function BoardListRow({
 }: BoardListRowProps) {
   const { t } = useI18n();
 
-  const roleLabel =
-    board.role === "OWNER"
-      ? t("dashboard.roles.OWNER")
-      : board.role === "EDITOR"
-        ? t("dashboard.roles.EDITOR")
-        : t("dashboard.roles.VIEWER");
+  const roleLabelKey = ROLE_LABEL_KEYS[board.role] ?? ROLE_LABEL_KEYS[Role.VIEWER];
+  const roleLabel = t(roleLabelKey);
 
   const formattedDate = new Date(board.updatedAt).toLocaleDateString(
     t("common.app.dateLocale")
@@ -69,7 +73,7 @@ export function BoardListRow({
           {t("dashboard.card.share")}
         </Button>
 
-        {onRename && (board.role === "OWNER" || board.role === "EDITOR") && (
+        {onRename && (board.role === Role.OWNER || board.role === Role.EDITOR) && (
           <button
             type="button"
             onClick={(e) => onRename(board, e)}
@@ -91,7 +95,7 @@ export function BoardListRow({
           <Copy className="h-3.5 w-3.5" />
         </button>
 
-        {board.role === "OWNER" && (
+        {board.role === Role.OWNER && (
           <button
             type="button"
             onClick={(e) => onDelete(board.id, e)}

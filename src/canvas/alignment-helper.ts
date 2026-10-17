@@ -1,14 +1,42 @@
 import { ElementData } from "@/shared";
 
-export type AlignmentType =
-  | "left"
-  | "center"
-  | "right"
-  | "top"
-  | "middle"
-  | "bottom";
+export const AlignmentType = {
+  LEFT: "left",
+  CENTER: "center",
+  RIGHT: "right",
+  TOP: "top",
+  MIDDLE: "middle",
+  BOTTOM: "bottom",
+} as const;
+export type AlignmentType = (typeof AlignmentType)[keyof typeof AlignmentType];
 
-export type DistributionType = "horizontal" | "vertical";
+export const DistributionType = {
+  HORIZONTAL: "horizontal",
+  VERTICAL: "vertical",
+} as const;
+export type DistributionType =
+  (typeof DistributionType)[keyof typeof DistributionType];
+
+interface AlignmentBounds {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  centerX: number;
+  centerY: number;
+}
+
+const ALIGNMENT_CALCULATORS: Record<
+  AlignmentType,
+  (el: ElementData, bounds: AlignmentBounds) => { x?: number; y?: number }
+> = {
+  [AlignmentType.LEFT]: (_el, b) => ({ x: b.minX }),
+  [AlignmentType.CENTER]: (el, b) => ({ x: Math.round(b.centerX - el.w / 2) }),
+  [AlignmentType.RIGHT]: (el, b) => ({ x: b.maxX - el.w }),
+  [AlignmentType.TOP]: (_el, b) => ({ y: b.minY }),
+  [AlignmentType.MIDDLE]: (el, b) => ({ y: Math.round(b.centerY - el.h / 2) }),
+  [AlignmentType.BOTTOM]: (el, b) => ({ y: b.maxY - el.h }),
+};
 
 export function calculateAlignedPositions(
   elements: readonly ElementData[],
@@ -29,31 +57,19 @@ export function calculateAlignedPositions(
     if (el.y + el.h > maxY) maxY = el.y + el.h;
   });
 
-  const centerX = (minX + maxX) / 2;
-  const centerY = (minY + maxY) / 2;
+  const bounds: AlignmentBounds = {
+    minX,
+    maxX,
+    minY,
+    maxY,
+    centerX: (minX + maxX) / 2,
+    centerY: (minY + maxY) / 2,
+  };
 
+  const calculator = ALIGNMENT_CALCULATORS[alignment];
   elements.forEach((el) => {
     if (el.locked) return;
-    switch (alignment) {
-      case "left":
-        result.set(el.id, { x: minX });
-        break;
-      case "center":
-        result.set(el.id, { x: Math.round(centerX - el.w / 2) });
-        break;
-      case "right":
-        result.set(el.id, { x: maxX - el.w });
-        break;
-      case "top":
-        result.set(el.id, { y: minY });
-        break;
-      case "middle":
-        result.set(el.id, { y: Math.round(centerY - el.h / 2) });
-        break;
-      case "bottom":
-        result.set(el.id, { y: maxY - el.h });
-        break;
-    }
+    result.set(el.id, calculator(el, bounds));
   });
 
   return result;
@@ -66,7 +82,7 @@ export function calculateDistributedPositions(
   const result = new Map<string, { x?: number; y?: number }>();
   if (elements.length < 3) return result;
 
-  if (direction === "horizontal") {
+  if (direction === DistributionType.HORIZONTAL) {
     const sorted = [...elements].sort((a, b) => a.x - b.x);
     const first = sorted[0];
     const last = sorted[sorted.length - 1];

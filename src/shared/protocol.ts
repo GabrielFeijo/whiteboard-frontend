@@ -24,8 +24,13 @@ export const LIMITS = {
   PRESENCE_TIMEOUT_MS: 30_000,
 } as const;
 
-export const ROLES = ['OWNER', 'EDITOR', 'VIEWER'] as const;
-export type Role = (typeof ROLES)[number];
+export const Role = {
+  OWNER: 'OWNER',
+  EDITOR: 'EDITOR',
+  VIEWER: 'VIEWER',
+} as const;
+export type Role = (typeof Role)[keyof typeof Role];
+export const ROLES = [Role.OWNER, Role.EDITOR, Role.VIEWER] as const;
 
 export const redisChannels = {
   updates: (boardId: string) => `board:${boardId}:updates`,

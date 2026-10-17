@@ -1,5 +1,5 @@
 import { Role } from "@/shared";
-import { Tool, useCanvasStore } from "@/store/canvas-store";
+import { CanvasToolType, type Tool, useCanvasStore } from "@/store/canvas-store";
 
 export interface KeyboardControllerTarget {
   readonly role: Role;
@@ -17,17 +17,17 @@ export interface KeyboardControllerTarget {
 }
 
 const SHORTCUT_TOOL_MAP: Record<string, Tool> = {
-  v: "select",
-  h: "hand",
-  r: "rect",
-  o: "ellipse",
-  d: "diamond",
-  l: "line",
-  a: "arrow",
-  p: "freehand",
-  s: "sticky",
-  t: "text",
-  e: "eraser",
+  v: CanvasToolType.SELECT,
+  h: CanvasToolType.HAND,
+  r: CanvasToolType.RECT,
+  o: CanvasToolType.ELLIPSE,
+  d: CanvasToolType.DIAMOND,
+  l: CanvasToolType.LINE,
+  a: CanvasToolType.ARROW,
+  p: CanvasToolType.FREEHAND,
+  s: CanvasToolType.STICKY,
+  t: CanvasToolType.TEXT,
+  e: CanvasToolType.ERASER,
 };
 
 const ARROW_DELTAS: Record<string, { dx: number; dy: number }> = {
@@ -58,8 +58,8 @@ function tryHandleEscape(ctx: ShortcutContext): boolean {
   if (ctx.store.selectedIds.length > 0) {
     ctx.store.setSelectedIds([]);
     ctx.target.setDirty?.();
-  } else if (ctx.store.activeTool !== "select") {
-    ctx.store.setActiveTool("select");
+  } else if (ctx.store.activeTool !== CanvasToolType.SELECT) {
+    ctx.store.setActiveTool(CanvasToolType.SELECT);
   }
   return true;
 }
@@ -67,7 +67,7 @@ function tryHandleEscape(ctx: ShortcutContext): boolean {
 function tryHandleNudge(ctx: ShortcutContext): boolean {
   const dir = ARROW_DELTAS[ctx.event.key];
   if (!dir || ctx.store.selectedIds.length === 0) return false;
-  if (ctx.target.role === "VIEWER") return true;
+  if (ctx.target.role === Role.VIEWER) return true;
   ctx.event.preventDefault();
   const step = ctx.event.shiftKey ? 10 : 1;
   ctx.target.nudgeSelected?.(dir.dx * step, dir.dy * step);
@@ -77,7 +77,7 @@ function tryHandleNudge(ctx: ShortcutContext): boolean {
 function tryHandleDelete(ctx: ShortcutContext): boolean {
   if (ctx.event.key !== "Delete" && ctx.event.key !== "Backspace") return false;
   if (ctx.store.selectedIds.length === 0) return false;
-  if (ctx.target.role !== "VIEWER") {
+  if (ctx.target.role !== Role.VIEWER) {
     ctx.target.deleteSelected();
   }
   return true;
@@ -148,7 +148,7 @@ export class CanvasKeyboardController {
   };
 
   private onPaste = (e: ClipboardEvent): void => {
-    if (isEditableDomElement(e.target) || this.target.role === "VIEWER") return;
+    if (isEditableDomElement(e.target) || this.target.role === Role.VIEWER) return;
 
     const files = e.clipboardData?.files;
     if (files && files.length > 0) {

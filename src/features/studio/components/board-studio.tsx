@@ -27,6 +27,7 @@ import { useI18n } from "@/i18n/context";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { SessionUser } from "@/server/auth/session";
 import type { BoardDetail } from "@/server/dal/boards.dal";
+import { Role } from "@/shared";
 import { useCanvasStore } from "@/store/canvas-store";
 
 interface BoardStudioProps {
@@ -168,7 +169,7 @@ export function BoardStudio({
     );
   }
 
-  const isReadOnly = board.role === "VIEWER";
+  const isReadOnly = board.role === Role.VIEWER;
 
   const handleRenameBoard = async (newTitle: string) => {
     try {

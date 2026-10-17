@@ -12,6 +12,7 @@ import {
   type InviteEmailFormValues,
 } from "@/features/share/schemas/share.schema";
 import { useI18n } from "@/i18n/context";
+import { Role } from "@/shared";
 
 interface ShareEmailTabProps {
   boardId: string;
@@ -31,7 +32,7 @@ export function ShareEmailTab({ boardId }: ShareEmailTabProps) {
     resolver: zodResolver(inviteEmailSchema),
     defaultValues: {
       email: "",
-      role: "EDITOR",
+      role: Role.EDITOR,
     },
   });
 
@@ -76,8 +77,8 @@ export function ShareEmailTab({ boardId }: ShareEmailTabProps) {
             {...register("role")}
             className="rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-xs font-medium text-text-primary outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/20 shadow-2xs"
           >
-            <option value="EDITOR">{t("shareModal.permissions.canEdit")}</option>
-            <option value="VIEWER">{t("shareModal.permissions.canView")}</option>
+            <option value={Role.EDITOR}>{t("shareModal.permissions.canEdit")}</option>
+            <option value={Role.VIEWER}>{t("shareModal.permissions.canView")}</option>
           </select>
           <Button
             type="submit"

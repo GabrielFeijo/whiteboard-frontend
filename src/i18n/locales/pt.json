@@ -196,6 +196,7 @@
       }
     },
     "card": {
+      "open": "Abrir",
       "updatedAt": "Atualizado em {date}",
       "share": "Compartilhar",
       "rename": "Renomear"

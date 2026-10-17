@@ -11,11 +11,27 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/i18n/context";
 
+export const HeroItemType = {
+  STICKY: "sticky",
+  SERVICE: "service",
+  GATEWAY: "gateway",
+  DATABASE: "database",
+} as const;
+export type HeroItemType = (typeof HeroItemType)[keyof typeof HeroItemType];
+
+export const HeroToolType = {
+  SELECT: "select",
+  PEN: "pen",
+  RECT: "rect",
+  STICKY: "sticky",
+} as const;
+export type HeroToolType = (typeof HeroToolType)[keyof typeof HeroToolType];
+
 interface DraggableItem {
   id: string;
   x: number;
   y: number;
-  type: "sticky" | "service" | "gateway" | "database";
+  type: HeroItemType;
   title: string;
   subtitle?: string;
   badge?: string;
@@ -28,7 +44,7 @@ const INITIAL_ITEMS: DraggableItem[] = [
     id: "note-1",
     x: 40,
     y: 35,
-    type: "sticky",
+    type: HeroItemType.STICKY,
     title: "Sprint 2026",
     subtitle: "Yjs CRDT state vectors + distributed WebSocket mesh",
     hasIcon: true,
@@ -38,7 +54,7 @@ const INITIAL_ITEMS: DraggableItem[] = [
     id: "gateway-1",
     x: 290,
     y: 50,
-    type: "gateway",
+    type: HeroItemType.GATEWAY,
     title: "API Gateway",
     subtitle: "Auth & Rate Limit",
     badge: ":3001",
@@ -48,7 +64,7 @@ const INITIAL_ITEMS: DraggableItem[] = [
     id: "service-1",
     x: 480,
     y: 90,
-    type: "service",
+    type: HeroItemType.SERVICE,
     title: "WebSocket Mesh",
     subtitle: "CRDT Awareness Protocol",
     badge: ":3002",
@@ -58,7 +74,7 @@ const INITIAL_ITEMS: DraggableItem[] = [
     id: "db-1",
     x: 320,
     y: 190,
-    type: "database",
+    type: HeroItemType.DATABASE,
     title: "Yjs State Vectors",
     subtitle: "Immutable Snapshots",
     badge: "RocksDB / Redis",
@@ -69,7 +85,7 @@ const INITIAL_ITEMS: DraggableItem[] = [
 export function HeroCanvasInteractive() {
   const { t } = useI18n();
   const [items, setItems] = useState<DraggableItem[]>(INITIAL_ITEMS);
-  const [activeTool, setActiveTool] = useState<"select" | "pen" | "rect" | "sticky">("select");
+  const [activeTool, setActiveTool] = useState<HeroToolType>(HeroToolType.SELECT);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const dragStartOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -159,9 +175,9 @@ export function HeroCanvasInteractive() {
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 rounded-xl border border-border-strong bg-surface-raised px-2 py-1 shadow-md">
           <button
             type="button"
-            onClick={() => setActiveTool("select")}
+            onClick={() => setActiveTool(HeroToolType.SELECT)}
             title={t("landing.interactive.toolSelect")}
-            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${activeTool === "select"
+            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${activeTool === HeroToolType.SELECT
               ? "bg-accent-primary text-white"
               : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
               }`}
@@ -171,9 +187,9 @@ export function HeroCanvasInteractive() {
 
           <button
             type="button"
-            onClick={() => setActiveTool("pen")}
+            onClick={() => setActiveTool(HeroToolType.PEN)}
             title={t("landing.interactive.toolPen")}
-            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${activeTool === "pen"
+            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${activeTool === HeroToolType.PEN
               ? "bg-accent-primary text-white"
               : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
               }`}
@@ -183,9 +199,9 @@ export function HeroCanvasInteractive() {
 
           <button
             type="button"
-            onClick={() => setActiveTool("rect")}
+            onClick={() => setActiveTool(HeroToolType.RECT)}
             title={t("landing.interactive.toolRect")}
-            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${activeTool === "rect"
+            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${activeTool === HeroToolType.RECT
               ? "bg-accent-primary text-white"
               : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
               }`}
@@ -195,9 +211,9 @@ export function HeroCanvasInteractive() {
 
           <button
             type="button"
-            onClick={() => setActiveTool("sticky")}
+            onClick={() => setActiveTool(HeroToolType.STICKY)}
             title={t("landing.interactive.toolSticky")}
-            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${activeTool === "sticky"
+            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${activeTool === HeroToolType.STICKY
               ? "bg-accent-primary text-white"
               : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
               }`}

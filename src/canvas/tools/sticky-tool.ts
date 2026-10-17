@@ -1,15 +1,15 @@
 import { nanoid } from "nanoid";
 import { CanvasHost, CanvasTool, ToolContext } from "./tool.interface";
-import { ElementData } from "../../shared";
-import { useCanvasStore } from "../../store/canvas-store";
+import { ElementData, ElementType, Role } from "../../shared";
+import { CanvasToolType, useCanvasStore } from "../../store/canvas-store";
 
 export class StickyTool implements CanvasTool {
-  readonly id = "sticky";
+  readonly id = CanvasToolType.STICKY;
 
   constructor(private readonly host: CanvasHost) {}
 
   onPointerDown(ctx: ToolContext): void {
-    if (this.host.role === "VIEWER") return;
+    if (this.host.role === Role.VIEWER) return;
 
     const id = nanoid(10);
     const z = this.host.getNextZIndex();
@@ -17,7 +17,7 @@ export class StickyTool implements CanvasTool {
 
     const element: ElementData = {
       id,
-      type: "sticky",
+      type: ElementType.STICKY,
       x: Math.round(ctx.worldPt.x - 100),
       y: Math.round(ctx.worldPt.y - 100),
       w: 200,
@@ -37,7 +37,7 @@ export class StickyTool implements CanvasTool {
     this.host.commitElement(element);
     store.setSelectedIds([id]);
     this.host.syncStoreWithSelection([id]);
-    store.setActiveTool("select");
+    store.setActiveTool(CanvasToolType.SELECT);
     this.host.events.emit("focusTextInput", { elementId: id });
     this.host.setDirty();
   }

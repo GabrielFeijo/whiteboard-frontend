@@ -5,9 +5,17 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, ChevronDown, Circle, Diamond, Minus, Square } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useI18n } from "@/i18n/context";
-import { useCanvasStore, type ToolType } from "@/store/canvas-store";
+import { CanvasToolType, useCanvasStore, type ToolType } from "@/store/canvas-store";
 
-export type ShapeToolType = "rect" | "ellipse" | "diamond" | "arrow" | "line";
+export const ShapeToolType = {
+  RECT: CanvasToolType.RECT,
+  ELLIPSE: CanvasToolType.ELLIPSE,
+  DIAMOND: CanvasToolType.DIAMOND,
+  ARROW: CanvasToolType.ARROW,
+  LINE: CanvasToolType.LINE,
+} as const;
+
+export type ShapeToolType = (typeof ShapeToolType)[keyof typeof ShapeToolType];
 
 interface ShapeToolMenuProps {
   readOnly?: boolean;
@@ -17,7 +25,7 @@ export function ShapeToolMenu({ readOnly }: ShapeToolMenuProps) {
   const { activeTool, setActiveTool } = useCanvasStore();
   const { t } = useI18n();
 
-  const [lastShapeTool, setLastShapeTool] = useState<ShapeToolType>("rect");
+  const [lastShapeTool, setLastShapeTool] = useState<ShapeToolType>(ShapeToolType.RECT);
   const [isShapeMenuOpen, setIsShapeMenuOpen] = useState(false);
   const shapeMenuRef = useRef<HTMLDivElement>(null);
 
@@ -38,31 +46,31 @@ export function ShapeToolMenu({ readOnly }: ShapeToolMenuProps) {
     icon: React.ReactNode;
   }[] = [
     {
-      id: "rect",
+      id: ShapeToolType.RECT,
       label: t("studio.toolbar.tools.rect"),
       shortcut: "R",
       icon: <Square className="h-4 w-4" />,
     },
     {
-      id: "ellipse",
+      id: ShapeToolType.ELLIPSE,
       label: t("studio.toolbar.tools.ellipse"),
       shortcut: "O",
       icon: <Circle className="h-4 w-4" />,
     },
     {
-      id: "diamond",
+      id: ShapeToolType.DIAMOND,
       label: t("studio.toolbar.tools.diamond"),
       shortcut: "D",
       icon: <Diamond className="h-4 w-4" />,
     },
     {
-      id: "arrow",
+      id: ShapeToolType.ARROW,
       label: t("studio.toolbar.tools.arrow"),
       shortcut: "A",
       icon: <ArrowUpRight className="h-4 w-4" />,
     },
     {
-      id: "line",
+      id: ShapeToolType.LINE,
       label: t("studio.toolbar.tools.line"),
       shortcut: "L",
       icon: <Minus className="h-4 w-4" />,

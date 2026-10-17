@@ -1,5 +1,5 @@
 import * as Y from "yjs";
-import { ElementData, getDocRoots, Role } from "@/shared";
+import { ElementData, ElementType, getDocRoots, Role } from "@/shared";
 import { Point, Viewport } from "@/canvas/viewport";
 import { SpatialIndex } from "@/canvas/spatial-index";
 import { renderElement } from "@/canvas/renderers/element-renderer";
@@ -7,7 +7,7 @@ import { renderBackgroundGrid } from "@/canvas/renderers/background-grid-rendere
 import { renderSelectionAndDraftsOverlay } from "@/canvas/renderers/selection-overlay-renderer";
 import { renderRemoteCursorsOverlay } from "@/canvas/renderers/remote-cursors-renderer";
 import { getElementBoundingBox } from "@/canvas/connector-helper";
-import { Tool, useCanvasStore } from "@/store/canvas-store";
+import { CanvasToolType, Tool, useCanvasStore } from "@/store/canvas-store";
 import { LocalUndoManager } from "@/collab/undo-manager";
 import { SyncProvider } from "@/collab/sync-provider";
 import {
@@ -108,17 +108,17 @@ export class CanvasEngine
     this.overlayCtx = overlayCtx;
 
     this.tools = new Map<Tool, CanvasTool>([
-      ["select", new SelectTool(this)],
-      ["hand", new HandTool(this)],
-      ["rect", new ShapeTool("rect", this)],
-      ["ellipse", new ShapeTool("ellipse", this)],
-      ["diamond", new ShapeTool("diamond", this)],
-      ["line", new ShapeTool("line", this)],
-      ["arrow", new ShapeTool("arrow", this)],
-      ["freehand", new FreehandTool(this)],
-      ["sticky", new StickyTool(this)],
-      ["text", new TextTool(this)],
-      ["eraser", new EraserTool(this)],
+      [CanvasToolType.SELECT, new SelectTool(this)],
+      [CanvasToolType.HAND, new HandTool(this)],
+      [CanvasToolType.RECT, new ShapeTool(ElementType.RECT, this)],
+      [CanvasToolType.ELLIPSE, new ShapeTool(ElementType.ELLIPSE, this)],
+      [CanvasToolType.DIAMOND, new ShapeTool(ElementType.DIAMOND, this)],
+      [CanvasToolType.LINE, new ShapeTool(ElementType.LINE, this)],
+      [CanvasToolType.ARROW, new ShapeTool(ElementType.ARROW, this)],
+      [CanvasToolType.FREEHAND, new FreehandTool(this)],
+      [CanvasToolType.STICKY, new StickyTool(this)],
+      [CanvasToolType.TEXT, new TextTool(this)],
+      [CanvasToolType.ERASER, new EraserTool(this)],
     ]);
 
     this.resizeCanvases();
@@ -177,7 +177,7 @@ export class CanvasEngine
 
   getActiveTool(): CanvasTool {
     const activeToolId = useCanvasStore.getState().activeTool;
-    return this.tools.get(activeToolId) ?? this.tools.get("select")!;
+    return this.tools.get(activeToolId) ?? this.tools.get(CanvasToolType.SELECT)!;
   }
 
   onCursorWorldMove(worldPt: Point): void {
@@ -193,12 +193,12 @@ export class CanvasEngine
   }
 
   onDoubleClickAtWorld(worldPt: Point): void {
-    if (this.role === "VIEWER") return;
+    if (this.role === Role.VIEWER) return;
     const hitId = this.hitTest(worldPt);
     if (!hitId) return;
 
     const el = this.repository.getById(hitId);
-    if (el?.type === "sticky" || el?.type === "text") {
+    if (el?.type === ElementType.STICKY || el?.type === ElementType.TEXT) {
       useCanvasStore.getState().setSelectedIds([hitId]);
       this.syncStoreWithSelection([hitId]);
       this.events.emit("focusTextInput", { elementId: hitId });
@@ -484,14 +484,14 @@ export class CanvasEngine
   }
 
   public updateSelectedStyle(styleUpdates: Partial<ElementStyle>): void {
-    if (this.role === "VIEWER") return;
+    if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.updateStyleForIds(selectedIds, styleUpdates);
     this.isDirty = true;
   }
 
   public updateSelectedText(text: string): void {
-    if (this.role === "VIEWER") return;
+    if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.updateTextForIds(selectedIds, text);
     this.isDirty = true;
@@ -506,7 +506,7 @@ export class CanvasEngine
   }
 
   public nudgeSelected(dx: number, dy: number): void {
-    if (this.role === "VIEWER") return;
+    if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.nudgeElements(selectedIds, dx, dy);
     this.isDirty = true;
@@ -517,7 +517,7 @@ export class CanvasEngine
   }
 
   public deleteSelected(): void {
-    if (this.role === "VIEWER") return;
+    if (this.role === Role.VIEWER) return;
     const store = useCanvasStore.getState();
     this.repository.deleteByIds(store.selectedIds);
     store.setSelectedIds([]);
@@ -525,7 +525,7 @@ export class CanvasEngine
   }
 
   public duplicateSelected(): void {
-    if (this.role === "VIEWER") return;
+    if (this.role === Role.VIEWER) return;
     const store = useCanvasStore.getState();
     const newSelectedIds = this.repository.duplicateByIds(
       store.selectedIds,
@@ -539,21 +539,21 @@ export class CanvasEngine
   }
 
   public bringSelectedToFront(): void {
-    if (this.role === "VIEWER") return;
+    if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.bringToFront(selectedIds);
     this.isDirty = true;
   }
 
   public sendSelectedToBack(): void {
-    if (this.role === "VIEWER") return;
+    if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.sendToBack(selectedIds);
     this.isDirty = true;
   }
 
   public groupSelected(): void {
-    if (this.role === "VIEWER") return;
+    if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     const groupId = this.repository.groupElements(selectedIds);
     if (groupId) {
@@ -562,28 +562,28 @@ export class CanvasEngine
   }
 
   public ungroupSelected(): void {
-    if (this.role === "VIEWER") return;
+    if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.ungroupElements(selectedIds);
     this.isDirty = true;
   }
 
   public lockSelected(): void {
-    if (this.role === "VIEWER") return;
+    if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.lockElements(selectedIds);
     this.isDirty = true;
   }
 
   public unlockSelected(): void {
-    if (this.role === "VIEWER") return;
+    if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.unlockElements(selectedIds);
     this.isDirty = true;
   }
 
   public toggleLockSelected(): void {
-    if (this.role === "VIEWER") return;
+    if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.toggleLockElements(selectedIds);
     this.isDirty = true;
@@ -627,14 +627,14 @@ export class CanvasEngine
   }
 
   public alignSelected(alignment: AlignmentType): void {
-    if (this.role === "VIEWER") return;
+    if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.alignElements(selectedIds, alignment);
     this.isDirty = true;
   }
 
   public distributeSelected(direction: DistributionType): void {
-    if (this.role === "VIEWER") return;
+    if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.distributeElements(selectedIds, direction);
     this.isDirty = true;
@@ -649,7 +649,7 @@ export class CanvasEngine
     file: File,
     targetWorldPt?: Point,
   ): Promise<string | null> {
-    if (this.role === "VIEWER") return null;
+    if (this.role === Role.VIEWER) return null;
     if (!file.type.startsWith("image/") && !file.name.endsWith(".svg")) {
       return null;
     }
@@ -671,7 +671,7 @@ export class CanvasEngine
 
       const element: ElementData = {
         id,
-        type: "image",
+        type: ElementType.IMAGE,
         x: placement.x,
         y: placement.y,
         w: placement.w,

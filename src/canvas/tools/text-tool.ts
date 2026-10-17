@@ -1,15 +1,15 @@
 import { nanoid } from "nanoid";
 import { CanvasHost, CanvasTool, ToolContext } from "./tool.interface";
-import { ElementData } from "../../shared";
-import { useCanvasStore } from "../../store/canvas-store";
+import { ElementData, ElementType, Role } from "../../shared";
+import { CanvasToolType, useCanvasStore } from "../../store/canvas-store";
 
 export class TextTool implements CanvasTool {
-  readonly id = "text";
+  readonly id = CanvasToolType.TEXT;
 
   constructor(private readonly host: CanvasHost) {}
 
   onPointerDown(ctx: ToolContext): void {
-    if (this.host.role === "VIEWER") return;
+    if (this.host.role === Role.VIEWER) return;
 
     const id = nanoid(10);
     const z = this.host.getNextZIndex();
@@ -17,7 +17,7 @@ export class TextTool implements CanvasTool {
 
     const element: ElementData = {
       id,
-      type: "text",
+      type: ElementType.TEXT,
       x: Math.round(ctx.worldPt.x),
       y: Math.round(ctx.worldPt.y),
       w: 120,
@@ -37,7 +37,7 @@ export class TextTool implements CanvasTool {
     this.host.commitElement(element);
     store.setSelectedIds([id]);
     this.host.syncStoreWithSelection([id]);
-    store.setActiveTool("select");
+    store.setActiveTool(CanvasToolType.SELECT);
     this.host.events.emit("focusTextInput", { elementId: id });
     this.host.setDirty();
   }

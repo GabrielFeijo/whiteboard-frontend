@@ -1,7 +1,7 @@
 "use client";
 
 import { Sun, Moon } from "lucide-react";
-import { useTheme } from "../../providers/theme-provider";
+import { Theme, useTheme } from "../../providers/theme-provider";
 import { Tooltip } from "./tooltip";
 import { useI18n } from "@/i18n";
 
@@ -20,15 +20,15 @@ export function ThemeToggle({
   const { t } = useI18n();
 
   const toggleNext = () => {
-    if (resolvedTheme === "dark") {
-      setTheme("light");
+    if (resolvedTheme === Theme.DARK) {
+      setTheme(Theme.LIGHT);
     } else {
-      setTheme("dark");
+      setTheme(Theme.DARK);
     }
   };
 
   const label =
-    resolvedTheme === "dark"
+    resolvedTheme === Theme.DARK
       ? t("common.theme.toLight")
       : t("common.theme.toDark");
 
@@ -39,7 +39,7 @@ export function ThemeToggle({
         className={`flex h-8 w-8 items-center justify-center rounded-lg border border-border-subtle bg-surface text-text-secondary transition-all hover:bg-surface-hover hover:text-text-primary hover:border-border-strong active:scale-95 shadow-2xs ${className}`}
         aria-label={label}
       >
-        {resolvedTheme === "dark" ? (
+        {resolvedTheme === Theme.DARK ? (
           <Moon className="h-4 w-4" />
         ) : (
           <Sun className="h-4 w-4" />

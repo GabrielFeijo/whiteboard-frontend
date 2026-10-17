@@ -1,4 +1,4 @@
-import { ElementData } from "@/shared";
+import { ElementData, ElementType } from "@/shared";
 import { getElementHandles } from "@/canvas/resize-helper";
 import { drawFreehand } from "@/canvas/renderers/freehand-renderer";
 import { Point } from "@/canvas/viewport";
@@ -121,7 +121,7 @@ function renderConnectorSelection(
       },
       el.startBinding?.anchor,
       el.endBinding?.anchor,
-      el.type === "arrow",
+      el.type === ElementType.ARROW,
     );
   } else {
     ctx.beginPath();
@@ -198,7 +198,7 @@ function renderSelectedElements(
   const isSingle = selectedElements.length === 1;
 
   selectedElements.forEach((el) => {
-    if (el.type === "line" || el.type === "arrow") {
+    if (el.type === ElementType.LINE || el.type === ElementType.ARROW) {
       renderConnectorSelection(ctx, el, zoom, isSingle, getElementById);
     } else {
       renderBoundingBoxSelection(ctx, el, zoom, isSingle);
@@ -365,7 +365,7 @@ function renderFreehandDraft(
   if (freehandDraft.length < 6) return;
   const draftEl: ElementData = {
     id: "draft",
-    type: "freehand",
+    type: ElementType.FREEHAND,
     x: 0,
     y: 0,
     w: 0,

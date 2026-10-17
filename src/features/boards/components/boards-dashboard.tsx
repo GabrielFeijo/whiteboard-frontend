@@ -21,9 +21,13 @@ import { BoardsFilterBar } from "@/features/boards/components/boards-filter-bar"
 import { BoardsHeader } from "@/features/boards/components/boards-header";
 import { CreateBoardModal } from "@/features/boards/components/create-board-modal";
 import { RenameBoardModal } from "@/features/boards/components/rename-board-modal";
-import { useDashboardPrefsStore } from "@/features/boards/store/dashboard-prefs-store";
+import {
+  useDashboardPrefsStore,
+  DashboardRoleFilter,
+} from "@/features/boards/store/dashboard-prefs-store";
 import { ShareModal } from "@/features/share/components/share-modal";
 import { useI18n } from "@/i18n/context";
+import { Role } from "@/shared";
 import type { SessionUser } from "@/server/auth/session";
 import type { BoardItem, BoardsListResponse } from "@/server/dal/boards.dal";
 
@@ -59,8 +63,12 @@ export function BoardsDashboard({ user, initialBoards }: BoardsDashboardProps) {
       if (normalizedQuery && !board.title.toLowerCase().includes(normalizedQuery)) {
         return false;
       }
-      if (filterRole === "OWNER") return board.role === "OWNER";
-      if (filterRole === "MEMBER") return board.role !== "OWNER";
+      if (filterRole === DashboardRoleFilter.OWNER) {
+        return board.role === Role.OWNER;
+      }
+      if (filterRole === DashboardRoleFilter.MEMBER) {
+        return board.role !== Role.OWNER;
+      }
       return true;
     });
   }, [data?.items, searchQuery, filterRole]);

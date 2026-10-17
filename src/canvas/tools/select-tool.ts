@@ -1,6 +1,6 @@
 import { CanvasHost, CanvasTool, ToolContext } from "./tool.interface";
-import { useCanvasStore } from "@/store/canvas-store";
-import { ArrowBinding, ElementData, getDocRoots } from "@/shared";
+import { CanvasToolType, useCanvasStore } from "@/store/canvas-store";
+import { ArrowBinding, ElementData, ElementType, getDocRoots, Role } from "@/shared";
 import { LOCAL_ORIGIN } from "@/collab/undo-manager";
 import {
   calculateResizedBounds,
@@ -13,6 +13,15 @@ import { calculateSmartGuides } from "@/canvas/alignment-helper";
 import { findNearestAnchor, getNearbyAnchorPoints } from "@/canvas/connector-helper";
 import { translateGeometry } from "@/canvas/geometry-helper";
 import * as Y from "yjs";
+
+export const SelectDragMode = {
+  NONE: "none",
+  MOVE: "move",
+  RESIZE: "resize",
+  SELECT_BOX: "selectBox",
+} as const;
+export type SelectDragMode =
+  (typeof SelectDragMode)[keyof typeof SelectDragMode];
 
 interface MoveInitialItem {
   x: number;
@@ -34,9 +43,9 @@ interface ResizeState {
 }
 
 export class SelectTool implements CanvasTool {
-  readonly id = "select";
+  readonly id = CanvasToolType.SELECT;
 
-  private dragMode: "none" | "move" | "resize" | "selectBox" = "none";
+  private dragMode: SelectDragMode = SelectDragMode.NONE;
   private startPoint = { x: 0, y: 0 };
   private moveInitialElements = new Map<string, MoveInitialItem>();
   private resizeInfo: ResizeState | null = null;
@@ -44,13 +53,13 @@ export class SelectTool implements CanvasTool {
   constructor(private readonly host: CanvasHost) {}
 
   onPointerDown(ctx: ToolContext): void {
-    if (this.host.role === "VIEWER") return;
+    if (this.host.role === Role.VIEWER) return;
 
     this.startPoint = { ...ctx.worldPt };
 
     const singleHandle = this.getSingleSelectedResizeHandle(ctx);
     if (singleHandle) {
-      this.dragMode = "resize";
+      this.dragMode = SelectDragMode.RESIZE;
       this.resizeInfo = {
         handle: singleHandle.handle.type,
         elementId: singleHandle.selectedId,
@@ -78,7 +87,7 @@ export class SelectTool implements CanvasTool {
       if (!ctx.event.shiftKey) {
         useCanvasStore.getState().setSelectedIds([]);
       }
-      this.dragMode = "selectBox";
+      this.dragMode = SelectDragMode.SELECT_BOX;
       this.host.setSelectBox({ x: ctx.worldPt.x, y: ctx.worldPt.y, w: 0, h: 0 });
       return;
     }
@@ -87,13 +96,13 @@ export class SelectTool implements CanvasTool {
   }
 
   onPointerMove(ctx: ToolContext): void {
-    if (!ctx.isPointerDown || this.host.role === "VIEWER") return;
+    if (!ctx.isPointerDown || this.host.role === Role.VIEWER) return;
 
-    if (this.dragMode === "resize") {
+    if (this.dragMode === SelectDragMode.RESIZE) {
       this.handleResizeMove(ctx);
-    } else if (this.dragMode === "move") {
+    } else if (this.dragMode === SelectDragMode.MOVE) {
       this.handleMoveElements(ctx);
-    } else if (this.dragMode === "selectBox") {
+    } else if (this.dragMode === SelectDragMode.SELECT_BOX) {
       this.handleSelectBoxMove(ctx);
     }
   }
@@ -102,20 +111,20 @@ export class SelectTool implements CanvasTool {
     this.host.setGuides(null);
     this.host.setSnapIndicator(null);
 
-    if (this.dragMode === "selectBox") {
+    if (this.dragMode === SelectDragMode.SELECT_BOX) {
       this.finishSelectBox();
-    } else if (this.dragMode === "move") {
+    } else if (this.dragMode === SelectDragMode.MOVE) {
       this.finishMove();
-    } else if (this.dragMode === "resize") {
+    } else if (this.dragMode === SelectDragMode.RESIZE) {
       this.finishResize();
     }
 
-    this.dragMode = "none";
+    this.dragMode = SelectDragMode.NONE;
     this.host.setDirty();
   }
 
   getCursor(ctx: ToolContext): string {
-    if (this.host.role === "VIEWER") return "default";
+    if (this.host.role === Role.VIEWER) return "default";
 
     const singleHandle = this.getSingleSelectedResizeHandle(ctx);
     if (singleHandle) {
@@ -135,7 +144,7 @@ export class SelectTool implements CanvasTool {
   }
 
   onDeactivate(): void {
-    this.dragMode = "none";
+    this.dragMode = SelectDragMode.NONE;
     this.resizeInfo = null;
     this.moveInitialElements.clear();
     this.host.setSelectBox(null);
@@ -192,11 +201,11 @@ export class SelectTool implements CanvasTool {
       selectedElements.every((el) => el.locked);
 
     if (allLocked) {
-      this.dragMode = "none";
+      this.dragMode = SelectDragMode.NONE;
       return;
     }
 
-    this.dragMode = "move";
+    this.dragMode = SelectDragMode.MOVE;
     this.initMoveElements(activeSelectedIds);
   }
 
@@ -228,8 +237,8 @@ export class SelectTool implements CanvasTool {
     if (!map) return;
 
     if (
-      this.resizeInfo.handle === "start" ||
-      this.resizeInfo.handle === "end"
+      this.resizeInfo.handle === ResizeHandleType.START ||
+      this.resizeInfo.handle === ResizeHandleType.END
     ) {
       this.handleConnectorResize(map, ctx);
       return;
@@ -252,11 +261,11 @@ export class SelectTool implements CanvasTool {
 
     const initPts = this.resizeInfo.initialPoints || [0, 0, 0, 0];
     const p1 =
-      this.resizeInfo.handle === "start"
+      this.resizeInfo.handle === ResizeHandleType.START
         ? targetPt
         : { x: initPts[0], y: initPts[1] };
     const p2 =
-      this.resizeInfo.handle === "end"
+      this.resizeInfo.handle === ResizeHandleType.END
         ? targetPt
         : { x: initPts[2], y: initPts[3] };
 
@@ -274,14 +283,14 @@ export class SelectTool implements CanvasTool {
       | undefined;
 
     const updatedStartBinding =
-      this.resizeInfo.handle === "start"
+      this.resizeInfo.handle === ResizeHandleType.START
         ? match
           ? { elementId: match.elementId, anchor: match.anchor }
           : undefined
         : currentStartBinding;
 
     const updatedEndBinding =
-      this.resizeInfo.handle === "end"
+      this.resizeInfo.handle === ResizeHandleType.END
         ? match
           ? { elementId: match.elementId, anchor: match.anchor }
           : undefined
@@ -307,7 +316,7 @@ export class SelectTool implements CanvasTool {
     const dx = ctx.worldPt.x - this.resizeInfo.startWorldPt.x;
     const dy = ctx.worldPt.y - this.resizeInfo.startWorldPt.y;
     const type = YjsElementAdapter.getType(map);
-    const minSize = type === "sticky" ? 40 : 10;
+    const minSize = type === ElementType.STICKY ? 40 : 10;
 
     const newBounds = calculateResizedBounds({
       handle: this.resizeInfo.handle,
@@ -321,7 +330,7 @@ export class SelectTool implements CanvasTool {
 
     this.host.doc.transact(() => {
       const scaledPoints =
-        type === "freehand" && this.resizeInfo?.initialPoints
+        type === ElementType.FREEHAND && this.resizeInfo?.initialPoints
           ? scaleFreehandPoints(
               this.resizeInfo.initialPoints,
               this.resizeInfo.initialBounds,

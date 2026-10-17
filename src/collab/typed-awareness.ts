@@ -9,7 +9,7 @@ export const AwarenessUserSchema = z.object({
   name: z.string(),
   email: z.string().optional(),
   color: z.string(),
-  role: z.enum(ROLES).default("VIEWER"),
+  role: z.enum(ROLES).default(Role.VIEWER),
 });
 
 export type AwarenessUser = z.infer<typeof AwarenessUserSchema>;

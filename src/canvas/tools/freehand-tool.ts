@@ -1,16 +1,16 @@
 import { nanoid } from "nanoid";
 import { CanvasHost, CanvasTool, ToolContext } from "./tool.interface";
-import { ElementData } from "../../shared";
-import { useCanvasStore } from "../../store/canvas-store";
+import { ElementData, ElementType, Role } from "../../shared";
+import { CanvasToolType, useCanvasStore } from "../../store/canvas-store";
 
 export class FreehandTool implements CanvasTool {
-  readonly id = "freehand";
+  readonly id = CanvasToolType.FREEHAND;
   private isDrawing = false;
 
   constructor(private readonly host: CanvasHost) {}
 
   onPointerDown(ctx: ToolContext): void {
-    if (this.host.role === "VIEWER") return;
+    if (this.host.role === Role.VIEWER) return;
     this.isDrawing = true;
     const initialDraft = [ctx.worldPt.x, ctx.worldPt.y, ctx.event.pressure || 0.5];
     this.host.setFreehandDraft(initialDraft);
@@ -55,7 +55,7 @@ export class FreehandTool implements CanvasTool {
 
       const element: ElementData = {
         id,
-        type: "freehand",
+        type: ElementType.FREEHAND,
         x: Math.round(minX),
         y: Math.round(minY),
         w: Math.round(w),

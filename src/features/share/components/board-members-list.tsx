@@ -9,15 +9,21 @@ import { toast } from "@/components/ui/toast";
 import {
   useBoardMembers,
   useRemoveBoardMember,
-  type BoardMember,
 } from "@/features/boards/api/boards.queries";
 import { useI18n } from "@/i18n/context";
 import type { TranslationKey } from "@/i18n/translator";
+import { Role } from "@/shared";
 
-const ROLE_TRANSLATION_MAP: Record<BoardMember["role"], TranslationKey> = {
-  OWNER: "shareModal.roles.OWNER",
-  EDITOR: "shareModal.roles.EDITOR",
-  VIEWER: "shareModal.roles.VIEWER",
+const ROLE_TRANSLATION_MAP: Record<Role, TranslationKey> = {
+  [Role.OWNER]: "shareModal.roles.OWNER",
+  [Role.EDITOR]: "shareModal.roles.EDITOR",
+  [Role.VIEWER]: "shareModal.roles.VIEWER",
+};
+
+const ROLE_BADGE_VARIANTS: Record<Role, "default" | "success" | "neutral"> = {
+  [Role.OWNER]: "default",
+  [Role.EDITOR]: "success",
+  [Role.VIEWER]: "neutral",
 };
 
 interface BoardMembersListProps {
@@ -66,18 +72,10 @@ export function BoardMembersList({ boardId }: BoardMembersListProps) {
                 <span className="ml-1 text-[11px] text-text-muted">({member.user.email})</span>
               </div>
               <div className="flex items-center gap-2">
-                <Badge
-                  variant={
-                    member.role === "OWNER"
-                      ? "default"
-                      : member.role === "EDITOR"
-                        ? "success"
-                        : "neutral"
-                  }
-                >
+                <Badge variant={ROLE_BADGE_VARIANTS[member.role] ?? "neutral"}>
                   {t(ROLE_TRANSLATION_MAP[member.role])}
                 </Badge>
-                {member.role !== "OWNER" && (
+                {member.role !== Role.OWNER && (
                   <Button
                     variant="ghost"
                     size="xs"

@@ -17,6 +17,7 @@ import {
   shareLinkFormSchema,
   type ShareLinkFormData,
 } from "@/features/share/schemas/share.schema";
+import { Role } from "@/shared";
 
 export interface ShareLinkTabProps {
   boardId: string;
@@ -35,7 +36,7 @@ export function ShareLinkTab({ boardId }: ShareLinkTabProps) {
   const { register, handleSubmit } = useForm<ShareLinkFormData>({
     resolver: zodResolver(shareLinkFormSchema),
     defaultValues: {
-      role: "VIEWER",
+      role: Role.VIEWER,
       expiresHours: "",
     },
   });
@@ -76,8 +77,8 @@ export function ShareLinkTab({ boardId }: ShareLinkTabProps) {
             {...register("role")}
             className="rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-xs font-medium text-text-primary outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/20 shadow-2xs"
           >
-            <option value="VIEWER">{t("shareModal.permissions.canView")}</option>
-            <option value="EDITOR">{t("shareModal.permissions.canEdit")}</option>
+            <option value={Role.VIEWER}>{t("shareModal.permissions.canView")}</option>
+            <option value={Role.EDITOR}>{t("shareModal.permissions.canEdit")}</option>
           </select>
 
           <select
@@ -151,7 +152,7 @@ export function ShareLinkTab({ boardId }: ShareLinkTabProps) {
               >
                 <div>
                   <Badge
-                    variant={link.role === "EDITOR" ? "success" : "neutral"}
+                    variant={link.role === Role.EDITOR ? "success" : "neutral"}
                   >
                     {t(getShareRoleTranslationKey(link.role))}
                   </Badge>

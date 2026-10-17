@@ -1,19 +1,36 @@
 import { create } from "zustand";
 
-export type Tool =
-  | "select"
-  | "hand"
-  | "rect"
-  | "ellipse"
-  | "diamond"
-  | "line"
-  | "arrow"
-  | "text"
-  | "sticky"
-  | "freehand"
-  | "eraser";
+export const CanvasToolType = {
+  SELECT: "select",
+  HAND: "hand",
+  RECT: "rect",
+  ELLIPSE: "ellipse",
+  DIAMOND: "diamond",
+  LINE: "line",
+  ARROW: "arrow",
+  TEXT: "text",
+  STICKY: "sticky",
+  FREEHAND: "freehand",
+  ERASER: "eraser",
+} as const;
 
+export const CANVAS_TOOLS = [
+  CanvasToolType.SELECT,
+  CanvasToolType.HAND,
+  CanvasToolType.RECT,
+  CanvasToolType.ELLIPSE,
+  CanvasToolType.DIAMOND,
+  CanvasToolType.LINE,
+  CanvasToolType.ARROW,
+  CanvasToolType.TEXT,
+  CanvasToolType.STICKY,
+  CanvasToolType.FREEHAND,
+  CanvasToolType.ERASER,
+] as const;
+
+export type Tool = (typeof CANVAS_TOOLS)[number];
 export type ToolType = Tool;
+export const Tool = CanvasToolType;
 
 interface CanvasState {
   activeTool: Tool;
@@ -38,7 +55,7 @@ interface CanvasState {
 }
 
 export const useCanvasStore = create<CanvasState>((set) => ({
-  activeTool: "select",
+  activeTool: CanvasToolType.SELECT,
   strokeColor: "#1e293b",
   fillColor: "#ffffff",
   strokeWidth: 2,

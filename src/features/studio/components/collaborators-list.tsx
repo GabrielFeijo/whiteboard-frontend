@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Role } from "@/shared";
+import { Role } from "@/shared";
 import { EyeIcon } from "@/components/icons";
 import type { SyncProvider } from "@/collab/sync-provider";
 import { useI18n } from "@/i18n/context";
@@ -41,7 +41,7 @@ export function CollaboratorsList({
           clientId,
           name: state.user.name || t("studio.collaborators.anonymous"),
           color: state.user.color || "#3b82f6",
-          role: state.user.role || "VIEWER",
+          role: state.user.role || Role.VIEWER,
           viewport: state.viewport,
         });
       });

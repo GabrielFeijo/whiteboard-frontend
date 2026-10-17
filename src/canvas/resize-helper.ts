@@ -1,18 +1,21 @@
 import { Point, Viewport } from "./viewport";
-import { ElementData } from "../shared";
+import { ElementData, ElementType } from "../shared";
 import { resolveArrowEndpoints } from "./connector-helper";
 
+export const ResizeHandleType = {
+  NW: "nw",
+  N: "n",
+  NE: "ne",
+  E: "e",
+  SE: "se",
+  S: "s",
+  SW: "sw",
+  W: "w",
+  START: "start",
+  END: "end",
+} as const;
 export type ResizeHandleType =
-  | "nw"
-  | "n"
-  | "ne"
-  | "e"
-  | "se"
-  | "s"
-  | "sw"
-  | "w"
-  | "start"
-  | "end";
+  (typeof ResizeHandleType)[keyof typeof ResizeHandleType];
 
 export interface ResizeHandle {
   type: ResizeHandleType;
@@ -34,8 +37,8 @@ export function getLineHandles(
 ): ResizeHandle[] {
   const { from, to } = resolveArrowEndpoints(el, getElementById);
   return [
-    { type: "start", x: from.x, y: from.y, cursor: "crosshair" },
-    { type: "end", x: to.x, y: to.y, cursor: "crosshair" },
+    { type: ResizeHandleType.START, x: from.x, y: from.y, cursor: "crosshair" },
+    { type: ResizeHandleType.END, x: to.x, y: to.y, cursor: "crosshair" },
   ];
 }
 
@@ -48,14 +51,14 @@ export function getElementHandles(bounds: Bounds): ResizeHandle[] {
   const midY = bounds.y + bounds.h / 2;
 
   return [
-    { type: "nw", x: minX, y: minY, cursor: "nwse-resize" },
-    { type: "n", x: midX, y: minY, cursor: "ns-resize" },
-    { type: "ne", x: maxX, y: minY, cursor: "nesw-resize" },
-    { type: "e", x: maxX, y: midY, cursor: "ew-resize" },
-    { type: "se", x: maxX, y: maxY, cursor: "nwse-resize" },
-    { type: "s", x: midX, y: maxY, cursor: "ns-resize" },
-    { type: "sw", x: minX, y: maxY, cursor: "nesw-resize" },
-    { type: "w", x: minX, y: midY, cursor: "ew-resize" },
+    { type: ResizeHandleType.NW, x: minX, y: minY, cursor: "nwse-resize" },
+    { type: ResizeHandleType.N, x: midX, y: minY, cursor: "ns-resize" },
+    { type: ResizeHandleType.NE, x: maxX, y: minY, cursor: "nesw-resize" },
+    { type: ResizeHandleType.E, x: maxX, y: midY, cursor: "ew-resize" },
+    { type: ResizeHandleType.SE, x: maxX, y: maxY, cursor: "nwse-resize" },
+    { type: ResizeHandleType.S, x: midX, y: maxY, cursor: "ns-resize" },
+    { type: ResizeHandleType.SW, x: minX, y: maxY, cursor: "nesw-resize" },
+    { type: ResizeHandleType.W, x: minX, y: midY, cursor: "ew-resize" },
   ];
 }
 
@@ -67,7 +70,7 @@ export function getHandleAt(
   getElementById?: (id: string) => ElementData | null,
 ): ResizeHandle | null {
   const el = bounds as ElementData;
-  if (el.type === "line" || el.type === "arrow") {
+  if (el.type === ElementType.LINE || el.type === ElementType.ARROW) {
     const lineHandles = getLineHandles(el, getElementById);
     for (const handle of lineHandles) {
       const handleScreenPt = viewport.worldToScreen({ x: handle.x, y: handle.y });
@@ -107,15 +110,15 @@ interface HandleDirection {
   dirY: -1 | 0 | 1;
 }
 
-const HANDLE_DIRECTIONS: Record<string, HandleDirection> = {
-  nw: { dirX: -1, dirY: -1 },
-  n: { dirX: 0, dirY: -1 },
-  ne: { dirX: 1, dirY: -1 },
-  e: { dirX: 1, dirY: 0 },
-  se: { dirX: 1, dirY: 1 },
-  s: { dirX: 0, dirY: 1 },
-  sw: { dirX: -1, dirY: 1 },
-  w: { dirX: -1, dirY: 0 },
+const HANDLE_DIRECTIONS: Partial<Record<ResizeHandleType, HandleDirection>> = {
+  [ResizeHandleType.NW]: { dirX: -1, dirY: -1 },
+  [ResizeHandleType.N]: { dirX: 0, dirY: -1 },
+  [ResizeHandleType.NE]: { dirX: 1, dirY: -1 },
+  [ResizeHandleType.E]: { dirX: 1, dirY: 0 },
+  [ResizeHandleType.SE]: { dirX: 1, dirY: 1 },
+  [ResizeHandleType.S]: { dirX: 0, dirY: 1 },
+  [ResizeHandleType.SW]: { dirX: -1, dirY: 1 },
+  [ResizeHandleType.W]: { dirX: -1, dirY: 0 },
 };
 
 export function calculateResizedBounds({
@@ -240,7 +243,7 @@ function testLineHit(p: Point, el: ElementData): boolean {
 type ShapeHitTester = (p: Point, el: ElementData, cx: number, cy: number) => boolean;
 
 const SHAPE_HIT_TESTERS: Partial<Record<ElementData["type"], ShapeHitTester>> = {
-  ellipse: (p, el, cx, cy) => {
+  [ElementType.ELLIPSE]: (p, el, cx, cy) => {
     const rx = Math.abs(el.w / 2);
     const ry = Math.abs(el.h / 2);
     if (rx <= 0 || ry <= 0) return false;
@@ -248,15 +251,15 @@ const SHAPE_HIT_TESTERS: Partial<Record<ElementData["type"], ShapeHitTester>> = 
     const normY = (p.y - cy) / ry;
     return normX * normX + normY * normY <= 1;
   },
-  diamond: (p, el, cx, cy) => {
+  [ElementType.DIAMOND]: (p, el, cx, cy) => {
     const rx = Math.abs(el.w / 2);
     const ry = Math.abs(el.h / 2);
     if (rx <= 0 || ry <= 0) return false;
     return Math.abs(p.x - cx) / rx + Math.abs(p.y - cy) / ry <= 1;
   },
-  line: testLineHit,
-  arrow: testLineHit,
-  freehand: (p, el) => {
+  [ElementType.LINE]: testLineHit,
+  [ElementType.ARROW]: testLineHit,
+  [ElementType.FREEHAND]: (p, el) => {
     const pad = Math.max((el.style?.strokeWidth || 2) + 4, 6);
     return (
       p.x >= el.x - pad &&

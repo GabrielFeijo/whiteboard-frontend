@@ -7,15 +7,20 @@ import { IndexeddbPersistence } from "y-indexeddb";
 import { api, WS_URL } from "@/lib/api/client";
 import { MSG, WS_CLOSE, Role } from "@/shared";
 
+export const ConnectionStatus = {
+  CONNECTING: "connecting",
+  CONNECTED: "connected",
+  SYNCING: "syncing",
+  SYNCED: "synced",
+  OFFLINE: "offline",
+  FORBIDDEN: "forbidden",
+} as const;
+
 export type ConnectionStatus =
-  | "connecting"
-  | "connected"
-  | "syncing"
-  | "synced"
-  | "offline"
-  | "forbidden";
+  (typeof ConnectionStatus)[keyof typeof ConnectionStatus];
 
 export type SyncStatus = ConnectionStatus;
+export const SyncStatus = ConnectionStatus;
 
 export class SyncProvider {
   readonly doc: Y.Doc;
@@ -25,8 +30,8 @@ export class SyncProvider {
   private reconnectDelay = 1000;
   private isDestroyed = false;
   private indexeddbProvider: IndexeddbPersistence | null = null;
-  status: ConnectionStatus = "connecting";
-  role: Role = "VIEWER";
+  status: ConnectionStatus = ConnectionStatus.CONNECTING;
+  role: Role = Role.VIEWER;
   private listeners = new Set<(status: ConnectionStatus) => void>();
 
   constructor(
@@ -46,7 +51,7 @@ export class SyncProvider {
       if (
         origin !== this &&
         this.ws?.readyState === WebSocket.OPEN &&
-        this.role !== "VIEWER"
+        this.role !== Role.VIEWER
       ) {
         const encoder = encoding.createEncoder();
         encoding.writeVarUint(encoder, MSG.SYNC);
@@ -95,7 +100,7 @@ export class SyncProvider {
 
   private async connect(): Promise<void> {
     if (this.isDestroyed) return;
-    this.setStatus("connecting");
+    this.setStatus(ConnectionStatus.CONNECTING);
 
     try {
       const res = await api.post<{ ticket: string; role: Role }>(
@@ -111,7 +116,7 @@ export class SyncProvider {
 
       ws.onopen = () => {
         this.reconnectDelay = 1000;
-        this.setStatus("syncing");
+        this.setStatus(ConnectionStatus.SYNCING);
 
         const encoder = encoding.createEncoder();
         encoding.writeVarUint(encoder, MSG.SYNC);
@@ -146,8 +151,8 @@ export class SyncProvider {
           if (encoding.length(encoder) > 1 && ws.readyState === WebSocket.OPEN) {
             ws.send(encoding.toUint8Array(encoder));
           }
-          if (this.status === "syncing") {
-            this.setStatus("synced");
+          if (this.status === ConnectionStatus.SYNCING) {
+            this.setStatus(ConnectionStatus.SYNCED);
           }
         } else if (messageType === MSG.AWARENESS) {
           awarenessProtocol.applyAwarenessUpdate(
@@ -160,19 +165,19 @@ export class SyncProvider {
 
       ws.onclose = (event) => {
         if (event.code === WS_CLOSE.FORBIDDEN) {
-          this.setStatus("forbidden");
+          this.setStatus(ConnectionStatus.FORBIDDEN);
           return;
         }
-        this.setStatus("offline");
+        this.setStatus(ConnectionStatus.OFFLINE);
         this.scheduleReconnect();
       };
 
       ws.onerror = () => {
-        this.setStatus("offline");
+        this.setStatus(ConnectionStatus.OFFLINE);
         ws.close();
       };
     } catch {
-      this.setStatus("offline");
+      this.setStatus(ConnectionStatus.OFFLINE);
       this.scheduleReconnect();
     }
   }

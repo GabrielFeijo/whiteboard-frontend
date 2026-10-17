@@ -1,10 +1,10 @@
 import { CanvasHost, CanvasTool, ToolContext } from "./tool.interface";
-import { useCanvasStore } from "../../store/canvas-store";
-import { getDocRoots } from "../../shared";
+import { CanvasToolType, useCanvasStore } from "../../store/canvas-store";
+import { getDocRoots, Role } from "../../shared";
 import { LOCAL_ORIGIN } from "../../collab/undo-manager";
 
 export class EraserTool implements CanvasTool {
-  readonly id = "eraser";
+  readonly id = CanvasToolType.ERASER;
 
   constructor(private readonly host: CanvasHost) {}
 
@@ -27,7 +27,7 @@ export class EraserTool implements CanvasTool {
   }
 
   private eraseAt(worldPt: { x: number; y: number }): void {
-    if (this.host.role === "VIEWER") return;
+    if (this.host.role === Role.VIEWER) return;
 
     const hitId = this.host.hitTest(worldPt);
     if (!hitId) return;

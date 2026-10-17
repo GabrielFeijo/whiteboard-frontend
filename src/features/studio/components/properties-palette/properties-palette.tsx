@@ -1,6 +1,8 @@
 "use client";
 
 import type { CanvasEngine } from "@/canvas/canvas-engine";
+import { AlignmentType, DistributionType } from "@/canvas/alignment-helper";
+import { ElementType } from "@/shared";
 import { Badge } from "@/components/ui/badge";
 import { ColorSwatchPicker } from "@/features/studio/components/properties-palette/color-swatch-picker";
 import {
@@ -10,6 +12,7 @@ import {
 } from "@/features/studio/components/properties-palette/constants";
 import { TextContentEditor } from "@/features/studio/components/properties-palette/text-content-editor";
 import { useI18n } from "@/i18n/context";
+import type { TranslationKey } from "@/i18n/types";
 import { useCanvasStore } from "@/store/canvas-store";
 import {
   AlignCenterHorizontal,
@@ -26,6 +29,24 @@ import {
   Ungroup,
   X,
 } from "lucide-react";
+
+const FILLABLE_ELEMENT_TYPES = new Set<ElementType>([
+  ElementType.RECT,
+  ElementType.ELLIPSE,
+  ElementType.DIAMOND,
+  ElementType.STICKY,
+]);
+
+const ELEMENT_TYPE_I18N_KEYS: Partial<Record<ElementType, TranslationKey>> = {
+  [ElementType.RECT]: "studio.inspector.elementTypes.rect",
+  [ElementType.ELLIPSE]: "studio.inspector.elementTypes.ellipse",
+  [ElementType.DIAMOND]: "studio.inspector.elementTypes.diamond",
+  [ElementType.LINE]: "studio.inspector.elementTypes.line",
+  [ElementType.ARROW]: "studio.inspector.elementTypes.arrow",
+  [ElementType.STICKY]: "studio.inspector.elementTypes.sticky",
+  [ElementType.TEXT]: "studio.inspector.elementTypes.text",
+  [ElementType.FREEHAND]: "studio.inspector.elementTypes.freehand",
+};
 
 interface PropertiesPaletteProps {
   engine?: CanvasEngine | null;
@@ -52,13 +73,10 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
   const currentId = primaryElement?.id ?? null;
 
   const isTextual =
-    primaryElement?.type === "sticky" || primaryElement?.type === "text";
+    primaryElement?.type === ElementType.STICKY ||
+    primaryElement?.type === ElementType.TEXT;
   const hasFill =
-    !primaryElement ||
-    primaryElement.type === "rect" ||
-    primaryElement.type === "ellipse" ||
-    primaryElement.type === "diamond" ||
-    primaryElement.type === "sticky";
+    !primaryElement || FILLABLE_ELEMENT_TYPES.has(primaryElement.type);
 
   const isLocked =
     selectedElements.length > 0 && selectedElements.every((el) => el.locked);
@@ -85,27 +103,9 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
     engine?.updateSelectedStyle({ opacity: value });
   };
 
-  const getElementTypeName = (type?: string) => {
-    switch (type) {
-      case "rect":
-        return t("studio.inspector.elementTypes.rect");
-      case "ellipse":
-        return t("studio.inspector.elementTypes.ellipse");
-      case "diamond":
-        return t("studio.inspector.elementTypes.diamond");
-      case "line":
-        return t("studio.inspector.elementTypes.line");
-      case "arrow":
-        return t("studio.inspector.elementTypes.arrow");
-      case "sticky":
-        return t("studio.inspector.elementTypes.sticky");
-      case "text":
-        return t("studio.inspector.elementTypes.text");
-      case "freehand":
-        return t("studio.inspector.elementTypes.freehand");
-      default:
-        return t("studio.inspector.elementTypes.element");
-    }
+  const getElementTypeName = (type?: ElementType) => {
+    const key = type ? ELEMENT_TYPE_I18N_KEYS[type] : undefined;
+    return key ? t(key) : t("studio.inspector.elementTypes.element");
   };
 
   return (
@@ -207,7 +207,7 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
           <div className="flex items-center justify-between gap-0.5 rounded-lg border border-border-subtle bg-surface p-0.5">
             <button
               type="button"
-              onClick={() => engine?.alignSelected("left")}
+              onClick={() => engine?.alignSelected(AlignmentType.LEFT)}
               className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
               title={t("studio.inspector.actions.alignLeft")}
             >
@@ -215,7 +215,7 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
             </button>
             <button
               type="button"
-              onClick={() => engine?.alignSelected("center")}
+              onClick={() => engine?.alignSelected(AlignmentType.CENTER)}
               className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
               title={t("studio.inspector.actions.alignCenter")}
             >
@@ -223,7 +223,7 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
             </button>
             <button
               type="button"
-              onClick={() => engine?.alignSelected("right")}
+              onClick={() => engine?.alignSelected(AlignmentType.RIGHT)}
               className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
               title={t("studio.inspector.actions.alignRight")}
             >
@@ -232,7 +232,7 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
             <div className="h-4 w-px bg-border-subtle" />
             <button
               type="button"
-              onClick={() => engine?.alignSelected("top")}
+              onClick={() => engine?.alignSelected(AlignmentType.TOP)}
               className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
               title={t("studio.inspector.actions.alignTop")}
             >
@@ -240,7 +240,7 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
             </button>
             <button
               type="button"
-              onClick={() => engine?.alignSelected("middle")}
+              onClick={() => engine?.alignSelected(AlignmentType.MIDDLE)}
               className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
               title={t("studio.inspector.actions.alignMiddle")}
             >
@@ -248,7 +248,7 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
             </button>
             <button
               type="button"
-              onClick={() => engine?.alignSelected("bottom")}
+              onClick={() => engine?.alignSelected(AlignmentType.BOTTOM)}
               className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
               title={t("studio.inspector.actions.alignBottom")}
             >
@@ -259,7 +259,7 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
                 <div className="h-4 w-px bg-border-subtle" />
                 <button
                   type="button"
-                  onClick={() => engine?.distributeSelected("horizontal")}
+                  onClick={() => engine?.distributeSelected(DistributionType.HORIZONTAL)}
                   className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
                   title={t("studio.inspector.actions.distributeHorizontal")}
                 >
@@ -267,7 +267,7 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => engine?.distributeSelected("vertical")}
+                  onClick={() => engine?.distributeSelected(DistributionType.VERTICAL)}
                   className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
                   title={t("studio.inspector.actions.distributeVertical")}
                 >

@@ -3,7 +3,7 @@
 import { Tooltip } from "@/components/ui/tooltip";
 import { ShapeToolMenu } from "@/features/studio/components/toolbar/shape-tool-menu";
 import { useI18n } from "@/i18n/context";
-import { useCanvasStore } from "@/store/canvas-store";
+import { CanvasToolType, useCanvasStore } from "@/store/canvas-store";
 import {
   Eraser,
   Hand,
@@ -56,9 +56,9 @@ export function StudioToolbar({
       <Tooltip label={t("studio.toolbar.tools.select")} shortcut="V" side="top">
         <button
           type="button"
-          onClick={() => setActiveTool("select")}
+          onClick={() => setActiveTool(CanvasToolType.SELECT)}
           className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-150 ${
-            activeTool === "select"
+            activeTool === CanvasToolType.SELECT
               ? "bg-accent-primary text-white shadow-xs"
               : "text-text-secondary hover:text-text-primary hover:bg-surface-hover"
           }`}
@@ -71,9 +71,9 @@ export function StudioToolbar({
       <Tooltip label={t("studio.toolbar.tools.hand")} shortcut="H" side="top">
         <button
           type="button"
-          onClick={() => setActiveTool("hand")}
+          onClick={() => setActiveTool(CanvasToolType.HAND)}
           className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-150 ${
-            activeTool === "hand"
+            activeTool === CanvasToolType.HAND
               ? "bg-accent-primary text-white shadow-xs"
               : "text-text-secondary hover:text-text-primary hover:bg-surface-hover"
           }`}
@@ -91,9 +91,9 @@ export function StudioToolbar({
         <button
           type="button"
           disabled={readOnly}
-          onClick={() => setActiveTool("freehand")}
+          onClick={() => setActiveTool(CanvasToolType.FREEHAND)}
           className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-150 ${
-            activeTool === "freehand"
+            activeTool === CanvasToolType.FREEHAND
               ? "bg-accent-primary text-white shadow-xs"
               : "text-text-secondary hover:text-text-primary hover:bg-surface-hover"
           } ${readOnly ? "opacity-40 cursor-not-allowed" : ""}`}
@@ -107,9 +107,9 @@ export function StudioToolbar({
         <button
           type="button"
           disabled={readOnly}
-          onClick={() => setActiveTool("sticky")}
+          onClick={() => setActiveTool(CanvasToolType.STICKY)}
           className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-150 ${
-            activeTool === "sticky"
+            activeTool === CanvasToolType.STICKY
               ? "bg-accent-primary text-white shadow-xs"
               : "text-text-secondary hover:text-text-primary hover:bg-surface-hover"
           } ${readOnly ? "opacity-40 cursor-not-allowed" : ""}`}
@@ -123,9 +123,9 @@ export function StudioToolbar({
         <button
           type="button"
           disabled={readOnly}
-          onClick={() => setActiveTool("text")}
+          onClick={() => setActiveTool(CanvasToolType.TEXT)}
           className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-150 ${
-            activeTool === "text"
+            activeTool === CanvasToolType.TEXT
               ? "bg-accent-primary text-white shadow-xs"
               : "text-text-secondary hover:text-text-primary hover:bg-surface-hover"
           } ${readOnly ? "opacity-40 cursor-not-allowed" : ""}`}
@@ -161,9 +161,9 @@ export function StudioToolbar({
         <button
           type="button"
           disabled={readOnly}
-          onClick={() => setActiveTool("eraser")}
+          onClick={() => setActiveTool(CanvasToolType.ERASER)}
           className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-150 ${
-            activeTool === "eraser"
+            activeTool === CanvasToolType.ERASER
               ? "bg-accent-primary text-white shadow-xs"
               : "text-text-secondary hover:text-text-primary hover:bg-surface-hover"
           } ${readOnly ? "opacity-40 cursor-not-allowed" : ""}`}
@@ -178,21 +178,25 @@ export function StudioToolbar({
       <Tooltip label={t("studio.toolbar.history.undo")} shortcut="Ctrl+Z" side="top">
         <button
           type="button"
-          disabled={!canUndo || readOnly}
           onClick={onUndo}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary transition-all hover:text-text-primary hover:bg-surface-hover disabled:opacity-30 disabled:pointer-events-none"
+          disabled={!canUndo}
+          className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-150 text-text-secondary hover:text-text-primary hover:bg-surface-hover ${
+            !canUndo ? "opacity-30 cursor-not-allowed" : "active:scale-95"
+          }`}
           aria-label={t("studio.toolbar.history.undo")}
         >
           <Undo2 className="h-4 w-4" />
         </button>
       </Tooltip>
 
-      <Tooltip label={t("studio.toolbar.history.redo")} shortcut="Ctrl+Y" side="top">
+      <Tooltip label={t("studio.toolbar.history.redo")} shortcut="Ctrl+Shift+Z" side="top">
         <button
           type="button"
-          disabled={!canRedo || readOnly}
           onClick={onRedo}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary transition-all hover:text-text-primary hover:bg-surface-hover disabled:opacity-30 disabled:pointer-events-none"
+          disabled={!canRedo}
+          className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-150 text-text-secondary hover:text-text-primary hover:bg-surface-hover ${
+            !canRedo ? "opacity-30 cursor-not-allowed" : "active:scale-95"
+          }`}
           aria-label={t("studio.toolbar.history.redo")}
         >
           <Redo2 className="h-4 w-4" />

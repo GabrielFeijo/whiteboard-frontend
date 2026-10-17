@@ -1,4 +1,4 @@
-import { ElementData } from "../../shared";
+import { ElementData, ElementType } from "../../shared";
 import { drawArrow, drawDiamond, drawEllipse, drawLine, drawRect } from "./shape-renderer";
 import { drawFreehand } from "./freehand-renderer";
 import { drawSticky } from "./sticky-renderer";
@@ -13,15 +13,15 @@ type ElementDrawHandler = (
 ) => void;
 
 const ELEMENT_DRAW_REGISTRY: Partial<Record<ElementData["type"], ElementDrawHandler>> = {
-  rect: (ctx, el) => drawRect(ctx, el),
-  ellipse: (ctx, el) => drawEllipse(ctx, el),
-  diamond: (ctx, el) => drawDiamond(ctx, el),
-  line: (ctx, el, getElementById) => drawLine(ctx, el, getElementById),
-  arrow: (ctx, el, getElementById) => drawArrow(ctx, el, getElementById),
-  freehand: (ctx, el) => drawFreehand(ctx, el),
-  sticky: (ctx, el) => drawSticky(ctx, el),
-  text: (ctx, el) => drawText(ctx, el),
-  image: (ctx, el, _getById, onImageLoaded) => drawImageElement(ctx, el, onImageLoaded),
+  [ElementType.RECT]: (ctx, el) => drawRect(ctx, el),
+  [ElementType.ELLIPSE]: (ctx, el) => drawEllipse(ctx, el),
+  [ElementType.DIAMOND]: (ctx, el) => drawDiamond(ctx, el),
+  [ElementType.LINE]: (ctx, el, getElementById) => drawLine(ctx, el, getElementById),
+  [ElementType.ARROW]: (ctx, el, getElementById) => drawArrow(ctx, el, getElementById),
+  [ElementType.FREEHAND]: (ctx, el) => drawFreehand(ctx, el),
+  [ElementType.STICKY]: (ctx, el) => drawSticky(ctx, el),
+  [ElementType.TEXT]: (ctx, el) => drawText(ctx, el),
+  [ElementType.IMAGE]: (ctx, el, _getById, onImageLoaded) => drawImageElement(ctx, el, onImageLoaded),
 };
 
 export function renderElement(

@@ -3,7 +3,8 @@
 import { LayoutGrid, List, Search } from "lucide-react";
 import {
   useDashboardPrefsStore,
-  type DashboardRoleFilter,
+  DashboardRoleFilter,
+  DashboardViewMode,
 } from "@/features/boards/store/dashboard-prefs-store";
 import { useI18n } from "@/i18n/context";
 
@@ -22,9 +23,9 @@ export function BoardsFilterBar({
   const { viewMode, filterRole, setViewMode, setFilterRole } = useDashboardPrefsStore();
 
   const filterButtons: { role: DashboardRoleFilter; label: string }[] = [
-    { role: "ALL", label: t("dashboard.filters.tabs.all") },
-    { role: "OWNER", label: t("dashboard.filters.tabs.owned") },
-    { role: "MEMBER", label: t("dashboard.filters.tabs.shared") },
+    { role: DashboardRoleFilter.ALL, label: t("dashboard.filters.tabs.all") },
+    { role: DashboardRoleFilter.OWNER, label: t("dashboard.filters.tabs.owned") },
+    { role: DashboardRoleFilter.MEMBER, label: t("dashboard.filters.tabs.shared") },
   ];
 
   return (
@@ -70,11 +71,11 @@ export function BoardsFilterBar({
         <div className="flex items-center rounded-lg border border-border-subtle bg-surface p-0.5 shadow-2xs">
           <button
             type="button"
-            onClick={() => setViewMode("grid")}
+            onClick={() => setViewMode(DashboardViewMode.GRID)}
             title={t("dashboard.filters.viewMode.grid")}
             aria-label={t("dashboard.filters.viewMode.grid")}
             className={`p-1 rounded-md transition-colors ${
-              viewMode === "grid"
+              viewMode === DashboardViewMode.GRID
                 ? "bg-surface-raised text-text-primary shadow-2xs"
                 : "text-text-muted hover:text-text-primary"
             }`}
@@ -83,11 +84,11 @@ export function BoardsFilterBar({
           </button>
           <button
             type="button"
-            onClick={() => setViewMode("list")}
+            onClick={() => setViewMode(DashboardViewMode.LIST)}
             title={t("dashboard.filters.viewMode.list")}
             aria-label={t("dashboard.filters.viewMode.list")}
             className={`p-1 rounded-md transition-colors ${
-              viewMode === "list"
+              viewMode === DashboardViewMode.LIST
                 ? "bg-surface-raised text-text-primary shadow-2xs"
                 : "text-text-muted hover:text-text-primary"
             }`}

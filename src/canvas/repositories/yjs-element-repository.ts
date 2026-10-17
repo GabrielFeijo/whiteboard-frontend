@@ -1,7 +1,7 @@
 import * as Y from "yjs";
 import { nanoid } from "nanoid";
 import { generateKeyBetween } from "fractional-indexing";
-import { ElementData, getDocRoots } from "@/shared";
+import { ElementData, ElementType, getDocRoots } from "@/shared";
 import { LOCAL_ORIGIN } from "@/collab/undo-manager";
 import { SpatialIndex } from "@/canvas/spatial-index";
 import { isPointInElement } from "@/canvas/resize-helper";
@@ -24,7 +24,7 @@ function offsetPoints(
   offset = 20,
 ): number[] | undefined {
   if (!points) return undefined;
-  if (type === "line" || type === "arrow") {
+  if (type === ElementType.LINE || type === ElementType.ARROW) {
     return points.map((pt) => pt + offset);
   }
   return points.map((pt, i) => (i % 3 === 2 ? pt : pt + offset));
@@ -57,7 +57,7 @@ export class YjsElementRepository {
       if (!data) return;
 
       const box = getElementBoundingBox(data);
-      const isConnector = data.type === "line" || data.type === "arrow";
+      const isConnector = data.type === ElementType.LINE || data.type === ElementType.ARROW;
       const boundsDiffer =
         data.x !== box.x ||
         data.y !== box.y ||
@@ -204,7 +204,7 @@ export class YjsElementRepository {
         if (!map || map.get("locked") === true) return;
         YjsElementAdapter.updateYMap(map, { text });
         const type = YjsElementAdapter.getType(map);
-        if (type === "text") {
+        if (type === ElementType.TEXT) {
           const dims = measureTextDimensions(text);
           const pos = YjsElementAdapter.getPosition(map);
           YjsElementAdapter.updateYMap(map, { w: dims.w, h: dims.h });
@@ -455,7 +455,7 @@ export class YjsElementRepository {
     this.doc.transact(() => {
       elementsMap.forEach((map, id) => {
         const type = YjsElementAdapter.getType(map);
-        if (type !== "arrow" && type !== "line") return;
+        if (type !== ElementType.ARROW && type !== ElementType.LINE) return;
 
         const el = YjsElementAdapter.toElementData(map);
         if (!el) return;

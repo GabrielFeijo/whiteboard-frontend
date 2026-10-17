@@ -1,7 +1,7 @@
 import { nanoid } from "nanoid";
 import { CanvasHost, CanvasTool, ToolContext } from "./tool.interface";
-import { ArrowBinding, ElementData } from "../../shared";
-import { useCanvasStore } from "../../store/canvas-store";
+import { ArrowBinding, ElementData, ElementType, Role } from "../../shared";
+import { CanvasToolType, useCanvasStore } from "../../store/canvas-store";
 import { findNearestAnchor, getNearbyAnchorPoints } from "@/canvas/connector-helper";
 
 function snapAnglePoint(
@@ -45,6 +45,13 @@ function computeBoxBounds(
   };
 }
 
+export type SupportedShapeType =
+  | typeof ElementType.RECT
+  | typeof ElementType.ELLIPSE
+  | typeof ElementType.DIAMOND
+  | typeof ElementType.LINE
+  | typeof ElementType.ARROW;
+
 export class ShapeTool implements CanvasTool {
   private startPoint = { x: 0, y: 0 };
   private isDrawing = false;
@@ -52,16 +59,16 @@ export class ShapeTool implements CanvasTool {
   private endBinding: ArrowBinding | undefined = undefined;
 
   constructor(
-    readonly id: "rect" | "ellipse" | "diamond" | "line" | "arrow",
+    readonly id: SupportedShapeType,
     private readonly host: CanvasHost,
   ) {}
 
   private isConnector(): boolean {
-    return this.id === "arrow" || this.id === "line";
+    return this.id === ElementType.ARROW || this.id === ElementType.LINE;
   }
 
   onPointerHover(ctx: ToolContext): void {
-    if (this.host.role === "VIEWER") return;
+    if (this.host.role === Role.VIEWER) return;
     if (!this.isConnector()) {
       this.host.setSnapIndicator(null);
       return;
@@ -77,7 +84,7 @@ export class ShapeTool implements CanvasTool {
   }
 
   onPointerDown(ctx: ToolContext): void {
-    if (this.host.role === "VIEWER") return;
+    if (this.host.role === Role.VIEWER) return;
 
     if (this.isConnector()) {
       const others = this.host.getOtherElements([]);
@@ -241,6 +248,6 @@ export class ShapeTool implements CanvasTool {
     this.host.commitElement(element);
     store.setSelectedIds([id]);
     this.host.syncStoreWithSelection([id]);
-    store.setActiveTool("select");
+    store.setActiveTool(CanvasToolType.SELECT);
   }
 }

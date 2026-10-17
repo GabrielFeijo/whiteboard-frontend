@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { X } from "lucide-react";
-import type { Role } from "@/shared";
+import { Role } from "@/shared";
 import { ConfirmDialog } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ export function VersionHistoryModal({
   const { data: snapshots = [], isLoading, error } = useSnapshotsQuery(boardId);
   const restoreMutation = useRestoreSnapshotMutation(boardId);
 
-  const canRestore = userRole === "OWNER" || userRole === "EDITOR";
+  const canRestore = userRole === Role.OWNER || userRole === Role.EDITOR;
   const [restoringSnapshotId, setRestoringSnapshotId] = useState<string | null>(null);
 
   const handleConfirmRestore = async () => {

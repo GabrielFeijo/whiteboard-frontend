@@ -6,6 +6,7 @@ import type { CanvasEngine } from "@/canvas/canvas-engine";
 import { computeExportBoundingBox } from "@/features/export/services/bounding-box";
 import { useI18n } from "@/i18n/context";
 import { useCanvasStore } from "@/store/canvas-store";
+import { ElementType } from "@/shared";
 
 interface MinimapProps {
   engine: CanvasEngine | null;
@@ -55,7 +56,7 @@ export function Minimap({ engine }: MinimapProps) {
         : (el.style.stroke || "#6366f1");
       ctx.globalAlpha = Math.max(0.3, el.style.opacity ?? 0.8);
 
-      if (el.type === "ellipse") {
+      if (el.type === ElementType.ELLIPSE) {
         ctx.beginPath();
         ctx.ellipse(ex + ew / 2, ey + eh / 2, ew / 2, eh / 2, 0, 0, Math.PI * 2);
         ctx.fill();

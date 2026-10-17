@@ -1,4 +1,4 @@
-import { ElementData } from "@/shared";
+import { ElementData, ElementType } from "@/shared";
 
 export interface TranslatedGeometry {
   x: number;
@@ -13,7 +13,7 @@ export function translateGeometry(
   dx: number,
   dy: number,
 ): TranslatedGeometry {
-  if (el.type === "line" || el.type === "arrow") {
+  if (el.type === ElementType.LINE || el.type === ElementType.ARROW) {
     const initPts =
       el.points && el.points.length >= 4
         ? el.points
@@ -31,7 +31,7 @@ export function translateGeometry(
     };
   }
 
-  if (el.type === "freehand") {
+  if (el.type === ElementType.FREEHAND) {
     const points = el.points?.map((val, idx) =>
       idx % 3 === 0
         ? Math.round(val + dx)

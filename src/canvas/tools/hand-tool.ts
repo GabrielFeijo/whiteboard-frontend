@@ -1,8 +1,8 @@
 import { CanvasHost, CanvasTool, ToolContext } from "./tool.interface";
-import { useCanvasStore } from "../../store/canvas-store";
+import { CanvasToolType, useCanvasStore } from "../../store/canvas-store";
 
 export class HandTool implements CanvasTool {
-  readonly id = "hand";
+  readonly id = CanvasToolType.HAND;
 
   constructor(private readonly host: CanvasHost) {}
 

@@ -196,6 +196,7 @@
       }
     },
     "card": {
+      "open": "Open",
       "updatedAt": "Updated on {date}",
       "share": "Share",
       "rename": "Rename"

@@ -14,7 +14,13 @@ import {
   setClientCookie,
 } from "@/lib/cookies/cookie-storage";
 
-export type Theme = "light" | "dark" | "system";
+export const Theme = {
+  LIGHT: "light",
+  DARK: "dark",
+  SYSTEM: "system",
+} as const;
+
+export type Theme = (typeof Theme)[keyof typeof Theme];
 
 interface ThemeContextType {
   theme: Theme;
@@ -23,13 +29,17 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: "system",
+  theme: Theme.SYSTEM,
   resolvedTheme: "light",
   setTheme: () => {},
 });
 
 export function isValidTheme(value: unknown): value is Theme {
-  return value === "light" || value === "dark" || value === "system";
+  return (
+    value === Theme.LIGHT ||
+    value === Theme.DARK ||
+    value === Theme.SYSTEM
+  );
 }
 
 function resolveInitialTheme(initialTheme?: Theme): Theme {
