@@ -1,0 +1,108 @@
+"use client";
+
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
+
+import { Button } from "@/components/ui/button";
+import { useAddBoardMember } from "@/features/boards/api/boards.queries";
+import {
+  inviteEmailSchema,
+  type InviteEmailFormValues,
+} from "@/features/share/schemas/share.schema";
+import { useI18n } from "@/i18n/context";
+
+interface ShareEmailTabProps {
+  boardId: string;
+}
+
+export function ShareEmailTab({ boardId }: ShareEmailTabProps) {
+  const { t } = useI18n();
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+
+  const addMemberMutation = useAddBoardMember(boardId);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<InviteEmailFormValues>({
+    resolver: zodResolver(inviteEmailSchema),
+    defaultValues: {
+      email: "",
+      role: "EDITOR",
+    },
+  });
+
+  const onSubmit = (values: InviteEmailFormValues) => {
+    setInviteError(null);
+    setInviteSuccess(null);
+
+    addMemberMutation.mutate(
+      { email: values.email.trim(), role: values.role },
+      {
+        onSuccess: () => {
+          setInviteSuccess(
+            t("shareModal.emailTab.feedback.inviteSent", { email: values.email.trim() })
+          );
+          reset({ email: "", role: values.role });
+        },
+        onError: (err: unknown) => {
+          if (axios.isAxiosError(err)) {
+            const msg = err.response?.data?.message as string | undefined;
+            if (err.response?.status === 404) {
+              setInviteError(t("shareModal.emailTab.feedback.userNotFound"));
+            } else {
+              setInviteError(msg || t("shareModal.emailTab.feedback.inviteFailed"));
+            }
+          } else {
+            setInviteError(t("shareModal.emailTab.feedback.inviteFailed"));
+          }
+        },
+      }
+    );
+  };
+
+  return (
+    <div>
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-2">
+        <div className="flex gap-2">
+          <input
+            type="email"
+            {...register("email")}
+            placeholder={t("shareModal.emailTab.placeholder")}
+            className="flex-1 rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-xs text-text-primary outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/20 shadow-2xs"
+          />
+          <select
+            {...register("role")}
+            className="rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-xs font-medium text-text-primary outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/20 shadow-2xs"
+          >
+            <option value="EDITOR">{t("shareModal.permissions.canEdit")}</option>
+            <option value="VIEWER">{t("shareModal.permissions.canView")}</option>
+          </select>
+          <Button
+            type="submit"
+            variant="primary"
+            size="sm"
+            isLoading={addMemberMutation.isPending}
+          >
+            {addMemberMutation.isPending
+              ? t("shareModal.emailTab.actions.inviting")
+              : t("shareModal.emailTab.actions.invite")}
+          </Button>
+        </div>
+        {errors.email && (
+          <p className="text-xs font-medium text-red-500">{t("common.validation.invalidEmail")}</p>
+        )}
+      </form>
+
+      {inviteError && <p className="mt-2 text-xs font-medium text-red-500">{inviteError}</p>}
+      {inviteSuccess && (
+        <p className="mt-2 text-xs font-medium text-emerald-500">{inviteSuccess}</p>
+      )}
+    </div>
+  );
+}
