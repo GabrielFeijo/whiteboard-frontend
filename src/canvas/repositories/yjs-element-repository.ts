@@ -13,7 +13,7 @@ import {
   calculateDistributedPositions,
   DistributionType,
 } from "@/canvas/alignment-helper";
-import { resolveArrowEndpoints } from "@/canvas/connector-helper";
+import { getElementBoundingBox, resolveArrowEndpoints } from "@/canvas/connector-helper";
 
 export type ElementStylePatch = Partial<ElementData["style"]>;
 
@@ -28,11 +28,24 @@ export class YjsElementRepository {
   }
 
   indexAllElements(): void {
+    this.spatialIndex.clear();
     const elementsMap = this.getElementsMap();
     elementsMap.forEach((map, id) => {
       const data = YjsElementAdapter.toElementData(map);
       if (data) {
-        this.spatialIndex.insert(id, data.x, data.y, data.w, data.h);
+        const box = getElementBoundingBox(data);
+        if (
+          (data.type === "line" || data.type === "arrow") &&
+          (data.x !== box.x || data.y !== box.y || data.w !== box.w || data.h !== box.h)
+        ) {
+          YjsElementAdapter.updateYMap(map, {
+            x: box.x,
+            y: box.y,
+            w: box.w,
+            h: box.h,
+          });
+        }
+        this.spatialIndex.insert(id, box.x, box.y, box.w, box.h);
       }
     });
   }
@@ -51,7 +64,8 @@ export class YjsElementRepository {
                 const data = YjsElementAdapter.toElementData(childMap);
                 const elementId = data?.id || key;
                 if (data && elementId) {
-                  this.spatialIndex.insert(elementId, data.x, data.y, data.w, data.h);
+                  const box = getElementBoundingBox(data);
+                  this.spatialIndex.insert(elementId, box.x, box.y, box.w, box.h);
                 }
               }
             }
@@ -59,7 +73,8 @@ export class YjsElementRepository {
         } else if (event.target instanceof Y.Map) {
           const data = YjsElementAdapter.toElementData(event.target);
           if (data?.id) {
-            this.spatialIndex.insert(data.id, data.x, data.y, data.w, data.h);
+            const box = getElementBoundingBox(data);
+            this.spatialIndex.insert(data.id, box.x, box.y, box.w, box.h);
           }
         }
       });
@@ -102,11 +117,12 @@ export class YjsElementRepository {
   }
 
   hitTest(worldPt: { x: number; y: number }): string | null {
+    const pad = 12;
     const hits = this.spatialIndex.search({
-      minX: worldPt.x,
-      minY: worldPt.y,
-      maxX: worldPt.x,
-      maxY: worldPt.y,
+      minX: worldPt.x - pad,
+      minY: worldPt.y - pad,
+      maxX: worldPt.x + pad,
+      maxY: worldPt.y + pad,
     });
     if (hits.length === 0) return null;
 
@@ -123,7 +139,7 @@ export class YjsElementRepository {
       }
     }
 
-    return candidateElements[0].id;
+    return null;
   }
 
   getNextZIndex(): string {
@@ -144,7 +160,8 @@ export class YjsElementRepository {
       elementsMap.set(data.id, elementMap);
     }, LOCAL_ORIGIN);
 
-    this.spatialIndex.insert(data.id, data.x, data.y, data.w, data.h);
+    const box = getElementBoundingBox(data);
+    this.spatialIndex.insert(data.id, box.x, box.y, box.w, box.h);
   }
 
   updateStyleForIds(ids: readonly string[], styleUpdates: ElementStylePatch): void {
@@ -214,17 +231,21 @@ export class YjsElementRepository {
           y: data.y + 20,
           z: newZ,
           createdBy: userId,
-          points: data.points?.map((pt, i) => (i % 3 === 2 ? pt : pt + 20)),
+          points:
+            data.type === "line" || data.type === "arrow"
+              ? data.points?.map((pt) => pt + 20)
+              : data.points?.map((pt, i) => (i % 3 === 2 ? pt : pt + 20)),
         };
 
         const newMap = YjsElementAdapter.createYMap(duplicated);
         elementsMap.set(newId, newMap);
+        const box = getElementBoundingBox(duplicated);
         this.spatialIndex.insert(
           newId,
-          duplicated.x,
-          duplicated.y,
-          duplicated.w,
-          duplicated.h,
+          box.x,
+          box.y,
+          box.w,
+          box.h,
         );
         newSelectedIds.push(newId);
       });

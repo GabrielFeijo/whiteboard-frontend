@@ -41,6 +41,7 @@ export interface CanvasHost {
   syncConnectedArrows(movedIds: readonly string[]): void;
   setSnapIndicator(indicator: { active: Point | null; candidates: Point[] } | null): void;
   getSnapIndicator(): { active: Point | null; candidates: Point[] } | null;
+  getElementById(id: string): ElementData | null;
 }
 
 export interface CanvasTool {

@@ -1,6 +1,6 @@
 import { CanvasHost, CanvasTool, ToolContext } from "./tool.interface";
 import { useCanvasStore } from "@/store/canvas-store";
-import { getDocRoots } from "@/shared";
+import { ArrowBinding, ElementData, getDocRoots } from "@/shared";
 import { LOCAL_ORIGIN } from "@/collab/undo-manager";
 import {
   calculateResizedBounds,
@@ -10,13 +10,25 @@ import {
 } from "@/canvas/resize-helper";
 import { YjsElementAdapter } from "@/canvas/yjs-element-adapter";
 import { calculateSmartGuides } from "@/canvas/alignment-helper";
+import { findNearestAnchor, getNearbyAnchorPoints } from "@/canvas/connector-helper";
+
+interface MoveInitialItem {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  type: ElementData["type"];
+  points?: number[];
+  startBinding?: ArrowBinding;
+  endBinding?: ArrowBinding;
+}
 
 export class SelectTool implements CanvasTool {
   readonly id = "select";
 
   private dragMode: "none" | "move" | "resize" | "selectBox" = "none";
   private startPoint = { x: 0, y: 0 };
-  private moveInitialPositions = new Map<string, { x: number; y: number }>();
+  private moveInitialElements = new Map<string, MoveInitialItem>();
   private resizeInfo: {
     handle: ResizeHandleType;
     elementId: string;
@@ -40,14 +52,22 @@ export class SelectTool implements CanvasTool {
       if (map) {
         const el = YjsElementAdapter.toElementData(map);
         if (el && !el.locked) {
-          const handle = getHandleAt(ctx.screenPt, el, this.host.viewport);
+          const handle = getHandleAt(
+            ctx.screenPt,
+            el,
+            this.host.viewport,
+            12,
+            (id) => this.host.getElementById(id),
+          );
           if (handle) {
             this.dragMode = "resize";
             this.resizeInfo = {
               handle: handle.type,
               elementId: selectedId,
               initialBounds: { x: el.x, y: el.y, w: el.w, h: el.h },
-              initialPoints: el.points ? [...el.points] : undefined,
+              initialPoints: el.points
+                ? [...el.points]
+                : [el.x, el.y, el.x + el.w, el.y + el.h],
               startWorldPt: { ...ctx.worldPt },
             };
             return;
@@ -86,15 +106,24 @@ export class SelectTool implements CanvasTool {
 
       if (!allLocked) {
         this.dragMode = "move";
-        this.moveInitialPositions.clear();
+        this.moveInitialElements.clear();
         const roots = getDocRoots(this.host.doc);
         activeSelectedIds.forEach((id) => {
           const map = roots.elements.get(id);
           if (map && map.get("locked") !== true) {
-            this.moveInitialPositions.set(
-              id,
-              YjsElementAdapter.getPosition(map),
-            );
+            const el = YjsElementAdapter.toElementData(map);
+            if (el) {
+              this.moveInitialElements.set(id, {
+                x: el.x,
+                y: el.y,
+                w: el.w,
+                h: el.h,
+                type: el.type,
+                points: el.points ? [...el.points] : undefined,
+                startBinding: el.startBinding,
+                endBinding: el.endBinding,
+              });
+            }
           }
         });
       } else {
@@ -116,6 +145,73 @@ export class SelectTool implements CanvasTool {
       const roots = getDocRoots(this.host.doc);
       const map = roots.elements.get(this.resizeInfo.elementId);
       if (map) {
+        if (
+          this.resizeInfo.handle === "start" ||
+          this.resizeInfo.handle === "end"
+        ) {
+          const excludeIds = [this.resizeInfo.elementId];
+          const others = this.host.getOtherElements(excludeIds);
+          const match = findNearestAnchor(ctx.worldPt, others, 36);
+          const targetPt = match ? { ...match.pt } : { ...ctx.worldPt };
+          const candidates = getNearbyAnchorPoints(ctx.worldPt, others, 140);
+          this.host.setSnapIndicator({
+            active: match?.pt ?? null,
+            candidates,
+          });
+
+          const initPts = this.resizeInfo.initialPoints || [0, 0, 0, 0];
+          const p1 =
+            this.resizeInfo.handle === "start"
+              ? targetPt
+              : { x: initPts[0], y: initPts[1] };
+          const p2 =
+            this.resizeInfo.handle === "end"
+              ? targetPt
+              : { x: initPts[2], y: initPts[3] };
+
+          const newPoints = [p1.x, p1.y, p2.x, p2.y];
+          const newX = Math.round(Math.min(p1.x, p2.x));
+          const newY = Math.round(Math.min(p1.y, p2.y));
+          const newW = Math.round(Math.max(1, Math.abs(p2.x - p1.x)));
+          const newH = Math.round(Math.max(1, Math.abs(p2.y - p1.y)));
+
+          const currentStartBinding = map.get("startBinding") as
+            | ArrowBinding
+            | undefined;
+          const currentEndBinding = map.get("endBinding") as
+            | ArrowBinding
+            | undefined;
+
+          const updatedStartBinding =
+            this.resizeInfo.handle === "start"
+              ? match
+                ? { elementId: match.elementId, anchor: match.anchor }
+                : undefined
+              : currentStartBinding;
+
+          const updatedEndBinding =
+            this.resizeInfo.handle === "end"
+              ? match
+                ? { elementId: match.elementId, anchor: match.anchor }
+                : undefined
+              : currentEndBinding;
+
+          this.host.doc.transact(() => {
+            YjsElementAdapter.updateYMap(map, {
+              x: newX,
+              y: newY,
+              w: newW,
+              h: newH,
+              points: newPoints,
+              startBinding: updatedStartBinding,
+              endBinding: updatedEndBinding,
+            });
+          }, LOCAL_ORIGIN);
+
+          this.host.setDirty();
+          return;
+        }
+
         const dx = ctx.worldPt.x - this.resizeInfo.startWorldPt.x;
         const dy = ctx.worldPt.y - this.resizeInfo.startWorldPt.y;
         const type = YjsElementAdapter.getType(map);
@@ -169,16 +265,13 @@ export class SelectTool implements CanvasTool {
         let maxX = -Infinity;
         let maxY = -Infinity;
 
-        this.moveInitialPositions.forEach((initial, id) => {
-          const map = roots.elements.get(id);
-          const w = (map?.get("w") as number) ?? 0;
-          const h = (map?.get("h") as number) ?? 0;
+        this.moveInitialElements.forEach((initial) => {
           const curX = initial.x + dx;
           const curY = initial.y + dy;
           if (curX < minX) minX = curX;
-          if (curX + w > maxX) maxX = curX + w;
+          if (curX + initial.w > maxX) maxX = curX + initial.w;
           if (curY < minY) minY = curY;
-          if (curY + h > maxY) maxY = curY + h;
+          if (curY + initial.h > maxY) maxY = curY + initial.h;
         });
 
         const draggedBounds = {
@@ -211,13 +304,68 @@ export class SelectTool implements CanvasTool {
         }
       }
 
+      const selectedSet = new Set(store.selectedIds);
+
       this.host.doc.transact(() => {
-        this.moveInitialPositions.forEach((initial, id) => {
+        this.moveInitialElements.forEach((initial, id) => {
           const map = roots.elements.get(id);
-          if (map) {
+          if (!map) return;
+
+          if (initial.type === "line" || initial.type === "arrow") {
+            const initPts =
+              initial.points && initial.points.length >= 4
+                ? initial.points
+                : [
+                    initial.x,
+                    initial.y,
+                    initial.x + initial.w,
+                    initial.y + initial.h,
+                  ];
+            const p1x = Math.round(initPts[0] + dx);
+            const p1y = Math.round(initPts[1] + dy);
+            const p2x = Math.round(initPts[2] + dx);
+            const p2y = Math.round(initPts[3] + dy);
+            const newPoints = [p1x, p1y, p2x, p2y];
+            const newX = Math.min(p1x, p2x);
+            const newY = Math.min(p1y, p2y);
+            const newW = Math.max(1, Math.abs(p2x - p1x));
+            const newH = Math.max(1, Math.abs(p2y - p1y));
+
+            const keepStartBinding =
+              initial.startBinding &&
+              selectedSet.has(initial.startBinding.elementId);
+            const keepEndBinding =
+              initial.endBinding &&
+              selectedSet.has(initial.endBinding.elementId);
+
             YjsElementAdapter.updateYMap(map, {
-              x: initial.x + dx,
-              y: initial.y + dy,
+              x: newX,
+              y: newY,
+              w: newW,
+              h: newH,
+              points: newPoints,
+              startBinding: keepStartBinding
+                ? initial.startBinding
+                : undefined,
+              endBinding: keepEndBinding ? initial.endBinding : undefined,
+            });
+          } else if (initial.type === "freehand") {
+            const newPoints = initial.points?.map((val, idx) =>
+              idx % 3 === 0
+                ? Math.round(val + dx)
+                : idx % 3 === 1
+                  ? Math.round(val + dy)
+                  : val,
+            );
+            YjsElementAdapter.updateYMap(map, {
+              x: Math.round(initial.x + dx),
+              y: Math.round(initial.y + dy),
+              points: newPoints,
+            });
+          } else {
+            YjsElementAdapter.updateYMap(map, {
+              x: Math.round(initial.x + dx),
+              y: Math.round(initial.y + dy),
             });
           }
         });
@@ -241,6 +389,7 @@ export class SelectTool implements CanvasTool {
 
   onPointerUp(): void {
     this.host.setGuides(null);
+    this.host.setSnapIndicator(null);
     if (this.dragMode === "selectBox") {
       const box = this.host.getSelectBox();
       if (box && (box.w > 2 || box.h > 2)) {
@@ -257,7 +406,7 @@ export class SelectTool implements CanvasTool {
       this.host.setSelectBox(null);
     } else if (this.dragMode === "move") {
       this.host.undoManager.stopCapturing();
-      this.moveInitialPositions.clear();
+      this.moveInitialElements.clear();
       this.host.syncConnectedArrows(useCanvasStore.getState().selectedIds);
     } else if (this.dragMode === "resize") {
       this.host.undoManager.stopCapturing();
@@ -281,7 +430,13 @@ export class SelectTool implements CanvasTool {
       if (map) {
         const el = YjsElementAdapter.toElementData(map);
         if (el && !el.locked) {
-          const handle = getHandleAt(ctx.screenPt, el, this.host.viewport);
+          const handle = getHandleAt(
+            ctx.screenPt,
+            el,
+            this.host.viewport,
+            12,
+            (id) => this.host.getElementById(id),
+          );
           if (handle) {
             return handle.cursor;
           }
@@ -305,8 +460,9 @@ export class SelectTool implements CanvasTool {
   onDeactivate(): void {
     this.dragMode = "none";
     this.resizeInfo = null;
-    this.moveInitialPositions.clear();
+    this.moveInitialElements.clear();
     this.host.setSelectBox(null);
     this.host.setGuides(null);
+    this.host.setSnapIndicator(null);
   }
 }

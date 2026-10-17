@@ -226,3 +226,24 @@ export function drawCurvedLine(
 ): void {
   drawCurvedConnector(ctx, from, to, style, startAnchor, endAnchor, false);
 }
+
+export function getElementBoundingBox(data: ElementData): {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+} {
+  if (
+    (data.type === "line" || data.type === "arrow") &&
+    data.points &&
+    data.points.length >= 4
+  ) {
+    const minX = Math.min(data.points[0], data.points[2]);
+    const minY = Math.min(data.points[1], data.points[3]);
+    const w = Math.max(1, Math.abs(data.points[2] - data.points[0]));
+    const h = Math.max(1, Math.abs(data.points[3] - data.points[1]));
+    return { x: minX, y: minY, w, h };
+  }
+  return { x: data.x, y: data.y, w: data.w, h: data.h };
+}
+

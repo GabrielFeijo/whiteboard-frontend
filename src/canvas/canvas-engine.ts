@@ -6,6 +6,7 @@ import { renderElement } from "@/canvas/renderers/element-renderer";
 import { renderBackgroundGrid } from "@/canvas/renderers/background-grid-renderer";
 import { renderSelectionAndDraftsOverlay } from "@/canvas/renderers/selection-overlay-renderer";
 import { renderRemoteCursorsOverlay } from "@/canvas/renderers/remote-cursors-renderer";
+import { getElementBoundingBox } from "@/canvas/connector-helper";
 import { Tool, useCanvasStore } from "@/store/canvas-store";
 import { LocalUndoManager } from "@/collab/undo-manager";
 import { SyncProvider } from "@/collab/sync-provider";
@@ -226,12 +227,13 @@ export class CanvasEngine
                 const data = YjsElementAdapter.toElementData(childMap);
                 const elementId = data?.id || key;
                 if (data && elementId) {
+                  const box = getElementBoundingBox(data);
                   this.spatialIndex.insert(
                     elementId,
-                    data.x,
-                    data.y,
-                    data.w,
-                    data.h,
+                    box.x,
+                    box.y,
+                    box.w,
+                    box.h,
                   );
                 }
               }
@@ -240,7 +242,8 @@ export class CanvasEngine
         } else if (event.target instanceof Y.Map) {
           const data = YjsElementAdapter.toElementData(event.target);
           if (data?.id) {
-            this.spatialIndex.insert(data.id, data.x, data.y, data.w, data.h);
+            const box = getElementBoundingBox(data);
+            this.spatialIndex.insert(data.id, box.x, box.y, box.w, box.h);
           }
         }
       });
@@ -363,6 +366,7 @@ export class CanvasEngine
       userId: this.userId,
       guides: this.guides,
       snapIndicator: this.snapIndicator,
+      getElementById: (id) => this.repository.getById(id),
     });
 
     renderRemoteCursorsOverlay(
@@ -586,6 +590,10 @@ export class CanvasEngine
 
   getSnapIndicator(): { active: Point | null; candidates: Point[] } | null {
     return this.snapIndicator;
+  }
+
+  getElementById(id: string): ElementData | null {
+    return this.repository.getById(id);
   }
 
   getOtherElements(excludeIds: readonly string[]): ElementData[] {

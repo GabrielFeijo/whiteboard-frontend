@@ -5,6 +5,7 @@ import {
   calculateResizedBounds,
   getElementHandles,
   getHandleAt,
+  getLineHandles,
   isPointInElement,
   scaleFreehandPoints,
 } from "../../src/canvas/resize-helper";
@@ -292,5 +293,59 @@ describe("element resizing logic", () => {
     }
 
     expect(hitId).toBe("child-rect");
+  });
+
+  it("extracts start and end handles for lines and detects hits", () => {
+    const line = {
+      id: "l1",
+      type: "line" as const,
+      x: 100,
+      y: 100,
+      w: 200,
+      h: 150,
+      points: [100, 250, 300, 100],
+      rotation: 0,
+      z: "a1",
+      createdBy: "u1",
+      style: { fill: "transparent", stroke: "#000", strokeWidth: 2, opacity: 1 },
+    };
+
+    const handles = getLineHandles(line);
+    expect(handles).toHaveLength(2);
+    expect(handles[0]).toEqual({ type: "start", x: 100, y: 250, cursor: "crosshair" });
+    expect(handles[1]).toEqual({ type: "end", x: 300, y: 100, cursor: "crosshair" });
+
+    const vp = new Viewport({ x: 0, y: 0 }, 1.0);
+    const hitStart = getHandleAt({ x: 102, y: 248 }, line, vp, 10);
+    expect(hitStart?.type).toBe("start");
+
+    const hitEnd = getHandleAt({ x: 298, y: 102 }, line, vp, 10);
+    expect(hitEnd?.type).toBe("end");
+
+    const miss = getHandleAt({ x: 200, y: 200 }, line, vp, 10);
+    expect(miss).toBeNull();
+  });
+
+  it("accurately hit tests diagonal lines with reverse slope", () => {
+    const line = {
+      id: "l1",
+      type: "line" as const,
+      x: 100,
+      y: 100,
+      w: 200,
+      h: 200,
+      points: [100, 300, 300, 100],
+      rotation: 0,
+      z: "a1",
+      createdBy: "u1",
+      style: { fill: "transparent", stroke: "#000", strokeWidth: 2, opacity: 1 },
+    };
+
+    expect(isPointInElement({ x: 200, y: 200 }, line)).toBe(true);
+    expect(isPointInElement({ x: 100, y: 300 }, line)).toBe(true);
+    expect(isPointInElement({ x: 300, y: 100 }, line)).toBe(true);
+
+    expect(isPointInElement({ x: 100, y: 100 }, line)).toBe(false);
+    expect(isPointInElement({ x: 300, y: 300 }, line)).toBe(false);
   });
 });

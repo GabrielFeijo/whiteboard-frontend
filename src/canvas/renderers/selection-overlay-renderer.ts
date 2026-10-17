@@ -2,6 +2,7 @@ import { ElementData } from "@/shared";
 import { getElementHandles } from "@/canvas/resize-helper";
 import { drawFreehand } from "@/canvas/renderers/freehand-renderer";
 import { Point } from "@/canvas/viewport";
+import { drawCurvedConnector, resolveArrowEndpoints } from "@/canvas/connector-helper";
 
 export interface SelectionOverlayRenderParams {
   ctx: CanvasRenderingContext2D;
@@ -27,6 +28,7 @@ export interface SelectionOverlayRenderParams {
     horizontal?: number[];
   } | null;
   snapIndicator?: { active: Point | null; candidates: Point[] } | null;
+  getElementById?: (id: string) => ElementData | null;
 }
 
 export function renderSelectionAndDraftsOverlay(
@@ -43,6 +45,7 @@ export function renderSelectionAndDraftsOverlay(
     userId,
     guides,
     snapIndicator,
+    getElementById,
   } = params;
 
   if (guides) {
@@ -70,6 +73,80 @@ export function renderSelectionAndDraftsOverlay(
 
   if (selectedElements.length > 0) {
     selectedElements.forEach((el) => {
+      if (el.type === "line" || el.type === "arrow") {
+        const { from, to } = resolveArrowEndpoints(el, getElementById);
+        ctx.save();
+        ctx.strokeStyle = el.locked
+          ? "rgba(244, 63, 94, 0.4)"
+          : "rgba(79, 70, 229, 0.4)";
+        ctx.lineWidth = Math.max((el.style.strokeWidth || 2) + 8 / zoom, 12 / zoom);
+        ctx.lineCap = "round";
+
+        if (el.startBinding || el.endBinding) {
+          drawCurvedConnector(
+            ctx,
+            from,
+            to,
+            {
+              ...el.style,
+              stroke: ctx.strokeStyle,
+              strokeWidth: ctx.lineWidth,
+            },
+            el.startBinding?.anchor,
+            el.endBinding?.anchor,
+            el.type === "arrow",
+          );
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(from.x, from.y);
+          ctx.lineTo(to.x, to.y);
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        if (el.locked) {
+          const badgeSize = 16 / zoom;
+          const bx = (from.x + to.x) / 2 - badgeSize / 2;
+          const by = (from.y + to.y) / 2 - badgeSize / 2;
+          ctx.fillStyle = "#f43f5e";
+          ctx.beginPath();
+          ctx.roundRect(bx, by, badgeSize, badgeSize, 4 / zoom);
+          ctx.fill();
+
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 1.2 / zoom;
+          ctx.beginPath();
+          ctx.arc(
+            bx + badgeSize / 2,
+            by + badgeSize * 0.42,
+            badgeSize * 0.18,
+            Math.PI,
+            0,
+            false,
+          );
+          ctx.stroke();
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(
+            bx + badgeSize * 0.28,
+            by + badgeSize * 0.42,
+            badgeSize * 0.44,
+            badgeSize * 0.36,
+          );
+        } else if (selectedElements.length === 1) {
+          const handleRadius = 5 / zoom;
+          ctx.fillStyle = "#ffffff";
+          ctx.strokeStyle = "#4f46e5";
+          ctx.lineWidth = 1.5 / zoom;
+          [from, to].forEach((pt) => {
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, handleRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          });
+        }
+        return;
+      }
+
       ctx.strokeStyle = el.locked ? "#f43f5e" : "#4f46e5";
       ctx.lineWidth = 1.5 / zoom;
       ctx.strokeRect(el.x, el.y, el.w, el.h);

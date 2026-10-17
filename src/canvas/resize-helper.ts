@@ -1,5 +1,6 @@
 import { Point, Viewport } from "./viewport";
 import { ElementData } from "../shared";
+import { resolveArrowEndpoints } from "./connector-helper";
 
 export type ResizeHandleType =
   | "nw"
@@ -9,7 +10,9 @@ export type ResizeHandleType =
   | "se"
   | "s"
   | "sw"
-  | "w";
+  | "w"
+  | "start"
+  | "end";
 
 export interface ResizeHandle {
   type: ResizeHandleType;
@@ -23,6 +26,17 @@ export interface Bounds {
   y: number;
   w: number;
   h: number;
+}
+
+export function getLineHandles(
+  el: ElementData,
+  getElementById?: (id: string) => ElementData | null,
+): ResizeHandle[] {
+  const { from, to } = resolveArrowEndpoints(el, getElementById);
+  return [
+    { type: "start", x: from.x, y: from.y, cursor: "crosshair" },
+    { type: "end", x: to.x, y: to.y, cursor: "crosshair" },
+  ];
 }
 
 export function getElementHandles(bounds: Bounds): ResizeHandle[] {
@@ -47,10 +61,24 @@ export function getElementHandles(bounds: Bounds): ResizeHandle[] {
 
 export function getHandleAt(
   screenPt: Point,
-  bounds: Bounds,
+  bounds: Bounds | ElementData,
   viewport: Viewport,
   hitRadius = 10,
+  getElementById?: (id: string) => ElementData | null,
 ): ResizeHandle | null {
+  const el = bounds as ElementData;
+  if (el.type === "line" || el.type === "arrow") {
+    const lineHandles = getLineHandles(el, getElementById);
+    for (const handle of lineHandles) {
+      const handleScreenPt = viewport.worldToScreen({ x: handle.x, y: handle.y });
+      const dist = Math.hypot(screenPt.x - handleScreenPt.x, screenPt.y - handleScreenPt.y);
+      if (dist <= hitRadius) {
+        return handle;
+      }
+    }
+    return null;
+  }
+
   const handles = getElementHandles(bounds);
 
   for (const handle of handles) {
@@ -227,14 +255,14 @@ export function isPointInElement(point: Point, el: ElementData): boolean {
   }
 
   if (el.type === "line" || el.type === "arrow") {
-    const x1 = el.x;
-    const y1 = el.y;
-    const x2 = el.x + el.w;
-    const y2 = el.y + el.h;
+    const x1 = el.points && el.points.length >= 4 ? el.points[0] : el.x;
+    const y1 = el.points && el.points.length >= 4 ? el.points[1] : el.y;
+    const x2 = el.points && el.points.length >= 4 ? el.points[2] : el.x + el.w;
+    const y2 = el.points && el.points.length >= 4 ? el.points[3] : el.y + el.h;
     const dx = x2 - x1;
     const dy = y2 - y1;
     const lenSq = dx * dx + dy * dy;
-    const tolerance = Math.max((el.style?.strokeWidth || 2) + 6, 8);
+    const tolerance = Math.max((el.style?.strokeWidth || 2) + 8, 12);
 
     if (lenSq === 0) {
       return Math.hypot(px - x1, py - y1) <= tolerance;
