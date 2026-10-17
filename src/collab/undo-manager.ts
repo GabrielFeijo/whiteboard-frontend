@@ -14,6 +14,35 @@ export class LocalUndoManager {
     });
   }
 
+  canUndo(): boolean {
+    return this.undoManager.undoStack.length > 0;
+  }
+
+  canRedo(): boolean {
+    return this.undoManager.redoStack.length > 0;
+  }
+
+  onStackChange(listener: (status: { canUndo: boolean; canRedo: boolean }) => void): () => void {
+    const notify = () => {
+      listener({
+        canUndo: this.canUndo(),
+        canRedo: this.canRedo(),
+      });
+    };
+
+    this.undoManager.on("stack-item-added", notify);
+    this.undoManager.on("stack-item-popped", notify);
+    this.undoManager.on("stack-cleared", notify);
+
+    notify();
+
+    return () => {
+      this.undoManager.off("stack-item-added", notify);
+      this.undoManager.off("stack-item-popped", notify);
+      this.undoManager.off("stack-cleared", notify);
+    };
+  }
+
   undo() {
     this.undoManager.undo();
   }

@@ -24,6 +24,15 @@ export const ElementStyleSchema = z.object({
   opacity: finite.min(0).max(1),
 });
 
+export const AnchorPointSchema = z.enum(['top', 'bottom', 'left', 'right']);
+export type AnchorPoint = z.infer<typeof AnchorPointSchema>;
+
+export const ArrowBindingSchema = z.object({
+  elementId: z.string().max(64),
+  anchor: AnchorPointSchema,
+});
+export type ArrowBinding = z.infer<typeof ArrowBindingSchema>;
+
 export const ElementDataSchema = z.object({
   id: z.string().min(1).max(64),
   type: z.enum(ELEMENT_TYPES),
@@ -39,6 +48,11 @@ export const ElementDataSchema = z.object({
   parentId: z.string().max(64).optional(),
   assetId: z.string().max(64).optional(),
   createdBy: z.string().min(1).max(64),
+  groupId: z.string().max(64).optional(),
+  locked: z.boolean().optional(),
+  startBinding: ArrowBindingSchema.optional(),
+  endBinding: ArrowBindingSchema.optional(),
+  src: z.string().max(2_000_000).optional(),
 });
 export type ElementData = z.infer<typeof ElementDataSchema>;
 

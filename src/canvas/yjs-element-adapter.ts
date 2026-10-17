@@ -72,6 +72,13 @@ export class YjsElementAdapter {
     if (data.points !== undefined) elementMap.set("points", data.points);
     if (data.parentId !== undefined) elementMap.set("parentId", data.parentId);
     if (data.assetId !== undefined) elementMap.set("assetId", data.assetId);
+    if (data.groupId !== undefined) elementMap.set("groupId", data.groupId);
+    if (data.locked !== undefined) elementMap.set("locked", data.locked);
+    if (data.startBinding !== undefined)
+      elementMap.set("startBinding", data.startBinding);
+    if (data.endBinding !== undefined)
+      elementMap.set("endBinding", data.endBinding);
+    if (data.src !== undefined) elementMap.set("src", data.src);
     elementMap.set("createdBy", data.createdBy);
 
     return elementMap;
@@ -91,6 +98,35 @@ export class YjsElementAdapter {
     if (patch.z !== undefined) map.set("z", patch.z);
     if (patch.text !== undefined) map.set("text", patch.text);
     if (patch.points !== undefined) map.set("points", patch.points);
+    if (patch.groupId !== undefined) {
+      if (patch.groupId === null || patch.groupId === "") {
+        map.delete("groupId");
+      } else {
+        map.set("groupId", patch.groupId);
+      }
+    }
+    if (patch.locked !== undefined) {
+      if (!patch.locked) {
+        map.delete("locked");
+      } else {
+        map.set("locked", true);
+      }
+    }
+    if (patch.startBinding !== undefined) {
+      if (patch.startBinding === null) {
+        map.delete("startBinding");
+      } else {
+        map.set("startBinding", patch.startBinding);
+      }
+    }
+    if (patch.endBinding !== undefined) {
+      if (patch.endBinding === null) {
+        map.delete("endBinding");
+      } else {
+        map.set("endBinding", patch.endBinding);
+      }
+    }
+    if (patch.src !== undefined) map.set("src", patch.src);
 
     if (patch.style) {
       const rawStyle = map.get("style");

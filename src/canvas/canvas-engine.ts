@@ -434,6 +434,20 @@ export class CanvasEngine
     this.isDirty = true;
   }
 
+  public canUndo(): boolean {
+    return this.undoManager.canUndo();
+  }
+
+  public canRedo(): boolean {
+    return this.undoManager.canRedo();
+  }
+
+  public onUndoStackChange(
+    listener: (status: { canUndo: boolean; canRedo: boolean }) => void,
+  ): () => void {
+    return this.undoManager.onStackChange(listener);
+  }
+
   public broadcastViewport(): void {
     setLocalViewportAwareness(this.provider.awareness, {
       pan: this.viewport.pan,

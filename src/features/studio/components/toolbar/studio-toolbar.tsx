@@ -4,6 +4,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { ShapeToolMenu } from "@/features/studio/components/toolbar/shape-tool-menu";
 import { useI18n } from "@/i18n/context";
 import { useCanvasStore } from "@/store/canvas-store";
+import { Redo2, Undo2 } from "lucide-react";
 
 interface StudioToolbarProps {
   onUndo?: () => void;
@@ -191,16 +192,7 @@ export function StudioToolbar({
           className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary transition-all hover:text-text-primary hover:bg-surface-hover disabled:opacity-30 disabled:pointer-events-none"
           aria-label={t("studio.toolbar.history.undo")}
         >
-          <svg
-            className="h-4 w-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path d="M3 7v6h6" />
-            <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
-          </svg>
+          <Undo2 className="h-4 w-4" />
         </button>
       </Tooltip>
 
@@ -212,16 +204,7 @@ export function StudioToolbar({
           className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary transition-all hover:text-text-primary hover:bg-surface-hover disabled:opacity-30 disabled:pointer-events-none"
           aria-label={t("studio.toolbar.history.redo")}
         >
-          <svg
-            className="h-4 w-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path d="M21 7v6h-6" />
-            <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" />
-          </svg>
+          <Redo2 className="h-4 w-4" />
         </button>
       </Tooltip>
     </nav>

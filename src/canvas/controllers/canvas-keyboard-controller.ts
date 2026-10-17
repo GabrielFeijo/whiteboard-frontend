@@ -7,6 +7,9 @@ export interface KeyboardControllerTarget {
   duplicateSelected(): void;
   undo(): void;
   redo(): void;
+  groupSelected?(): void;
+  ungroupSelected?(): void;
+  toggleLockSelected?(): void;
 }
 
 const SHORTCUT_TOOL_MAP: Record<string, Tool> = {
@@ -64,6 +67,7 @@ export class CanvasKeyboardController {
     }
 
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+      e.preventDefault();
       if (e.shiftKey) {
         this.target.redo();
       } else {
@@ -73,7 +77,33 @@ export class CanvasKeyboardController {
     }
 
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
+      e.preventDefault();
       this.target.redo();
+      return;
+    }
+
+    if (
+      (e.ctrlKey || e.metaKey) &&
+      e.key.toLowerCase() === "g" &&
+      store.selectedIds.length > 0
+    ) {
+      e.preventDefault();
+      if (e.shiftKey) {
+        this.target.ungroupSelected?.();
+      } else {
+        this.target.groupSelected?.();
+      }
+      return;
+    }
+
+    if (
+      (e.ctrlKey || e.metaKey) &&
+      e.shiftKey &&
+      e.key.toLowerCase() === "l" &&
+      store.selectedIds.length > 0
+    ) {
+      e.preventDefault();
+      this.target.toggleLockSelected?.();
       return;
     }
 

@@ -85,6 +85,15 @@ export function BoardStudio({
     engine
   );
 
+  const [undoStatus, setUndoStatus] = useState({ canUndo: false, canRedo: false });
+
+  useEffect(() => {
+    if (!engine) return;
+    return engine.onUndoStackChange((status) => {
+      setUndoStatus(status);
+    });
+  }, [engine]);
+
   useEffect(() => {
     if (
       !provider ||
@@ -179,8 +188,8 @@ export function BoardStudio({
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
         <StudioToolbar
           readOnly={isReadOnly}
-          canUndo={!isReadOnly}
-          canRedo={!isReadOnly}
+          canUndo={!isReadOnly && undoStatus.canUndo}
+          canRedo={!isReadOnly && undoStatus.canRedo}
           onUndo={() => engine?.undo()}
           onRedo={() => engine?.redo()}
         />
