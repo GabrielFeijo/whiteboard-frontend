@@ -61,4 +61,88 @@ describe("Alignment and Distribution Helpers", () => {
     expect(match.snappedX).toBe(100);
     expect(match.verticalGuides).toContain(100);
   });
+
+  it("ignores lines, arrows and freehand in calculateSmartGuides avoiding false positives", () => {
+    const arrowEl: ElementData = {
+      id: "arrow-1",
+      type: "arrow",
+      x: 100,
+      y: 200,
+      w: 10,
+      h: 100,
+      rotation: 0,
+      z: "a1",
+      style: { fill: "#fff", stroke: "#000", strokeWidth: 1, opacity: 1 },
+      createdBy: "user-1",
+      points: [100, 200, 110, 300],
+    };
+    const freehandEl: ElementData = {
+      id: "freehand-1",
+      type: "freehand",
+      x: 50,
+      y: 50,
+      w: 200,
+      h: 200,
+      rotation: 0,
+      z: "a2",
+      style: { fill: "#fff", stroke: "#000", strokeWidth: 1, opacity: 1 },
+      createdBy: "user-1",
+      points: [50, 50, 1, 100, 100, 1],
+    };
+
+    const dragged = { x: 98, y: 300, w: 80, h: 80 };
+    const match = calculateSmartGuides(dragged, [arrowEl, freehandEl], 8);
+    expect(match.snappedX).toBeUndefined();
+    expect(match.snappedY).toBeUndefined();
+    expect(match.verticalGuides).toHaveLength(0);
+    expect(match.horizontalGuides).toHaveLength(0);
+  });
+
+  it("aligns perfectly center-to-center when card is dragged below a connected card without phantom guides", () => {
+    const cardA = makeEl("card-a", 561, 71, 378, 163);
+    const connector: ElementData = {
+      id: "conn-1",
+      type: "arrow",
+      x: 750,
+      y: 234,
+      w: 7,
+      h: 94,
+      rotation: 0,
+      z: "a1",
+      style: { fill: "transparent", stroke: "#ef4444", strokeWidth: 2, opacity: 1 },
+      createdBy: "user-1",
+      startBinding: { elementId: "card-a", anchor: "bottom" },
+      endBinding: { elementId: "card-b", anchor: "top" },
+    };
+
+    const draggedCardB = { x: 568, y: 328, w: 378, h: 163 };
+    const match = calculateSmartGuides(draggedCardB, [cardA, connector], 8);
+
+    expect(match.snappedX).toBe(561);
+    expect(match.verticalGuides).toContain(750);
+    expect(match.horizontalGuides).toHaveLength(0);
+    expect(match.snappedY).toBeUndefined();
+  });
+
+  it("ignores arrows and lines in calculateAlignedPositions without distorting bounds", () => {
+    const el1 = makeEl("1", 10, 20, 100, 50);
+    const el2 = makeEl("2", 80, 100, 60, 40);
+    const arrow: ElementData = {
+      id: "arrow-1",
+      type: "arrow",
+      x: 500,
+      y: 500,
+      w: 200,
+      h: 100,
+      rotation: 0,
+      z: "a1",
+      style: { fill: "#fff", stroke: "#000", strokeWidth: 1, opacity: 1 },
+      createdBy: "user-1",
+    };
+
+    const left = calculateAlignedPositions([el1, el2, arrow], "left");
+    expect(left.has("arrow-1")).toBe(false);
+    expect(left.get("1")?.x).toBe(10);
+    expect(left.get("2")?.x).toBe(10);
+  });
 });
