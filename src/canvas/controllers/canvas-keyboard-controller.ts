@@ -109,6 +109,35 @@ const MODIFIER_ACTIONS: Record<string, ModifierAction> = {
   },
 };
 
+function isImageFile(file: File): boolean {
+  return file.type.startsWith("image/") || file.name.endsWith(".svg");
+}
+
+function findImageInFiles(files: FileList | null | undefined): File | null {
+  if (!files || files.length === 0) return null;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    if (isImageFile(file)) return file;
+  }
+  return null;
+}
+
+function findImageInItems(items: DataTransferItemList | null | undefined): File | null {
+  if (!items) return null;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (!item.type.startsWith("image/")) continue;
+    const file = item.getAsFile();
+    if (file) return file;
+  }
+  return null;
+}
+
+function extractImageFromClipboard(clipboardData: DataTransfer | null): File | null {
+  if (!clipboardData) return null;
+  return findImageInFiles(clipboardData.files) ?? findImageInItems(clipboardData.items);
+}
+
 export class CanvasKeyboardController {
   constructor(private readonly target: KeyboardControllerTarget) {
     window.addEventListener("keydown", this.onKeyDown);
@@ -150,32 +179,11 @@ export class CanvasKeyboardController {
   private onPaste = (e: ClipboardEvent): void => {
     if (isEditableDomElement(e.target) || this.target.role === Role.VIEWER) return;
 
-    const files = e.clipboardData?.files;
-    if (files && files.length > 0) {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (file.type.startsWith("image/") || file.name.endsWith(".svg")) {
-          e.preventDefault();
-          this.target.pasteImage?.(file);
-          return;
-        }
-      }
-    }
+    const file = extractImageFromClipboard(e.clipboardData);
+    if (!file) return;
 
-    const items = e.clipboardData?.items;
-    if (items) {
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (item.type.startsWith("image/")) {
-          const file = item.getAsFile();
-          if (file) {
-            e.preventDefault();
-            this.target.pasteImage?.(file);
-            return;
-          }
-        }
-      }
-    }
+    e.preventDefault();
+    this.target.pasteImage?.(file);
   };
 
   destroy(): void {
