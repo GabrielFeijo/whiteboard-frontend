@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import BoardStudioLoading from "@/app/board/[id]/loading";
 import { BoardStudio } from "@/features/studio/components/board-studio";
 import { getCurrentUser } from "@/server/auth/session";
@@ -14,6 +15,7 @@ async function BoardStudioServerLoader({
   params,
   searchParams,
 }: BoardStudioPageProps) {
+  await connection();
   const [{ id }, resolvedSearchParams] = await Promise.all([
     params,
     searchParams,

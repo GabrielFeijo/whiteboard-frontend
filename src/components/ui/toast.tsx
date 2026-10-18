@@ -100,7 +100,7 @@ function dispatch(action: Action) {
 let count = 0;
 function genId() {
   count = (count + 1) % Number.MAX_SAFE_INTEGER;
-  return `toast-${Date.now()}-${count}`;
+  return `toast-${count}`;
 }
 
 export function toast(opts: ToastOptions | string) {
