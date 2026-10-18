@@ -23,6 +23,48 @@ export function getAllAnchorPoints(
   ];
 }
 
+function isConnectableElement(el: ElementData): boolean {
+  return (
+    el.type !== ElementType.ARROW &&
+    el.type !== ElementType.LINE &&
+    el.type !== ElementType.FREEHAND
+  );
+}
+
+function isPointInsideElementBounds(pt: Point, el: ElementData): boolean {
+  return (
+    pt.x >= el.x &&
+    pt.x <= el.x + el.w &&
+    pt.y >= el.y &&
+    pt.y <= el.y + el.h
+  );
+}
+
+function findClosestAnchor(
+  pt: Point,
+  anchors: readonly { anchor: AnchorPoint; pt: Point }[],
+  maxDistance = Infinity,
+): { anchor: AnchorPoint; pt: Point; distance: number } | null {
+  let closest: { anchor: AnchorPoint; pt: Point; distance: number } | null = null;
+  let minDistance = maxDistance;
+
+  for (const item of anchors) {
+    const dist = Math.hypot(item.pt.x - pt.x, item.pt.y - pt.y);
+    if (dist < minDistance) {
+      minDistance = dist;
+      closest = { anchor: item.anchor, pt: item.pt, distance: dist };
+    }
+  }
+
+  return closest;
+}
+
+function getDistanceToBoundingBox(pt: Point, el: ElementData): number {
+  const dx = Math.max(el.x - pt.x, 0, pt.x - (el.x + el.w));
+  const dy = Math.max(el.y - pt.y, 0, pt.y - (el.y + el.h));
+  return Math.hypot(dx, dy);
+}
+
 export function findNearestAnchor(
   worldPt: Point,
   elements: readonly ElementData[],
@@ -32,57 +74,35 @@ export function findNearestAnchor(
   let minDistance = threshold;
 
   for (const el of elements) {
-    if (
-      el.type === ElementType.ARROW ||
-      el.type === ElementType.LINE ||
-      el.type === ElementType.FREEHAND
-    ) {
+    if (!isConnectableElement(el)) {
       continue;
     }
 
-    const isInside =
-      worldPt.x >= el.x &&
-      worldPt.x <= el.x + el.w &&
-      worldPt.y >= el.y &&
-      worldPt.y <= el.y + el.h;
-
     const anchors = getAllAnchorPoints(el);
 
-    if (isInside) {
-      let shapeClosest: { anchor: AnchorPoint; pt: Point } | null = null;
-      let shapeMinDist = Infinity;
-      for (const item of anchors) {
-        const dist = Math.hypot(item.pt.x - worldPt.x, item.pt.y - worldPt.y);
-        if (dist < shapeMinDist) {
-          shapeMinDist = dist;
-          shapeClosest = item;
-        }
-      }
-      if (shapeClosest) {
+    if (isPointInsideElementBounds(worldPt, el)) {
+      const match = findClosestAnchor(worldPt, anchors);
+      if (match) {
         return {
           elementId: el.id,
-          anchor: shapeClosest.anchor,
-          pt: shapeClosest.pt,
+          anchor: match.anchor,
+          pt: match.pt,
         };
       }
     }
 
-    const dx = Math.max(el.x - worldPt.x, 0, worldPt.x - (el.x + el.w));
-    const dy = Math.max(el.y - worldPt.y, 0, worldPt.y - (el.y + el.h));
-    const boxDist = Math.hypot(dx, dy);
+    if (getDistanceToBoundingBox(worldPt, el) > threshold) {
+      continue;
+    }
 
-    if (boxDist <= threshold) {
-      for (const item of anchors) {
-        const dist = Math.hypot(item.pt.x - worldPt.x, item.pt.y - worldPt.y);
-        if (dist < minDistance) {
-          minDistance = dist;
-          closest = {
-            elementId: el.id,
-            anchor: item.anchor,
-            pt: item.pt,
-          };
-        }
-      }
+    const match = findClosestAnchor(worldPt, anchors, minDistance);
+    if (match) {
+      minDistance = match.distance;
+      closest = {
+        elementId: el.id,
+        anchor: match.anchor,
+        pt: match.pt,
+      };
     }
   }
 
@@ -96,53 +116,48 @@ export function getNearbyAnchorPoints(
 ): Point[] {
   const points: Point[] = [];
   for (const el of elements) {
-    if (
-      el.type === ElementType.ARROW ||
-      el.type === ElementType.LINE ||
-      el.type === ElementType.FREEHAND
-    ) {
+    if (!isConnectableElement(el) || getDistanceToBoundingBox(worldPt, el) > maxDist) {
       continue;
     }
-    const dx = Math.max(el.x - worldPt.x, 0, worldPt.x - (el.x + el.w));
-    const dy = Math.max(el.y - worldPt.y, 0, worldPt.y - (el.y + el.h));
-    const boxDist = Math.hypot(dx, dy);
-    if (boxDist <= maxDist) {
-      const anchors = getAllAnchorPoints(el);
-      anchors.forEach((a) => points.push(a.pt));
+    const anchors = getAllAnchorPoints(el);
+    for (const a of anchors) {
+      points.push(a.pt);
     }
   }
   return points;
+}
+
+function resolveBoundEndpoint(
+  binding: ElementData["startBinding"],
+  getElementById?: (id: string) => ElementData | null,
+): Point | null {
+  if (!binding || !getElementById) {
+    return null;
+  }
+  const boundEl = getElementById(binding.elementId);
+  if (!boundEl) {
+    return null;
+  }
+  return getAnchorPoint(boundEl, binding.anchor);
 }
 
 export function resolveArrowEndpoints(
   arrow: ElementData,
   getElementById?: (id: string) => ElementData | null,
 ): { from: Point; to: Point } {
-  let from: Point =
+  const defaultFrom: Point =
     arrow.points && arrow.points.length >= 4
       ? { x: arrow.points[0], y: arrow.points[1] }
       : { x: arrow.x, y: arrow.y };
-  let to: Point =
+  const defaultTo: Point =
     arrow.points && arrow.points.length >= 4
       ? { x: arrow.points[2], y: arrow.points[3] }
       : { x: arrow.x + arrow.w, y: arrow.y + arrow.h };
 
-  if (getElementById) {
-    if (arrow.startBinding) {
-      const startEl = getElementById(arrow.startBinding.elementId);
-      if (startEl) {
-        from = getAnchorPoint(startEl, arrow.startBinding.anchor);
-      }
-    }
-    if (arrow.endBinding) {
-      const endEl = getElementById(arrow.endBinding.elementId);
-      if (endEl) {
-        to = getAnchorPoint(endEl, arrow.endBinding.anchor);
-      }
-    }
-  }
-
-  return { from, to };
+  return {
+    from: resolveBoundEndpoint(arrow.startBinding, getElementById) ?? defaultFrom,
+    to: resolveBoundEndpoint(arrow.endBinding, getElementById) ?? defaultTo,
+  };
 }
 
 const ANCHOR_VECTORS: Record<AnchorPoint, { x: number; y: number }> = {
