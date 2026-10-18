@@ -1,6 +1,6 @@
-# 🖥️ Whiteboard — Frontend (Next.js & Canvas Studio)
+# 🖥️ Whiteboard - Frontend (Next.js & Canvas Studio)
 
-> State-of-the-art web application built with Next.js 16 (App Router), React 19, Tailwind CSS 4, and a proprietary high-performance 2D Canvas Engine. Features real-time multi-user collaboration via Yjs CRDT over WebSockets, native internationalization (i18n), reactive state management with Zustand, and RBush R-Tree spatial indexing.
+> Aplicação web de ponta construída com Next.js 16 (App Router), React 19, Tailwind CSS v4 e uma engine de Canvas 2D proprietária de alta performance. Conta com sincronização em tempo real via Yjs CRDT sobre WebSockets, internacionalização nativa (i18n), gerenciamento de estado reativo com Zustand e indexação espacial RBush.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-16.4-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
@@ -13,27 +13,27 @@
 ---
 
 <div align="center">
-  <img src="docs/images/frontend-architecture-preview.png" alt="Whiteboard Frontend - 2D Engine & Visual Studio Architecture" width="100%" />
-  <p><em>Custom 2D canvas engine architecture, 3-layer rendering pipeline, spatial indexing, and local CRDT replica</em></p>
+  <img src="docs/images/frontend-architecture-preview.png" alt="Whiteboard Frontend - Arquitetura da Engine 2D & Studio Visual" width="100%" />
+  <p><em>Arquitetura da engine de canvas 2D proprietária, renderização em 3 camadas, indexação espacial e CRDT local</em></p>
 </div>
 
 ---
 
-## 📋 About The Submodule
+## 📋 Sobre o Projeto
 
-The **Whiteboard Frontend** is the client application and visual studio of the platform. The project was architected from scratch to provide a fluid, lag-free drawing and spatial ideation experience comparable to industry-standard graphic design tools.
+O **Whiteboard Frontend** é a interface visual interativa da plataforma de colaboração. O projeto foi arquitetado do zero para oferecer uma experiência fluida de desenho e organização espacial similar a ferramentas consagradas de design gráfico e ideação.
 
 ---
 
-## 🧱 Canvas Engine Architecture
+## 🧱 Arquitetura da Canvas Engine
 
-Rendering is organized into decoupled layers to maintain high maintainability and a steady 60 FPS frame rate:
+A renderização foi estruturada de forma desacoplada para garantir manutenibilidade e alta taxa de quadros (60 FPS):
 
 ```mermaid
 flowchart TD
-  subgraph Input["Input Capture"]
+  subgraph Input["Captura de Entrada"]
     PointerEvents["CanvasInputController<br/>(PointerDown, PointerMove, PointerUp)"]
-    KeyboardEvents["CanvasKeyboardController<br/>(Shortcuts, Backspace, Esc, Space)"]
+    KeyboardEvents["CanvasKeyboardController<br/>(Atalhos, Backspace, Esc, Space)"]
   end
 
   subgraph Engine["Canvas Engine"]
@@ -42,14 +42,14 @@ flowchart TD
     SpatialIndex["SpatialIndex<br/>(RBush R-Tree)"]
   end
 
-  subgraph State["Data Layer & CRDT"]
+  subgraph State["Camada de Dados & CRDT"]
     ZustandStore["Canvas Store<br/>(Zustand)"]
-    YjsAdapter["YjsElementAdapter<br/>(Elements Y.Map)"]
+    YjsAdapter["YjsElementAdapter<br/>(Y.Map de Elementos)"]
   end
 
-  subgraph Output["Rendering Pipeline"]
+  subgraph Output["Pipeline de Renderização"]
     GridRenderer["BackgroundGridRenderer"]
-    ElementRenderers["Specific Renderers<br/>(Shape, Freehand, Sticky, Text, Image)"]
+    ElementRenderers["Renderers Específicos<br/>(Shape, Freehand, Sticky, Text, Image)"]
     CursorRenderer["RemoteCursorsRenderer"]
     OverlayRenderer["SelectionOverlayRenderer"]
   end
@@ -66,112 +66,213 @@ flowchart TD
 
 ---
 
-## 🔄 Real-Time Collaboration
+## 🔄 Colaboração em Tempo Real
 
-Real-time synchronization runs over WebSockets and is designed for maximum resilience and low latency:
+A comunicação em tempo real acontece via WebSockets e foi projetada com foco em segurança e performance:
 
-1. **Access Ticket Acquisition**: The client requests a temporary, single-use ticket (30-second TTL) from the REST API (`POST /v1/boards/:id/collab-token`).
-2. **WebSocket Handshake**: The client connects to the Collab Server (`ws://localhost:3002/collab`) presenting the ticket.
-3. **CRDT State Synchronization (Yjs)**: Binary message exchange via standard `y-protocols`:
-   - `SyncStep1`: Client sends its local State Vector to the server.
-   - `SyncStep2`: Server responds with missing deltas.
-   - `Update`: Continuous real-time element modifications are broadcast to peers.
-4. **Awareness Protocol**: High-frequency streaming of cursor coordinates (smoothed via LERP interpolation at ~30Hz), active selection bounds, and user presence.
+1. **Obtenção do Ticket de Acesso**: O cliente solicita à API REST (`POST /v1/boards/:id/ws-ticket`) um ticket de acesso temporário (30 segundos).
+2. **Handshake WebSocket**: O cliente conecta-se ao Collab Server (`ws://localhost:3002`) enviando o ticket gerado.
+3. **Sincronização de Estado (Yjs Sync Protocol)**: Troca de mensagens binárias compactadas baseadas no protocolo oficial `y-protocols`:
+   - `SyncStep1`: O cliente envia seu estado local para o servidor.
+   - `SyncStep2`: O servidor responde com os deltas pendentes.
+   - `Update`: Atualizações contínuas de elementos são propagadas em tempo real.
+4. **Awareness Protocol**: Transmissão em alta frequência do cursor do mouse, seleção ativa e dados do perfil para os demais usuários conectados na mesma sala.
 
 ---
 
-## 🤝 Shared Contract Synchronization with Backend
+## 🤝 Sincronização de Contrato com o Backend
 
-The frontend consumes schemas, constants, and types derived directly from the backend authoritative source of truth.
+O frontend consome schemas, constantes e tipagens geradas diretamente a partir do código do backend.
 
-> ⚠️ **Warning**: The `src/shared/` and `fixtures/protocol/` directories are synchronized replicas. **Never edit these files directly in the frontend repository.**
+> ⚠️ **Atenção**: As pastas `src/shared/` e `fixtures/protocol/` são réplicas da fonte da verdade (que reside em `../backend/src/shared`). Não edite esses arquivos manualmente no frontend!
 
-### Contract Synchronization Commands:
+### Comandos de Sincronização:
+
 ```bash
-# Copy latest shared definitions from backend
+# Copia as definições do backend para o frontend
 npm run sync:shared
 
-# Verify parity in CI pipeline
+# Verifica no pipeline de CI se há divergência (drift) entre os repositórios
 npm run sync:shared:check
 
-# Generate typed TypeScript client from backend OpenAPI Swagger
+# Gera os tipos TypeScript a partir do Swagger/OpenAPI da API REST (com backend rodando)
 npm run gen:api
 ```
 
 ---
 
-## 🚀 Quickstart
+## 🚀 Início Rápido
 
-### Prerequisites
-- [Node.js](https://nodejs.org/) `20.x` or `22.x`
-- [npm](https://www.npmjs.com/) `10.x+`
-- Backend and infrastructure services running (see root [README.md](../README.md))
+### Pré-requisitos
 
-### Installation & Execution
-```bash
-# 1. Install dependencies
-npm ci
+- [Node.js](https://nodejs.org/) 22 ou superior
+- [npm](https://www.npmjs.com/) 10 ou superior
+- Backend e dependências ativas (consulte o [README raiz](../README.md))
 
-# 2. Copy local environment variables
-cp .env.example .env.local
+### Instalação e Execução
 
-# 3. Synchronize shared contracts from backend
-npm run sync:shared
+1. **Acesse a pasta do frontend**
 
-# 4. Start Next.js development server
-npm run dev
-```
+   ```bash
+   cd frontend
+   ```
 
-Visit [http://localhost:3000](http://localhost:3000) in your browser.
+2. **Instale as dependências**
 
----
+   ```bash
+   npm ci
+   ```
 
-## 📝 Available Scripts
+3. **Configure as variáveis de ambiente locais**
 
-```bash
-# Development
-npm run dev              # Starts Next.js development server on port 3000
-npm run build            # Builds production Next.js application
-npm run start            # Starts production Next.js server
+   ```bash
+   cp .env.example .env.local
+   ```
 
-# Contracts & API Generation
-npm run sync:shared      # Copies shared contracts from backend/src/shared
-npm run sync:shared:check # Asserts parity between backend and frontend contracts
-npm run gen:api          # Generates typed TypeScript API client from OpenAPI spec
+4. **Sincronize os arquivos compartilhados com o backend**
 
-# Quality & Testing
-npm run lint             # Runs ESLint (Next.js core rules)
-npm run format           # Formats source code with Prettier
-npm run typecheck        # Runs strict TypeScript validation (tsc --noEmit)
-npm run test             # Runs Vitest unit & contract test suites (118 tests)
-npm run test:e2e         # Runs full end-to-end browser test suite with Playwright
-```
+   ```bash
+   npm run sync:shared
+   ```
+
+5. **Inicie o servidor de desenvolvimento**
+
+   ```bash
+   npm run dev
+   ```
+
+6. **Abra no navegador**
+   Acesse: [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## 🐳 Docker Deployment
+## 📦 Estrutura do Projeto
 
-The frontend can be built as a lightweight standalone container:
+```text
+frontend/
+├── src/
+│   ├── app/                      # Next.js App Router (Páginas, Layouts e Rotas de API)
+│   │   ├── (auth)/               # Telas de login e registro
+│   │   ├── board/[id]/           # Página do Whiteboard Studio interativo
+│   │   ├── boards/               # Dashboard de gerenciamento de quadros
+│   │   └── api/health/           # Endpoint interno de verificação de integridade
+│   │
+│   ├── canvas/                   # Engine proprietária do Canvas 2D
+│   │   ├── controllers/          # Controladores de eventos de mouse, touch e teclado
+│   │   ├── renderers/            # Renderizadores especializados (grid, formas, texto, sticky, etc.)
+│   │   ├── repositories/         # YjsElementRepository para mutações no Y.Doc
+│   │   ├── tools/                # Estratégias das ferramentas gráficas (select, freehand, shapes, etc.)
+│   │   ├── alignment-helper.ts   # Snapping magnético e guias de alinhamento
+│   │   ├── connector-helper.ts   # Cálculo de âncoras e amarração dinâmica de setas
+│   │   ├── spatial-index.ts      # Aceleração espacial com RBush (R-Tree)
+│   │   ├── viewport.ts           # Transformação matricial, pan e zoom
+│   │   └── canvas-engine.ts      # Loop principal e orquestrador gráfico
+│   │
+│   ├── collab/                   # Módulo de comunicação e colaboração
+│   │   ├── sync-provider.ts      # Cliente WebSocket para o protocolo Yjs
+│   │   ├── typed-awareness.ts    # Propagação e escuta de cursores e estados remotos
+│   │   └── undo-manager.ts       # Histórico de ações (Undo/Redo) isolado
+│   │
+│   ├── components/               # Componentes visuais reutilizáveis
+│   │   ├── brand/                # Logotipos e identidade visual do Whiteboard
+│   │   ├── preferences/          # LanguageSwitcher e controles de preferência
+│   │   └── ui/                   # Componentes base acessíveis (Radix UI + Tailwind)
+│   │
+│   ├── features/                 # Módulos verticais de negócio
+│   │   ├── auth/                 # Formulários e sessão de autenticação
+│   │   ├── boards/               # Cards, listagem e diálogos de criação de quadros
+│   │   ├── studio/               # Barras de ferramentas, minimapa, seletores de cor e atalhos
+│   │   ├── share/                # Modal de compartilhamento e links públicos com senha
+│   │   ├── export/               # Diálogo e serviços de exportação PNG/SVG/JSON
+│   │   └── version-history/      # Visualização e restauração de snapshots
+│   │
+│   ├── i18n/                     # Internacionalização (pt-BR e en-US)
+│   ├── lib/                      # Cliente HTTP Axios, cookies e configurações
+│   ├── providers/                # Provedores de contexto (Theme, React Query, etc.)
+│   ├── shared/                   # Réplica sincronizada do contrato com o backend
+│   └── store/                    # Gerenciamento de estado global com Zustand
+│
+├── tests/                        # Testes automatizados
+│   ├── unit/                     # Testes unitários de canvas, helpers e matemática
+│   ├── contract/                 # Testes de integridade do contrato compartilhado
+│   └── e2e/                      # Testes ponta a ponta com Playwright
+│
+├── docker/                       # Dockerfile standalone para produção
+├── playwright.config.ts          # Configurações do Playwright
+├── vitest.config.mts             # Configurações do Vitest
+└── package.json
+```
+
+---
+
+## 🔧 Configuração de Ambiente
+
+Crie o arquivo `.env.local` na raiz da pasta `frontend/`:
+
+```env
+# URL da API REST do backend
+NEXT_PUBLIC_API_URL=http://localhost:3001
+
+# URL do servidor WebSocket Collab
+NEXT_PUBLIC_WS_URL=ws://localhost:3002
+```
+
+| Variável              | Padrão                  | Descrição                                                            |
+| :-------------------- | :---------------------- | :------------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:3001` | Endereço base da API REST para requisições de login, boards e upload |
+| `NEXT_PUBLIC_WS_URL`  | `ws://localhost:3002`   | Endereço do gateway WebSocket para colaboração em tempo real         |
+
+---
+
+## 📝 Scripts Disponíveis
 
 ```bash
-# Build standalone Docker image
+# Desenvolvimento
+npm run dev                 # Inicia o servidor Next.js em modo de desenvolvimento (porta 3000)
+
+# Build e Produção
+npm run build               # Executa a compilação de produção com output standalone
+npm run start               # Inicializa o servidor de produção compilado
+
+# Sincronização de Contratos
+npm run sync:shared         # Sincroniza schema e tipos copiando de ../backend/src/shared
+npm run sync:shared:check   # Verifica se o shared está 100% atualizado com o backend (CI)
+npm run gen:api             # Gera o cliente tipado TypeScript a partir do OpenAPI do backend
+
+# Qualidade de Código & Testes
+npm run lint                # Executa o linter ESLint (Next.js core rules)
+npm run format              # Formata os arquivos do projeto com Prettier
+npm run typecheck           # Verifica inconsistências de tipagem TypeScript (tsc --noEmit)
+npm run test                # Executa os testes unitários e de contrato com Vitest
+npm run test:e2e            # Roda a suíte completa de testes E2E com Playwright
+```
+
+---
+
+## 🐳 Construção com Docker
+
+O frontend pode ser encapsulado em uma imagem leve otimizada via modo `output: 'standalone'` do Next.js:
+
+```bash
+# Construir imagem Docker
 docker build -f docker/Dockerfile -t wb-web \
   --build-arg NEXT_PUBLIC_API_URL=http://localhost:3001 \
   --build-arg NEXT_PUBLIC_WS_URL=ws://localhost:3002 .
 
-# Run container locally
+# Executar container localmente
 docker run -p 3000:3000 wb-web
 ```
 
-> **Healthcheck**: The internal endpoint `GET /api/health` is exposed for container orchestration readiness probes.
+> **Healthcheck**: O endpoint interno `GET /api/health` é exposto para monitoramento em ambientes orquestrados (Kubernetes / Docker Compose).
 
 ---
 
-## 📚 Technical Documentation & Agent Guides
+## 📚 Documentação Técnica & Guias
 
-- **Frontend Agent Guidelines**: [`AGENTS.md`](./AGENTS.md) · [`CLAUDE.md`](./CLAUDE.md)
-- **Local Development Guide**: [`../docs/DEVELOPMENT.md`](../docs/DEVELOPMENT.md)
-- **Testing Handbook**: [`../docs/TESTING.md`](../docs/TESTING.md)
-- **CRDT & Collab Protocol**: [`../docs/PROTOCOL.md`](../docs/PROTOCOL.md)
-- **System Architecture**: [`../docs/architecture.md`](../docs/architecture.md)
-- **ADR-002 (Proprietary 2D Canvas Engine)**: [`../docs/adr/ADR-002-canvas2d-vs-webgl.md`](../docs/adr/ADR-002-canvas2d-vs-webgl.md)
+- **Diretrizes para Agentes Frontend**: [`AGENTS.md`](./AGENTS.md) · [`CLAUDE.md`](./CLAUDE.md)
+- **Guia Geral de Desenvolvimento**: [`../docs/DEVELOPMENT.md`](../docs/DEVELOPMENT.md)
+- **Manual de Testes**: [`../docs/TESTING.md`](../docs/TESTING.md)
+- **Protocolo de Sincronização CRDT**: [`../docs/PROTOCOL.md`](../docs/PROTOCOL.md)
+- **Arquitetura do Sistema**: [`../docs/architecture.md`](../docs/architecture.md)
+- **ADR-002 (Canvas 2D Proprietária)**: [`../docs/adr/ADR-002-canvas2d-vs-webgl.md`](../docs/adr/ADR-002-canvas2d-vs-webgl.md)
+
