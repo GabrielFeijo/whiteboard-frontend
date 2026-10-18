@@ -264,3 +264,15 @@ docker run -p 3000:3000 wb-web
 ```
 
 > **Healthcheck**: O endpoint interno `GET /api/health` é exposto para monitoramento em ambientes orquestrados (Kubernetes / Docker Compose).
+
+---
+
+## 📚 Documentação Técnica & Guias
+
+- **Diretrizes para Agentes Frontend**: [`AGENTS.md`](./AGENTS.md) · [`CLAUDE.md`](./CLAUDE.md)
+- **Guia Geral de Desenvolvimento**: [`../docs/DEVELOPMENT.md`](../docs/DEVELOPMENT.md)
+- **Manual de Testes**: [`../docs/TESTING.md`](../docs/TESTING.md)
+- **Protocolo de Sincronização CRDT**: [`../docs/PROTOCOL.md`](../docs/PROTOCOL.md)
+- **Arquitetura do Sistema**: [`../docs/architecture.md`](../docs/architecture.md)
+- **ADR-002 (Canvas 2D Proprietária)**: [`../docs/adr/ADR-002-canvas2d-vs-webgl.md`](../docs/adr/ADR-002-canvas2d-vs-webgl.md)
+
