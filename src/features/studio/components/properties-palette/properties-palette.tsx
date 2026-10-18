@@ -294,7 +294,7 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
                   max="500"
                   value={spacingGap}
                   onChange={(e) => setSpacingGap(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                  className="w-12 h-6 px-1.5 text-center text-xs rounded bg-surface border border-border-subtle text-text-primary focus:outline-none focus:border-brand-primary"
+                  className="w-12 h-6 px-1.5 text-center text-xs rounded bg-surface border border-border-subtle text-text-primary focus:outline-none focus:border-accent-primary"
                   title={t("studio.inspector.actions.spacingGap")}
                 />
                 <span className="text-[10px] text-text-muted">px</span>
@@ -308,10 +308,10 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
                     key={preset}
                     type="button"
                     onClick={() => setSpacingGap(preset)}
-                    className={`h-5 px-1.5 text-[10px] rounded transition-all ${
+                    className={`h-5 px-1.5 text-[10px] rounded transition-all font-medium ${
                       spacingGap === preset
-                        ? "bg-brand-primary text-white font-medium"
-                        : "bg-surface text-text-muted hover:text-text-primary hover:bg-surface-raised"
+                        ? "bg-accent-primary text-accent-text shadow-xs"
+                        : "bg-surface-raised border border-border-subtle text-text-muted hover:text-text-primary hover:bg-surface-hover"
                     }`}
                   >
                     {preset}
