@@ -1,4 +1,5 @@
 import { ElementData } from "../../shared";
+import { wrapText } from "./text-wrap-helper";
 
 export function drawSticky(
   ctx: CanvasRenderingContext2D,
@@ -24,14 +25,34 @@ export function drawSticky(
   ctx.textBaseline = "top";
   const text = el.text ?? "";
 
+  const padding = 12;
+  const contentX = el.x + padding;
+  const contentY = el.y + padding;
+  const contentWidth = Math.max(0, el.w - padding * 2);
+  const contentHeight = Math.max(0, el.h - padding * 2);
+
   if (!text) {
     ctx.fillStyle = "#94a3b8";
-    ctx.fillText(placeholder, el.x + 12, el.y + 12, el.w - 24);
-  } else {
-    ctx.fillStyle = "#1e293b";
-    const lines = text.split("\n");
-    lines.forEach((line, idx) => {
-      ctx.fillText(line, el.x + 12, el.y + 12 + idx * 20, el.w - 24);
-    });
+    ctx.fillText(placeholder, contentX, contentY);
+    return;
   }
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(contentX, contentY, contentWidth, contentHeight);
+  ctx.clip();
+
+  ctx.fillStyle = "#1e293b";
+  const lineHeight = 20;
+  const lines = wrapText(ctx, text, contentWidth);
+
+  for (let idx = 0; idx < lines.length; idx++) {
+    const lineY = contentY + idx * lineHeight;
+    if (lineY > contentY + contentHeight) {
+      break;
+    }
+    ctx.fillText(lines[idx], contentX, lineY);
+  }
+
+  ctx.restore();
 }

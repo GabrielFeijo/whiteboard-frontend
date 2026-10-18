@@ -4,6 +4,7 @@ import {
   drawCurvedLine,
   resolveArrowEndpoints,
 } from "@/canvas/connector-helper";
+import { wrapText } from "./text-wrap-helper";
 
 export function drawRect(ctx: CanvasRenderingContext2D, el: ElementData) {
   ctx.beginPath();
@@ -23,7 +24,18 @@ export function drawRect(ctx: CanvasRenderingContext2D, el: ElementData) {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = el.style.stroke || "#0f172a";
-    ctx.fillText(el.text, el.x + el.w / 2, el.y + el.h / 2);
+
+    const pad = 8;
+    const maxTextW = Math.max(0, el.w - pad * 2);
+    const lines = wrapText(ctx, el.text, maxTextW);
+    const lineHeight = 18;
+    const totalHeight = lines.length * lineHeight;
+    const startY = el.y + el.h / 2 - totalHeight / 2 + lineHeight / 2;
+
+    lines.forEach((line, idx) => {
+      ctx.fillText(line, el.x + el.w / 2, startY + idx * lineHeight);
+    });
+
     ctx.restore();
   }
 }
