@@ -31,29 +31,82 @@ function offsetPoints(
 }
 
 export class YjsElementRepository {
+  private readonly elementCache = new Map<string, ElementData>();
+  private readonly dirtyListeners = new Set<() => void>();
+  private readonly observer: Parameters<Y.Map<unknown>["observeDeep"]>[0];
+
   constructor(
     private readonly doc: Y.Doc,
     private readonly spatialIndex: SpatialIndex,
-  ) {}
+  ) {
+    const elementsMap = this.getElementsMap();
+    this.observer = (events) => {
+      events.forEach((event) => {
+        if (event.target === elementsMap) {
+          event.keys.forEach((change, key) => {
+            if (change.action === "delete") {
+              this.elementCache.delete(key);
+              this.spatialIndex.remove(key);
+              return;
+            }
+            const childMap = elementsMap.get(key);
+            if (childMap) {
+              this.syncCacheAndSpatialIndex(childMap, key);
+            }
+          });
+          return;
+        }
+
+        if (event.target instanceof Y.Map) {
+          let curr: Y.Map<unknown> = event.target;
+          while (curr.parent instanceof Y.Map && curr.parent !== elementsMap) {
+            curr = curr.parent;
+          }
+          if (curr.parent === elementsMap) {
+            this.syncCacheAndSpatialIndex(curr);
+          }
+        }
+      });
+      this.dirtyListeners.forEach((cb) => cb());
+    };
+    elementsMap.observeDeep(this.observer);
+  }
+
+  destroy(): void {
+    this.getElementsMap().unobserveDeep(this.observer);
+    this.dirtyListeners.clear();
+    this.elementCache.clear();
+  }
 
   getElementsMap(): Y.Map<Y.Map<unknown>> {
     return getDocRoots(this.doc).elements;
   }
 
-  private syncSpatialIndexForMap(map: Y.Map<unknown>, fallbackId?: string): void {
+  private syncCacheAndSpatialIndex(
+    map: Y.Map<unknown>,
+    fallbackId?: string,
+  ): ElementData | null {
     const data = YjsElementAdapter.toElementData(map);
     const elementId = data?.id || fallbackId;
     if (data && elementId) {
+      this.elementCache.set(elementId, data);
       const box = getElementBoundingBox(data);
       this.spatialIndex.insert(elementId, box.x, box.y, box.w, box.h);
+      return data;
     }
+    if (elementId) {
+      this.elementCache.delete(elementId);
+      this.spatialIndex.remove(elementId);
+    }
+    return null;
   }
 
   indexAllElements(): void {
     this.spatialIndex.clear();
+    this.elementCache.clear();
     const elementsMap = this.getElementsMap();
     elementsMap.forEach((map, id) => {
-      const data = YjsElementAdapter.toElementData(map);
+      const data = this.syncCacheAndSpatialIndex(map, id);
       if (!data) return;
 
       const box = getElementBoundingBox(data);
@@ -72,41 +125,22 @@ export class YjsElementRepository {
           h: box.h,
         });
       }
-      this.spatialIndex.insert(id, box.x, box.y, box.w, box.h);
     });
   }
 
   observeChanges(onDirty?: () => void): () => void {
-    const elementsMap = this.getElementsMap();
-    const observer: Parameters<Y.Map<unknown>["observeDeep"]>[0] = (events) => {
-      events.forEach((event) => {
-        if (event.target === elementsMap) {
-          event.keys.forEach((change, key) => {
-            if (change.action === "delete") {
-              this.spatialIndex.remove(key);
-              return;
-            }
-            const childMap = elementsMap.get(key);
-            if (childMap) this.syncSpatialIndexForMap(childMap, key);
-          });
-          return;
-        }
-
-        if (event.target instanceof Y.Map) {
-          this.syncSpatialIndexForMap(event.target);
-        }
-      });
-      onDirty?.();
-    };
-    elementsMap.observeDeep(observer);
+    if (!onDirty) return () => {};
+    this.dirtyListeners.add(onDirty);
     return () => {
-      elementsMap.unobserveDeep(observer);
+      this.dirtyListeners.delete(onDirty);
     };
   }
 
   getById(id: string): ElementData | null {
+    const cached = this.elementCache.get(id);
+    if (cached) return cached;
     const map = this.getElementsMap().get(id);
-    return map ? YjsElementAdapter.toElementData(map) : null;
+    return map ? this.syncCacheAndSpatialIndex(map, id) : null;
   }
 
   getManyByIds(ids: readonly string[]): ElementData[] {
@@ -114,9 +148,14 @@ export class YjsElementRepository {
     const elementsMap = this.getElementsMap();
     const result: ElementData[] = [];
     for (const id of ids) {
+      const cached = this.elementCache.get(id);
+      if (cached) {
+        result.push(cached);
+        continue;
+      }
       const map = elementsMap.get(id);
       if (map) {
-        const data = YjsElementAdapter.toElementData(map);
+        const data = this.syncCacheAndSpatialIndex(map, id);
         if (data) result.push(data);
       }
     }
@@ -178,6 +217,7 @@ export class YjsElementRepository {
       elementsMap.set(data.id, elementMap);
     }, LOCAL_ORIGIN);
 
+    this.elementCache.set(data.id, data);
     const box = getElementBoundingBox(data);
     this.spatialIndex.insert(data.id, box.x, box.y, box.w, box.h);
   }
@@ -223,6 +263,7 @@ export class YjsElementRepository {
         const map = elementsMap.get(id);
         if (map && map.get("locked") === true) return;
         elementsMap.delete(id);
+        this.elementCache.delete(id);
         this.spatialIndex.remove(id);
       });
     }, LOCAL_ORIGIN);

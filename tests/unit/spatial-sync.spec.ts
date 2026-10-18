@@ -84,4 +84,55 @@ describe("spatial synchronization and cookie/in-memory stores", () => {
     expect(state.viewMode).toBe("list");
     expect(state.filterRole).toBe("OWNER");
   });
+
+  it("measures elementCache performance vs uncached toElementData", () => {
+    const doc = new Y.Doc();
+    const spatialIndex = new SpatialIndex();
+    const repo = new YjsElementRepository(doc, spatialIndex);
+
+    for (let i = 0; i < 50; i++) {
+      const el: ElementData = {
+        id: "bench-" + i,
+        type: "rect" as unknown as ElementData["type"],
+        x: (i % 5) * 100,
+        y: Math.floor(i / 5) * 100,
+        w: 80,
+        h: 80,
+        z: "a" + i,
+        rotation: 0,
+        style: { fill: "#ffffff", stroke: "#000000", strokeWidth: 2, opacity: 1 },
+        createdBy: "user-1",
+      };
+      repo.commitElement(el);
+    }
+
+    const bounds = { minX: 0, minY: 0, maxX: 1000, maxY: 1000 };
+    const elementsMap = repo.getElementsMap();
+    const visibleIds = spatialIndex.search(bounds);
+
+    const t0 = performance.now();
+    for (let frame = 0; frame < 200; frame++) {
+      repo.getVisibleElements(bounds);
+    }
+    const t1 = performance.now();
+
+    const t2 = performance.now();
+    for (let frame = 0; frame < 200; frame++) {
+      const list: ElementData[] = [];
+      for (const id of visibleIds) {
+        const map = elementsMap.get(id);
+        if (map) {
+          const raw = map.toJSON();
+          list.push(raw as ElementData);
+        }
+      }
+    }
+    const t3 = performance.now();
+
+    const cachedTime = t1 - t0;
+    const uncachedTime = t3 - t2;
+
+    expect(cachedTime).toBeLessThan(uncachedTime);
+    expect(repo.getVisibleElements(bounds).length).toBe(50);
+  });
 });

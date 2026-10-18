@@ -30,6 +30,8 @@ export class SyncProvider {
   private reconnectDelay = 1000;
   private isDestroyed = false;
   private indexeddbProvider: IndexeddbPersistence | null = null;
+  private pendingUpdates: Uint8Array[] = [];
+  private rafHandle: number | ReturnType<typeof setTimeout> | null = null;
   status: ConnectionStatus = ConnectionStatus.CONNECTING;
   role: Role = Role.VIEWER;
   private listeners = new Set<(status: ConnectionStatus) => void>();
@@ -53,10 +55,8 @@ export class SyncProvider {
         this.ws?.readyState === WebSocket.OPEN &&
         this.role !== Role.VIEWER
       ) {
-        const encoder = encoding.createEncoder();
-        encoding.writeVarUint(encoder, MSG.SYNC);
-        syncProtocol.writeUpdate(encoder, update);
-        this.ws.send(encoding.toUint8Array(encoder));
+        this.pendingUpdates.push(update);
+        this.scheduleFlush();
       }
     });
 
@@ -194,8 +194,63 @@ export class SyncProvider {
     }, delay);
   }
 
+  private scheduleFlush(): void {
+    if (this.rafHandle !== null) return;
+
+    if (typeof requestAnimationFrame === "function") {
+      this.rafHandle = requestAnimationFrame(() => {
+        this.rafHandle = null;
+        this.flush();
+      });
+    } else {
+      this.rafHandle = setTimeout(() => {
+        this.rafHandle = null;
+        this.flush();
+      }, 16);
+    }
+  }
+
+  flush(): void {
+    if (this.rafHandle !== null) {
+      if (typeof cancelAnimationFrame === "function" && typeof this.rafHandle === "number") {
+        cancelAnimationFrame(this.rafHandle);
+      } else {
+        clearTimeout(this.rafHandle);
+      }
+      this.rafHandle = null;
+    }
+
+    if (this.pendingUpdates.length === 0) return;
+    if (this.ws?.readyState !== WebSocket.OPEN || this.role === Role.VIEWER) {
+      this.pendingUpdates = [];
+      return;
+    }
+
+    const updatesToSend = this.pendingUpdates;
+    this.pendingUpdates = [];
+
+    const merged =
+      updatesToSend.length === 1
+        ? updatesToSend[0]!
+        : Y.mergeUpdates(updatesToSend);
+
+    const encoder = encoding.createEncoder();
+    encoding.writeVarUint(encoder, MSG.SYNC);
+    syncProtocol.writeUpdate(encoder, merged);
+    this.ws.send(encoding.toUint8Array(encoder));
+  }
+
   destroy(): void {
     this.isDestroyed = true;
+    if (this.rafHandle !== null) {
+      if (typeof cancelAnimationFrame === "function" && typeof this.rafHandle === "number") {
+        cancelAnimationFrame(this.rafHandle);
+      } else {
+        clearTimeout(this.rafHandle);
+      }
+      this.rafHandle = null;
+    }
+    this.flush();
     if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
     this.listeners.clear();
     if (this.ws) {

@@ -1,12 +1,11 @@
 import * as Y from "yjs";
-import { ElementData, ElementType, getDocRoots, Role } from "@/shared";
+import { ElementData, ElementType, Role } from "@/shared";
 import { Point, Viewport } from "@/canvas/viewport";
 import { SpatialIndex } from "@/canvas/spatial-index";
 import { renderElement } from "@/canvas/renderers/element-renderer";
 import { renderBackgroundGrid } from "@/canvas/renderers/background-grid-renderer";
 import { renderSelectionAndDraftsOverlay } from "@/canvas/renderers/selection-overlay-renderer";
 import { renderRemoteCursorsOverlay } from "@/canvas/renderers/remote-cursors-renderer";
-import { getElementBoundingBox } from "@/canvas/connector-helper";
 import { CanvasToolType, Tool, useCanvasStore } from "@/store/canvas-store";
 import { LocalUndoManager } from "@/collab/undo-manager";
 import { SyncProvider } from "@/collab/sync-provider";
@@ -59,7 +58,8 @@ export class CanvasEngine
   private contentCtx: CanvasRenderingContext2D;
   private overlayCtx: CanvasRenderingContext2D;
 
-  private isDirty = true;
+  private isContentDirty = true;
+  private isBackgroundDirty = true;
   private animFrameId: number | null = null;
   private isDestroyed = false;
 
@@ -80,9 +80,8 @@ export class CanvasEngine
   private snapIndicator: { active: Point | null; candidates: Point[] } | null = null;
 
   private storeUnsub: (() => void) | null = null;
-  private elementsObserver: Parameters<Y.Map<unknown>["observeDeep"]>[0] | null = null;
+  private repoUnsub: (() => void) | null = null;
   private providerUnsub: (() => void) | null = null;
-  private docUpdateHandler: (() => void) | null = null;
 
   constructor(
     private readonly container: HTMLDivElement,
@@ -134,7 +133,11 @@ export class CanvasEngine
   }
 
   setDirty(): void {
-    this.isDirty = true;
+    this.isContentDirty = true;
+  }
+
+  setBackgroundDirty(): void {
+    this.isBackgroundDirty = true;
   }
 
   setSelectBox(box: { x: number; y: number; w: number; h: number } | null): void {
@@ -189,7 +192,8 @@ export class CanvasEngine
 
   onViewportMutated(): void {
     this.broadcastViewport();
-    this.isDirty = true;
+    this.isBackgroundDirty = true;
+    this.isContentDirty = true;
   }
 
   onDoubleClickAtWorld(worldPt: Point): void {
@@ -213,54 +217,18 @@ export class CanvasEngine
     void this.insertImage(file);
   }
 
-  private syncSpatialIndexForMap(
-    map: Y.Map<unknown>,
-    fallbackId?: string,
-  ): void {
-    const data = YjsElementAdapter.toElementData(map);
-    const elementId = data?.id || fallbackId;
-    if (!data || !elementId) return;
-    const box = getElementBoundingBox(data);
-    this.spatialIndex.insert(elementId, box.x, box.y, box.w, box.h);
-  }
-
   private setupListeners(): void {
-    const roots = getDocRoots(this.doc);
-    this.elementsObserver = (events) => {
-      events.forEach((event) => {
-        if (event.target === roots.elements) {
-          event.keys.forEach((change, key) => {
-            if (change.action === "delete") {
-              this.spatialIndex.remove(key);
-              return;
-            }
-            const childMap = roots.elements.get(key);
-            if (childMap) {
-              this.syncSpatialIndexForMap(childMap, key);
-            }
-          });
-          return;
-        }
-
-        if (event.target instanceof Y.Map) {
-          this.syncSpatialIndexForMap(event.target);
-        }
-      });
-      this.isDirty = true;
-    };
-    roots.elements.observeDeep(this.elementsObserver);
+    this.repoUnsub = this.repository.observeChanges(() => {
+      this.isContentDirty = true;
+    });
 
     this.providerUnsub = this.provider.onStatusChange((status) => {
       if (status === "synced") {
         this.repository.indexAllElements();
-        this.isDirty = true;
+        this.isBackgroundDirty = true;
+        this.isContentDirty = true;
       }
     });
-
-    this.docUpdateHandler = () => {
-      this.isDirty = true;
-    };
-    this.doc.on("update", this.docUpdateHandler);
 
     window.addEventListener("resize", this.handleResize);
 
@@ -270,14 +238,15 @@ export class CanvasEngine
         state.selectedIds !== prevState.selectedIds
       ) {
         this.inputController.refreshHoverCursor();
-        this.isDirty = true;
+        this.isContentDirty = true;
       }
     });
   }
 
   private handleResize = (): void => {
     this.resizeCanvases();
-    this.isDirty = true;
+    this.isBackgroundDirty = true;
+    this.isContentDirty = true;
   };
 
   private resizeCanvases(): void {
@@ -301,16 +270,21 @@ export class CanvasEngine
     const render = () => {
       if (this.isDestroyed) return;
 
-      if (this.isDirty) {
+      if (this.isBackgroundDirty) {
         renderBackgroundGrid(
           this.bgCtx,
           this.container.clientWidth,
           this.container.clientHeight,
           this.viewport,
         );
-        this.renderContent();
-        this.isDirty = false;
+        this.isBackgroundDirty = false;
       }
+
+      if (this.isContentDirty) {
+        this.renderContent();
+        this.isContentDirty = false;
+      }
+
       this.renderOverlay();
 
       this.animFrameId = requestAnimationFrame(render);
@@ -388,7 +362,7 @@ export class CanvasEngine
 
   commitElement(data: ElementData): void {
     this.repository.commitElement(data);
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   getSelectedElements(): ElementData[] {
@@ -423,7 +397,7 @@ export class CanvasEngine
     useCanvasStore.getState().setZoom(1);
     useCanvasStore.getState().setPan({ x: 0, y: 0 });
     this.broadcastViewport();
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   public zoomTo(targetZoom: number): void {
@@ -440,7 +414,7 @@ export class CanvasEngine
     useCanvasStore.getState().setZoom(newZoom);
     useCanvasStore.getState().setPan({ ...this.viewport.pan });
     this.broadcastViewport();
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   public setViewport(pan: { x: number; y: number }, zoom: number): void {
@@ -449,17 +423,17 @@ export class CanvasEngine
     useCanvasStore.getState().setZoom(zoom);
     useCanvasStore.getState().setPan({ ...pan });
     this.broadcastViewport();
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   public undo(): void {
     this.undoManager.undo();
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   public redo(): void {
     this.undoManager.redo();
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   public canUndo(): boolean {
@@ -487,14 +461,14 @@ export class CanvasEngine
     if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.updateStyleForIds(selectedIds, styleUpdates);
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   public updateSelectedText(text: string): void {
     if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.updateTextForIds(selectedIds, text);
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   public selectAll(): void {
@@ -502,14 +476,14 @@ export class CanvasEngine
     const expanded = this.repository.expandSelectionGroups(allIds);
     useCanvasStore.getState().setSelectedIds(expanded);
     this.syncStoreWithSelection(expanded);
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   public nudgeSelected(dx: number, dy: number): void {
     if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.nudgeElements(selectedIds, dx, dy);
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   public getAllElements(): ElementData[] {
@@ -521,7 +495,7 @@ export class CanvasEngine
     const store = useCanvasStore.getState();
     this.repository.deleteByIds(store.selectedIds);
     store.setSelectedIds([]);
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   public duplicateSelected(): void {
@@ -535,21 +509,21 @@ export class CanvasEngine
       store.setSelectedIds(newSelectedIds);
       this.syncStoreWithSelection(newSelectedIds);
     }
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   public bringSelectedToFront(): void {
     if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.bringToFront(selectedIds);
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   public sendSelectedToBack(): void {
     if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.sendToBack(selectedIds);
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   public groupSelected(): void {
@@ -557,7 +531,7 @@ export class CanvasEngine
     const { selectedIds } = useCanvasStore.getState();
     const groupId = this.repository.groupElements(selectedIds);
     if (groupId) {
-      this.isDirty = true;
+      this.isContentDirty = true;
     }
   }
 
@@ -565,28 +539,28 @@ export class CanvasEngine
     if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.ungroupElements(selectedIds);
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   public lockSelected(): void {
     if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.lockElements(selectedIds);
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   public unlockSelected(): void {
     if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.unlockElements(selectedIds);
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   public toggleLockSelected(): void {
     if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.toggleLockElements(selectedIds);
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   public expandSelectionGroups(ids: readonly string[]): string[] {
@@ -595,7 +569,7 @@ export class CanvasEngine
 
   setGuides(guides: { vertical?: number[]; horizontal?: number[] } | null): void {
     this.guides = guides;
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   getGuides(): { vertical?: number[]; horizontal?: number[] } | null {
@@ -630,19 +604,19 @@ export class CanvasEngine
     if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.alignElements(selectedIds, alignment);
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   public distributeSelected(direction: DistributionType): void {
     if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.distributeElements(selectedIds, direction);
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   syncConnectedArrows(movedIds: readonly string[]): void {
     this.repository.syncConnectedArrows(movedIds);
-    this.isDirty = true;
+    this.isContentDirty = true;
   }
 
   public async insertImage(
@@ -691,7 +665,7 @@ export class CanvasEngine
       this.commitElement(element);
       useCanvasStore.getState().setSelectedIds([id]);
       this.syncStoreWithSelection([id]);
-      this.isDirty = true;
+      this.isContentDirty = true;
       return id;
     } catch {
       return null;
@@ -708,15 +682,13 @@ export class CanvasEngine
       this.storeUnsub();
       this.storeUnsub = null;
     }
-    if (this.elementsObserver) {
-      const roots = getDocRoots(this.doc);
-      roots.elements.unobserveDeep(this.elementsObserver);
-    }
-    if (this.docUpdateHandler) {
-      this.doc.off("update", this.docUpdateHandler);
+    if (this.repoUnsub) {
+      this.repoUnsub();
+      this.repoUnsub = null;
     }
     if (this.providerUnsub) {
       this.providerUnsub();
+      this.providerUnsub = null;
     }
     this.events.clear();
     this.tools.forEach((tool) => tool.onDeactivate?.());
