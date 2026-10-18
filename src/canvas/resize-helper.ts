@@ -105,12 +105,12 @@ export interface ResizeOptions {
   keepAspectRatio?: boolean;
 }
 
-interface HandleDirection {
+export interface HandleDirection {
   dirX: -1 | 0 | 1;
   dirY: -1 | 0 | 1;
 }
 
-const HANDLE_DIRECTIONS: Partial<Record<ResizeHandleType, HandleDirection>> = {
+export const HANDLE_DIRECTIONS: Partial<Record<ResizeHandleType, HandleDirection>> = {
   [ResizeHandleType.NW]: { dirX: -1, dirY: -1 },
   [ResizeHandleType.N]: { dirX: 0, dirY: -1 },
   [ResizeHandleType.NE]: { dirX: 1, dirY: -1 },
