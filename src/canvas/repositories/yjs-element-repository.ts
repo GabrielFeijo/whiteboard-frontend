@@ -424,6 +424,8 @@ export class YjsElementRepository {
         }
       });
     }, LOCAL_ORIGIN);
+
+    this.syncConnectedArrows(ids);
   }
 
   distributeElements(ids: readonly string[], direction: DistributionType): void {
@@ -445,6 +447,8 @@ export class YjsElementRepository {
         }
       });
     }, LOCAL_ORIGIN);
+
+    this.syncConnectedArrows(ids);
   }
 
   syncConnectedArrows(movedIds: readonly string[]): void {
