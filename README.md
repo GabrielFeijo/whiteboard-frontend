@@ -10,6 +10,15 @@
 [![Playwright](https://img.shields.io/badge/Playwright-1.64-45ba4b?style=for-the-badge&logo=playwright&logoColor=white)](https://playwright.dev/)
 [![Vitest](https://img.shields.io/badge/Vitest-5.0-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
 
+---
+
+<div align="center">
+  <img src="docs/images/frontend-architecture-preview.png" alt="Whiteboard Frontend - Arquitetura da Engine 2D & Studio Visual" width="100%" />
+  <p><em>Arquitetura da engine de canvas 2D proprietária, renderização em 3 camadas, indexação espacial e CRDT local</em></p>
+</div>
+
+---
+
 ## 📋 Sobre o Projeto
 
 O **Whiteboard Frontend** é a interface visual interativa da plataforma de colaboração. O projeto foi arquitetado do zero para oferecer uma experiência fluida de desenho e organização espacial similar a ferramentas consagradas de design gráfico e ideação.
