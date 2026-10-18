@@ -3,6 +3,7 @@
 import * as React from "react";
 import * as ToastPrimitive from "@radix-ui/react-toast";
 import { AlertCircle, AlertTriangle, Check, Info, X } from "lucide-react";
+import { nanoid } from "nanoid";
 
 export type ToastVariant = "default" | "success" | "error" | "warning" | "info";
 
@@ -97,10 +98,8 @@ function dispatch(action: Action) {
   listeners.forEach((listener) => listener(memoryState));
 }
 
-let count = 0;
-function genId() {
-  count = (count + 1) % Number.MAX_SAFE_INTEGER;
-  return `toast-${count}`;
+function genId(): string {
+  return `toast-${nanoid(10)}`;
 }
 
 export function toast(opts: ToastOptions | string) {
