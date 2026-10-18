@@ -651,6 +651,7 @@ export class CanvasEngine
         const presignRes = await api.post<{
           uploadUrl: string;
           assetUrl: string;
+          readUrl?: string;
           key: string;
         }>(`/boards/${this.provider.boardId}/assets/presign`, {
           filename: file.name,
@@ -667,7 +668,9 @@ export class CanvasEngine
         });
 
         if (uploadRes.ok) {
-          imageSrc = presignRes.data.assetUrl;
+          imageSrc =
+            presignRes.data.readUrl ||
+            `/api/v1/boards/${this.provider.boardId}/assets/${encodeURIComponent(presignRes.data.key)}/view`;
           assetId = presignRes.data.key;
         }
       } catch {
