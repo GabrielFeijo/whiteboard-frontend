@@ -12,6 +12,73 @@ interface RouteContext {
   params: Promise<{ path: string[] }>;
 }
 
+function buildForwardHeaders(
+  contentType: string | null,
+  hasBody: boolean,
+  token: string | null,
+): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (contentType) {
+    headers["Content-Type"] = contentType;
+  } else if (hasBody) {
+    headers["Content-Type"] = "application/json";
+  }
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+async function attemptTokenRefresh(
+  refreshToken: string,
+): Promise<{ accessToken: string; rotatedTokens: AuthTokenPair } | null> {
+  const refreshed = await refreshTokensWithBackend(refreshToken);
+  if (!refreshed) {
+    return null;
+  }
+  return {
+    accessToken: refreshed.accessToken,
+    rotatedTokens: {
+      accessToken: refreshed.accessToken,
+      refreshToken: refreshed.refreshToken ?? refreshToken,
+      expiresIn: refreshed.expiresIn,
+    },
+  };
+}
+
+async function buildProxyResponse(
+  upstreamRes: Response,
+  rotatedTokens: AuthTokenPair | null,
+  refreshToken: string | null,
+  hostHeader: string | null,
+): Promise<NextResponse> {
+  if (upstreamRes.status === 204) {
+    const emptyResponse = new NextResponse(null, { status: 204 });
+    if (rotatedTokens) {
+      applyAuthCookiesToResponse(emptyResponse, rotatedTokens, hostHeader);
+    }
+    return emptyResponse;
+  }
+
+  const responseText = await upstreamRes.text();
+  const contentType = upstreamRes.headers.get("content-type") ?? "application/json";
+
+  const nextRes = new NextResponse(responseText, {
+    status: upstreamRes.status,
+    headers: {
+      "Content-Type": contentType,
+    },
+  });
+
+  if (rotatedTokens) {
+    applyAuthCookiesToResponse(nextRes, rotatedTokens, hostHeader);
+  } else if (upstreamRes.status === 401 && refreshToken) {
+    clearAuthCookiesFromResponse(nextRes, hostHeader);
+  }
+
+  return nextRes;
+}
+
 async function handleProxyRequest(
   request: NextRequest,
   context: RouteContext,
@@ -30,17 +97,11 @@ async function handleProxyRequest(
   const rawBody = hasBody ? await request.text() : undefined;
 
   const forwardToBackend = async (token: string | null) => {
-    const headers: Record<string, string> = {};
-    const contentType = request.headers.get("content-type");
-    if (contentType) {
-      headers["Content-Type"] = contentType;
-    } else if (hasBody) {
-      headers["Content-Type"] = "application/json";
-    }
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-
+    const headers = buildForwardHeaders(
+      request.headers.get("content-type"),
+      hasBody,
+      token,
+    );
     return fetch(targetUrl, {
       method: request.method,
       headers,
@@ -51,57 +112,25 @@ async function handleProxyRequest(
 
   try {
     if (!accessToken && refreshToken) {
-      const refreshed = await refreshTokensWithBackend(refreshToken);
-      if (refreshed) {
-        accessToken = refreshed.accessToken;
-        rotatedTokens = {
-          accessToken: refreshed.accessToken,
-          refreshToken: refreshed.refreshToken ?? refreshToken,
-          expiresIn: refreshed.expiresIn,
-        };
+      const refreshResult = await attemptTokenRefresh(refreshToken);
+      if (refreshResult) {
+        accessToken = refreshResult.accessToken;
+        rotatedTokens = refreshResult.rotatedTokens;
       }
     }
 
     let upstreamRes = await forwardToBackend(accessToken);
 
     if (upstreamRes.status === 401 && refreshToken && !rotatedTokens) {
-      const refreshed = await refreshTokensWithBackend(refreshToken);
-      if (refreshed) {
-        accessToken = refreshed.accessToken;
-        rotatedTokens = {
-          accessToken: refreshed.accessToken,
-          refreshToken: refreshed.refreshToken ?? refreshToken,
-          expiresIn: refreshed.expiresIn,
-        };
+      const refreshResult = await attemptTokenRefresh(refreshToken);
+      if (refreshResult) {
+        accessToken = refreshResult.accessToken;
+        rotatedTokens = refreshResult.rotatedTokens;
         upstreamRes = await forwardToBackend(accessToken);
       }
     }
 
-    if (upstreamRes.status === 204) {
-      const emptyResponse = new NextResponse(null, { status: 204 });
-      if (rotatedTokens) {
-        applyAuthCookiesToResponse(emptyResponse, rotatedTokens, hostHeader);
-      }
-      return emptyResponse;
-    }
-
-    const responseText = await upstreamRes.text();
-    const contentType = upstreamRes.headers.get("content-type") ?? "application/json";
-
-    const nextRes = new NextResponse(responseText, {
-      status: upstreamRes.status,
-      headers: {
-        "Content-Type": contentType,
-      },
-    });
-
-    if (rotatedTokens) {
-      applyAuthCookiesToResponse(nextRes, rotatedTokens, hostHeader);
-    } else if (upstreamRes.status === 401 && refreshToken) {
-      clearAuthCookiesFromResponse(nextRes, hostHeader);
-    }
-
-    return nextRes;
+    return await buildProxyResponse(upstreamRes, rotatedTokens, refreshToken, hostHeader);
   } catch (err) {
     return NextResponse.json(
       {
