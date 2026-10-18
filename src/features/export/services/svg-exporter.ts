@@ -17,8 +17,8 @@ function escapeXml(value: string): string {
 }
 
 export function renderElementToSvgMarkup(el: ElementData): string {
-  const fill = el.style.fill || "transparent";
-  const stroke = el.style.stroke || "#0f172a";
+  const fill = escapeXml(el.style.fill || "transparent");
+  const stroke = escapeXml(el.style.stroke || "#0f172a");
   const strokeWidth = el.style.strokeWidth || 2;
   const opacity = el.style.opacity ?? 1;
 
@@ -66,6 +66,11 @@ export function renderElementToSvgMarkup(el: ElementData): string {
     case "text": {
       const safeText = escapeXml(el.text || "");
       return `<text x="${el.x}" y="${el.y + 20}" font-family="sans-serif" font-size="16" fill="${stroke}">${safeText}</text>\n`;
+    }
+    case "image": {
+      if (!el.src) return "";
+      const safeSrc = escapeXml(el.src);
+      return `<image href="${safeSrc}" x="${el.x}" y="${el.y}" width="${el.w}" height="${el.h}" preserveAspectRatio="none" opacity="${opacity}" />\n`;
     }
     default:
       return "";

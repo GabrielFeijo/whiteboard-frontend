@@ -94,7 +94,7 @@ async function handleProxyRequest(
   let rotatedTokens: AuthTokenPair | null = null;
 
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
-  const rawBody = hasBody ? await request.text() : undefined;
+  const rawBody = hasBody ? await request.arrayBuffer() : undefined;
 
   const forwardToBackend = async (token: string | null) => {
     const headers = buildForwardHeaders(

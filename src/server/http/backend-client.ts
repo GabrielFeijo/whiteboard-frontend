@@ -55,7 +55,7 @@ export async function serverBackendFetch<T>(
 ): Promise<{ ok: true; status: number; data: T } | { ok: false; status: number; error: string }> {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   const url = `${BACKEND_API_V1_URL}${normalizedPath}`;
-  const { accessToken, refreshToken } = await getServerAuthTokens();
+  const { accessToken } = await getServerAuthTokens();
 
   const executeRequest = async (token: string | null) => {
     const headers: Record<string, string> = {
@@ -74,14 +74,7 @@ export async function serverBackendFetch<T>(
   };
 
   try {
-    let response = await executeRequest(accessToken);
-
-    if ((response.status === 401 || !accessToken) && refreshToken) {
-      const refreshed = await refreshTokensWithBackend(refreshToken);
-      if (refreshed?.accessToken) {
-        response = await executeRequest(refreshed.accessToken);
-      }
-    }
+    const response = await executeRequest(accessToken);
 
     if (!response.ok) {
       let errorMsg = `HTTP ${response.status}`;

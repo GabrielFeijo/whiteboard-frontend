@@ -1,32 +1,51 @@
 import { ElementData } from "@/shared";
 
+const MAX_CACHE_ENTRIES = 100;
 const imageCache = new Map<string, HTMLImageElement>();
 
-export function drawImageElement(
+function pruneImageCache(): void {
+  if (imageCache.size < MAX_CACHE_ENTRIES) return;
+  const oldest = imageCache.keys().next().value;
+  if (!oldest) return;
+  imageCache.delete(oldest);
+}
+
+function getOrLoadImage(src: string, onImageLoaded?: () => void): HTMLImageElement {
+  const existing = imageCache.get(src);
+  if (existing) return existing;
+
+  pruneImageCache();
+
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = () => {
+    onImageLoaded?.();
+  };
+  img.onerror = () => {
+    imageCache.delete(src);
+  };
+  img.src = src;
+  imageCache.set(src, img);
+  return img;
+}
+
+function tryRenderLoadedImage(
   ctx: CanvasRenderingContext2D,
   el: ElementData,
   onImageLoaded?: () => void,
-): void {
-  const src = el.src;
+): boolean {
+  if (!el.src) return false;
 
-  if (src) {
-    let img = imageCache.get(src);
-    if (!img) {
-      img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        onImageLoaded?.();
-      };
-      img.src = src;
-      imageCache.set(src, img);
-    }
+  const img = getOrLoadImage(el.src, onImageLoaded);
+  if (!img.complete || img.naturalWidth <= 0) return false;
 
-    if (img.complete && img.naturalWidth > 0) {
-      ctx.drawImage(img, el.x, el.y, el.w, el.h);
-      return;
-    }
-  }
+  imageCache.delete(el.src);
+  imageCache.set(el.src, img);
+  ctx.drawImage(img, el.x, el.y, el.w, el.h);
+  return true;
+}
 
+function renderImagePlaceholder(ctx: CanvasRenderingContext2D, el: ElementData): void {
   ctx.fillStyle = "#f3f4f6";
   ctx.strokeStyle = "#d1d5db";
   ctx.lineWidth = 1;
@@ -40,4 +59,13 @@ export function drawImageElement(
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText("Image", el.x + el.w / 2, el.y + el.h / 2);
+}
+
+export function drawImageElement(
+  ctx: CanvasRenderingContext2D,
+  el: ElementData,
+  onImageLoaded?: () => void,
+): void {
+  if (tryRenderLoadedImage(ctx, el, onImageLoaded)) return;
+  renderImagePlaceholder(ctx, el);
 }

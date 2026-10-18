@@ -7,6 +7,7 @@ import { renderBackgroundGrid } from "@/canvas/renderers/background-grid-rendere
 import { renderSelectionAndDraftsOverlay } from "@/canvas/renderers/selection-overlay-renderer";
 import { renderRemoteCursorsOverlay } from "@/canvas/renderers/remote-cursors-renderer";
 import { CanvasToolType, Tool, useCanvasStore } from "@/store/canvas-store";
+import { api } from "@/lib/api/client";
 import { LocalUndoManager } from "@/collab/undo-manager";
 import { SyncProvider } from "@/collab/sync-provider";
 import {
@@ -643,6 +644,38 @@ export class CanvasEngine
       const id = nanoid(10);
       const z = this.getNextZIndex();
 
+      let imageSrc = dataUrl;
+      let assetId: string | undefined;
+
+      try {
+        const presignRes = await api.post<{
+          uploadUrl: string;
+          assetUrl: string;
+          key: string;
+        }>(`/boards/${this.provider.boardId}/assets/presign`, {
+          filename: file.name,
+          contentType: file.type,
+          size: file.size,
+        });
+
+        const uploadRes = await fetch(presignRes.data.uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": file.type,
+          },
+          body: file,
+        });
+
+        if (uploadRes.ok) {
+          imageSrc = presignRes.data.assetUrl;
+          assetId = presignRes.data.key;
+        }
+      } catch {
+        if (dataUrl.length > 500_000) {
+          return null;
+        }
+      }
+
       const element: ElementData = {
         id,
         type: ElementType.IMAGE,
@@ -658,7 +691,8 @@ export class CanvasEngine
           strokeWidth: 0,
           opacity: 1,
         },
-        src: dataUrl,
+        src: imageSrc,
+        assetId,
         createdBy: this.userId,
       };
 

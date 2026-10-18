@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerAuthTokens } from "@/server/auth/cookies";
 import {
-  refreshTokensWithBackend,
   serverBackendFetch,
   User,
   UserSchema,
@@ -11,8 +10,8 @@ export type { User };
 export type SessionUser = User;
 
 export async function getCurrentUser(): Promise<User | null> {
-  const { accessToken, refreshToken } = await getServerAuthTokens();
-  if (!accessToken && !refreshToken) {
+  const { accessToken } = await getServerAuthTokens();
+  if (!accessToken) {
     return null;
   }
 
@@ -23,13 +22,6 @@ export async function getCurrentUser(): Promise<User | null> {
 
   if (meResult.ok) {
     return meResult.data;
-  }
-
-  if (refreshToken) {
-    const refreshed = await refreshTokensWithBackend(refreshToken);
-    if (refreshed?.user) {
-      return refreshed.user;
-    }
   }
 
   return null;

@@ -6,10 +6,14 @@ import { refreshTokensWithBackend } from "@/server/http/backend-client";
 const PROTECTED_PREFIXES = ["/boards"];
 const AUTH_ROUTES = ["/login", "/register"];
 
-function isProtectedRoute(pathname: string): boolean {
-  return PROTECTED_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
+function isProtectedRoute(pathname: string, searchParams?: URLSearchParams): boolean {
+  if (PROTECTED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
+    return true;
+  }
+  if (pathname.startsWith("/board/")) {
+    return !searchParams?.get("token");
+  }
+  return false;
 }
 
 function isAuthRoute(pathname: string): boolean {
@@ -22,9 +26,10 @@ async function handleRefreshedSession(
   pathname: string,
   hostHeader: string | null,
 ): Promise<NextResponse> {
+  const isProtected = isProtectedRoute(pathname, request.nextUrl.searchParams);
   const refreshed = await refreshTokensWithBackend(refreshToken);
   if (!refreshed) {
-    if (isProtectedRoute(pathname)) {
+    if (isProtected) {
       const loginRedirect = NextResponse.redirect(new URL("/login", request.url));
       clearAuthCookiesFromResponse(loginRedirect, hostHeader);
       return loginRedirect;
@@ -61,7 +66,7 @@ async function handleRefreshedSession(
 }
 
 export async function proxy(request: NextRequest): Promise<NextResponse> {
-  const { pathname } = request.nextUrl;
+  const { pathname, searchParams } = request.nextUrl;
   const hostHeader = request.headers.get("host");
 
   const accessToken = request.cookies.get(COOKIE_NAMES.ACCESS_TOKEN)?.value ?? null;
@@ -72,8 +77,9 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   }
 
   const hasValidSession = Boolean(accessToken || refreshToken);
+  const isProtected = isProtectedRoute(pathname, searchParams);
 
-  if (isProtectedRoute(pathname) && !hasValidSession) {
+  if (isProtected && !hasValidSession) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
