@@ -7,9 +7,11 @@ import {
   getHandleAt,
   getLineHandles,
   isPointInElement,
+  ResizeHandleType,
   scaleFreehandPoints,
 } from "../../src/canvas/resize-helper";
-import { getDocRoots } from "../../src/shared";
+import { calculateResizeSmartGuides } from "../../src/canvas/alignment-helper";
+import { ElementData, getDocRoots } from "../../src/shared";
 import { LocalUndoManager, LOCAL_ORIGIN } from "../../src/collab/undo-manager";
 
 describe("element resizing logic", () => {
@@ -347,5 +349,213 @@ describe("element resizing logic", () => {
 
     expect(isPointInElement({ x: 100, y: 100 }, line)).toBe(false);
     expect(isPointInElement({ x: 300, y: 300 }, line)).toBe(false);
+  });
+
+  it("snaps east handle to align right edge with another element", () => {
+    const topRect: ElementData = {
+      id: "top-1",
+      type: "rect",
+      x: 100,
+      y: 50,
+      w: 200,
+      h: 100,
+      rotation: 0,
+      z: "a0",
+      style: { fill: "#fff", stroke: "#000", strokeWidth: 1, opacity: 1 },
+      createdBy: "u1",
+    };
+    const initialBounds = { x: 100, y: 200, w: 100, h: 80 };
+    const rawBounds = { x: 100, y: 200, w: 196, h: 80 };
+
+    const match = calculateResizeSmartGuides(
+      ResizeHandleType.E,
+      initialBounds,
+      rawBounds,
+      [topRect],
+      6,
+    );
+
+    expect(match.snappedBounds.x).toBe(100);
+    expect(match.snappedBounds.w).toBe(200);
+    expect(match.verticalGuides).toContain(300);
+    expect(match.horizontalGuides).toHaveLength(0);
+  });
+
+  it("snaps west handle to align left edge while keeping right edge stationary", () => {
+    const topRect: ElementData = {
+      id: "top-1",
+      type: "rect",
+      x: 100,
+      y: 50,
+      w: 200,
+      h: 100,
+      rotation: 0,
+      z: "a0",
+      style: { fill: "#fff", stroke: "#000", strokeWidth: 1, opacity: 1 },
+      createdBy: "u1",
+    };
+    const initialBounds = { x: 150, y: 200, w: 150, h: 80 };
+    const rawBounds = { x: 104, y: 200, w: 196, h: 80 };
+
+    const match = calculateResizeSmartGuides(
+      ResizeHandleType.W,
+      initialBounds,
+      rawBounds,
+      [topRect],
+      6,
+    );
+
+    expect(match.snappedBounds.x).toBe(100);
+    expect(match.snappedBounds.w).toBe(200);
+    expect(match.snappedBounds.x + match.snappedBounds.w).toBe(300);
+    expect(match.verticalGuides).toContain(100);
+    expect(match.horizontalGuides).toHaveLength(0);
+  });
+
+  it("snaps south handle to align bottom edge with another element", () => {
+    const rightRect: ElementData = {
+      id: "right-1",
+      type: "rect",
+      x: 350,
+      y: 50,
+      w: 100,
+      h: 200,
+      rotation: 0,
+      z: "a0",
+      style: { fill: "#fff", stroke: "#000", strokeWidth: 1, opacity: 1 },
+      createdBy: "u1",
+    };
+    const initialBounds = { x: 100, y: 50, w: 100, h: 100 };
+    const rawBounds = { x: 100, y: 50, w: 100, h: 197 };
+
+    const match = calculateResizeSmartGuides(
+      ResizeHandleType.S,
+      initialBounds,
+      rawBounds,
+      [rightRect],
+      6,
+    );
+
+    expect(match.snappedBounds.y).toBe(50);
+    expect(match.snappedBounds.h).toBe(200);
+    expect(match.horizontalGuides).toContain(250);
+    expect(match.verticalGuides).toHaveLength(0);
+  });
+
+  it("snaps corner handle se simultaneously on both x and y axes", () => {
+    const targetRect: ElementData = {
+      id: "target-1",
+      type: "rect",
+      x: 300,
+      y: 300,
+      w: 100,
+      h: 100,
+      rotation: 0,
+      z: "a0",
+      style: { fill: "#fff", stroke: "#000", strokeWidth: 1, opacity: 1 },
+      createdBy: "u1",
+    };
+    const initialBounds = { x: 100, y: 100, w: 100, h: 100 };
+    const rawBounds = { x: 100, y: 100, w: 198, h: 198 };
+
+    const match = calculateResizeSmartGuides(
+      ResizeHandleType.SE,
+      initialBounds,
+      rawBounds,
+      [targetRect],
+      6,
+    );
+
+    expect(match.snappedBounds).toEqual({ x: 100, y: 100, w: 200, h: 200 });
+    expect(match.verticalGuides).toContain(300);
+    expect(match.horizontalGuides).toContain(300);
+  });
+
+  it("ignores non-structural elements during resize snapping", () => {
+    const arrowEl: ElementData = {
+      id: "arrow-1",
+      type: "arrow",
+      x: 298,
+      y: 50,
+      w: 10,
+      h: 100,
+      rotation: 0,
+      z: "a1",
+      style: { fill: "#fff", stroke: "#000", strokeWidth: 1, opacity: 1 },
+      createdBy: "u1",
+      points: [298, 50, 308, 150],
+    };
+    const initialBounds = { x: 100, y: 50, w: 100, h: 100 };
+    const rawBounds = { x: 100, y: 50, w: 198, h: 100 };
+
+    const match = calculateResizeSmartGuides(
+      ResizeHandleType.E,
+      initialBounds,
+      rawBounds,
+      [arrowEl],
+      6,
+    );
+
+    expect(match.snappedBounds).toEqual(rawBounds);
+    expect(match.verticalGuides).toHaveLength(0);
+    expect(match.horizontalGuides).toHaveLength(0);
+  });
+
+  it("does not snap when distance exceeds threshold", () => {
+    const topRect: ElementData = {
+      id: "top-1",
+      type: "rect",
+      x: 100,
+      y: 50,
+      w: 200,
+      h: 100,
+      rotation: 0,
+      z: "a0",
+      style: { fill: "#fff", stroke: "#000", strokeWidth: 1, opacity: 1 },
+      createdBy: "u1",
+    };
+    const initialBounds = { x: 100, y: 200, w: 100, h: 80 };
+    const rawBounds = { x: 100, y: 200, w: 180, h: 80 };
+
+    const match = calculateResizeSmartGuides(
+      ResizeHandleType.E,
+      initialBounds,
+      rawBounds,
+      [topRect],
+      6,
+    );
+
+    expect(match.snappedBounds).toEqual(rawBounds);
+    expect(match.verticalGuides).toHaveLength(0);
+  });
+
+  it("respects minWidth preventing inverted resizing during snap", () => {
+    const otherRect: ElementData = {
+      id: "other-1",
+      type: "rect",
+      x: 148,
+      y: 50,
+      w: 100,
+      h: 100,
+      rotation: 0,
+      z: "a0",
+      style: { fill: "#fff", stroke: "#000", strokeWidth: 1, opacity: 1 },
+      createdBy: "u1",
+    };
+    const initialBounds = { x: 100, y: 100, w: 50, h: 50 };
+    const rawBounds = { x: 147, y: 100, w: 3, h: 50 };
+
+    const match = calculateResizeSmartGuides(
+      ResizeHandleType.W,
+      initialBounds,
+      rawBounds,
+      [otherRect],
+      6,
+      10,
+      10,
+    );
+
+    expect(match.snappedBounds).toEqual(rawBounds);
+    expect(match.verticalGuides).toHaveLength(0);
   });
 });

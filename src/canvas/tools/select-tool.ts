@@ -1,15 +1,19 @@
 import { CanvasHost, CanvasTool, ToolContext } from "./tool.interface";
 import { CanvasToolType, useCanvasStore } from "@/store/canvas-store";
-import { ArrowBinding, ElementData, ElementType, getDocRoots, Role } from "@/shared";
+import { ArrowBinding, ElementData, ElementType, getDocRoots, isStructuralElement, Role } from "@/shared";
 import { LOCAL_ORIGIN } from "@/collab/undo-manager";
 import {
+  Bounds,
   calculateResizedBounds,
   getHandleAt,
   ResizeHandleType,
   scaleFreehandPoints,
 } from "@/canvas/resize-helper";
 import { YjsElementAdapter } from "@/canvas/yjs-element-adapter";
-import { calculateSmartGuides } from "@/canvas/alignment-helper";
+import {
+  calculateResizeSmartGuides,
+  calculateSmartGuides,
+} from "@/canvas/alignment-helper";
 import { findNearestAnchor, getNearbyAnchorPoints } from "@/canvas/connector-helper";
 import { translateGeometry } from "@/canvas/geometry-helper";
 import * as Y from "yjs";
@@ -249,8 +253,8 @@ export class SelectTool implements CanvasTool {
 
   private handleConnectorResize(map: Y.Map<unknown>, ctx: ToolContext): void {
     if (!this.resizeInfo) return;
-    const excludeIds = [this.resizeInfo.elementId];
-    const others = this.host.getOtherElements(excludeIds);
+    this.host.setGuides(null);
+    const others = this.getEligibleOtherElements([this.resizeInfo.elementId]);
     const match = findNearestAnchor(ctx.worldPt, others, 36);
     const targetPt = match ? { ...match.pt } : { ...ctx.worldPt };
     const candidates = getNearbyAnchorPoints(ctx.worldPt, others, 140);
@@ -318,7 +322,7 @@ export class SelectTool implements CanvasTool {
     const type = YjsElementAdapter.getType(map);
     const minSize = type === ElementType.STICKY ? 40 : 10;
 
-    const newBounds = calculateResizedBounds({
+    const rawBounds = calculateResizedBounds({
       handle: this.resizeInfo.handle,
       initialBounds: this.resizeInfo.initialBounds,
       dx,
@@ -328,27 +332,83 @@ export class SelectTool implements CanvasTool {
       keepAspectRatio: ctx.event.shiftKey,
     });
 
+    const others = this.getEligibleOtherElements([this.resizeInfo.elementId]);
+
+    const match = ctx.event.shiftKey
+      ? { snappedBounds: rawBounds, verticalGuides: [], horizontalGuides: [] }
+      : calculateResizeSmartGuides(
+          this.resizeInfo.handle,
+          this.resizeInfo.initialBounds,
+          rawBounds,
+          others,
+          8,
+          minSize,
+          minSize,
+        );
+
+    const finalBounds = match.snappedBounds;
+    this.updateHostGuides(match.verticalGuides, match.horizontalGuides);
+
     this.host.doc.transact(() => {
       const scaledPoints =
         type === ElementType.FREEHAND && this.resizeInfo?.initialPoints
           ? scaleFreehandPoints(
               this.resizeInfo.initialPoints,
               this.resizeInfo.initialBounds,
-              newBounds,
+              finalBounds,
             )
           : undefined;
 
       YjsElementAdapter.updateYMap(map, {
-        x: newBounds.x,
-        y: newBounds.y,
-        w: newBounds.w,
-        h: newBounds.h,
+        x: finalBounds.x,
+        y: finalBounds.y,
+        w: finalBounds.w,
+        h: finalBounds.h,
         points: scaledPoints,
       });
     }, LOCAL_ORIGIN);
 
     this.host.syncConnectedArrows([this.resizeInfo.elementId]);
     this.host.setDirty();
+  }
+
+  private getEligibleOtherElements(excludeIds: readonly string[]): ElementData[] {
+    const excludeSet = new Set(excludeIds);
+    return this.host.getOtherElements(excludeIds).filter((el) => {
+      const boundStart = el.startBinding && excludeSet.has(el.startBinding.elementId);
+      const boundEnd = el.endBinding && excludeSet.has(el.endBinding.elementId);
+      return !boundStart && !boundEnd;
+    });
+  }
+
+  private updateHostGuides(vertical: number[], horizontal: number[]): void {
+    const hasGuides = vertical.length > 0 || horizontal.length > 0;
+    this.host.setGuides(hasGuides ? { vertical, horizontal } : null);
+  }
+
+  private computeDraggedBounds(dx: number, dy: number): Bounds {
+    const allInitials = Array.from(this.moveInitialElements.values());
+    const structural = allInitials.filter(isStructuralElement);
+    const targets = structural.length > 0 ? structural : allInitials;
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    for (const item of targets) {
+      minX = Math.min(minX, item.x + dx);
+      maxX = Math.max(maxX, item.x + dx + item.w);
+      minY = Math.min(minY, item.y + dy);
+      maxY = Math.max(maxY, item.y + dy + item.h);
+    }
+
+    return {
+      x: minX,
+      y: minY,
+      w: Math.max(0, maxX - minX),
+      h: Math.max(0, maxY - minY),
+    };
   }
 
   private calculateMovementDelta(worldPt: { x: number; y: number }): {
@@ -363,28 +423,8 @@ export class SelectTool implements CanvasTool {
       return { dx, dy };
     }
 
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-
-    this.moveInitialElements.forEach((initial) => {
-      const curX = initial.x + dx;
-      const curY = initial.y + dy;
-      if (curX < minX) minX = curX;
-      if (curX + initial.w > maxX) maxX = curX + initial.w;
-      if (curY < minY) minY = curY;
-      if (curY + initial.h > maxY) maxY = curY + initial.h;
-    });
-
-    const draggedBounds = {
-      x: minX,
-      y: minY,
-      w: Math.max(0, maxX - minX),
-      h: Math.max(0, maxY - minY),
-    };
-
-    const others = this.host.getOtherElements(store.selectedIds);
+    const draggedBounds = this.computeDraggedBounds(dx, dy);
+    const others = this.getEligibleOtherElements(store.selectedIds);
     const match = calculateSmartGuides(draggedBounds, others, 8);
 
     if (match.snappedX !== undefined) {
@@ -394,16 +434,7 @@ export class SelectTool implements CanvasTool {
       dy += match.snappedY - draggedBounds.y;
     }
 
-    const hasGuides =
-      match.verticalGuides.length > 0 || match.horizontalGuides.length > 0;
-    this.host.setGuides(
-      hasGuides
-        ? {
-            vertical: match.verticalGuides,
-            horizontal: match.horizontalGuides,
-          }
-        : null,
-    );
+    this.updateHostGuides(match.verticalGuides, match.horizontalGuides);
 
     return { dx, dy };
   }
@@ -472,6 +503,7 @@ export class SelectTool implements CanvasTool {
   }
 
   private finishResize(): void {
+    this.host.setGuides(null);
     this.host.undoManager.stopCapturing();
     this.resizeInfo = null;
     this.host.syncConnectedArrows(useCanvasStore.getState().selectedIds);
