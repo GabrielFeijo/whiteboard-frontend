@@ -102,3 +102,11 @@ export function getDocRoots(doc: Y.Doc) {
     comments: doc.getArray('comments'),
   };
 }
+
+export function isStructuralElement(el: { type: ElementType }): boolean {
+  return (
+    el.type !== ElementType.ARROW &&
+    el.type !== ElementType.LINE &&
+    el.type !== ElementType.FREEHAND
+  );
+}
