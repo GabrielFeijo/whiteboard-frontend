@@ -322,6 +322,11 @@
         "alignBottom": "Align Bottom",
         "distributeHorizontal": "Distribute Horizontally",
         "distributeVertical": "Distribute Vertically",
+        "standardizeSpacing": "Standardize Spacing",
+        "standardizeHorizontal": "Standardize Horizontal Spacing",
+        "standardizeVertical": "Standardize Vertical Spacing",
+        "spacingGap": "Spacing (px)",
+        "autoSpacing": "Auto Gap",
         "lockedNotice": "Element is locked. Unlock to modify properties."
       }
     },

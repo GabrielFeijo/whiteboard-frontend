@@ -6,7 +6,11 @@ export type {
   ResizeHandleType,
   ResizeOptions,
 } from "./resize-helper";
-export type { AlignmentType, DistributionType } from "./alignment-helper";
+export type {
+  AlignmentType,
+  DistributionType,
+  SpacingGuide,
+} from "./alignment-helper";
 export type { CanvasHost, CanvasTool, ToolContext } from "./tools/tool.interface";
 export type { CanvasEventMap } from "./canvas-events";
 export type { TranslatedGeometry } from "./geometry-helper";

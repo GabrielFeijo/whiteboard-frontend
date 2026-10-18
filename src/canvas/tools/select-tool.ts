@@ -13,6 +13,7 @@ import { YjsElementAdapter } from "@/canvas/yjs-element-adapter";
 import {
   calculateResizeSmartGuides,
   calculateSmartGuides,
+  SpacingGuide,
 } from "@/canvas/alignment-helper";
 import { findNearestAnchor, getNearbyAnchorPoints } from "@/canvas/connector-helper";
 import { translateGeometry } from "@/canvas/geometry-helper";
@@ -381,9 +382,14 @@ export class SelectTool implements CanvasTool {
     });
   }
 
-  private updateHostGuides(vertical: number[], horizontal: number[]): void {
-    const hasGuides = vertical.length > 0 || horizontal.length > 0;
-    this.host.setGuides(hasGuides ? { vertical, horizontal } : null);
+  private updateHostGuides(
+    vertical: number[],
+    horizontal: number[],
+    spacing: SpacingGuide[] = [],
+  ): void {
+    const hasGuides =
+      vertical.length > 0 || horizontal.length > 0 || spacing.length > 0;
+    this.host.setGuides(hasGuides ? { vertical, horizontal, spacing } : null);
   }
 
   private computeDraggedBounds(dx: number, dy: number): Bounds {
@@ -434,7 +440,11 @@ export class SelectTool implements CanvasTool {
       dy += match.snappedY - draggedBounds.y;
     }
 
-    this.updateHostGuides(match.verticalGuides, match.horizontalGuides);
+    this.updateHostGuides(
+      match.verticalGuides,
+      match.horizontalGuides,
+      match.spacingGuides,
+    );
 
     return { dx, dy };
   }

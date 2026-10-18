@@ -4,6 +4,7 @@ import { Point, Viewport } from "../viewport";
 import { SpatialIndex } from "../spatial-index";
 import { LocalUndoManager } from "../../collab/undo-manager";
 import { CanvasEventEmitter } from "../canvas-events";
+import { SpacingGuide } from "../alignment-helper";
 
 export interface ToolContext {
   worldPt: Point;
@@ -35,8 +36,18 @@ export interface CanvasHost {
   getShapeDraft(): { type: ElementData["type"]; x: number; y: number; w: number; h: number } | null;
   commitElement(data: ElementData): void;
   expandSelectionGroups(ids: readonly string[]): string[];
-  setGuides(guides: { vertical?: number[]; horizontal?: number[] } | null): void;
-  getGuides(): { vertical?: number[]; horizontal?: number[] } | null;
+  setGuides(
+    guides: {
+      vertical?: number[];
+      horizontal?: number[];
+      spacing?: SpacingGuide[];
+    } | null,
+  ): void;
+  getGuides(): {
+    vertical?: number[];
+    horizontal?: number[];
+    spacing?: SpacingGuide[];
+  } | null;
   getOtherElements(excludeIds: readonly string[]): ElementData[];
   syncConnectedArrows(movedIds: readonly string[]): void;
   setSnapIndicator(indicator: { active: Point | null; candidates: Point[] } | null): void;

@@ -36,7 +36,11 @@ import {
   CanvasKeyboardController,
   KeyboardControllerTarget,
 } from "@/canvas/controllers/canvas-keyboard-controller";
-import { AlignmentType, DistributionType } from "@/canvas/alignment-helper";
+import {
+  AlignmentType,
+  DistributionType,
+  SpacingGuide,
+} from "@/canvas/alignment-helper";
 import {
   calculateImagePlacement,
   fileToDataUrl,
@@ -77,7 +81,11 @@ export class CanvasEngine
     w: number;
     h: number;
   } | null = null;
-  private guides: { vertical?: number[]; horizontal?: number[] } | null = null;
+  private guides: {
+    vertical?: number[];
+    horizontal?: number[];
+    spacing?: SpacingGuide[];
+  } | null = null;
   private snapIndicator: { active: Point | null; candidates: Point[] } | null = null;
 
   private storeUnsub: (() => void) | null = null;
@@ -568,12 +576,22 @@ export class CanvasEngine
     return this.repository.expandSelectionGroups(ids);
   }
 
-  setGuides(guides: { vertical?: number[]; horizontal?: number[] } | null): void {
+  setGuides(
+    guides: {
+      vertical?: number[];
+      horizontal?: number[];
+      spacing?: SpacingGuide[];
+    } | null,
+  ): void {
     this.guides = guides;
     this.isContentDirty = true;
   }
 
-  getGuides(): { vertical?: number[]; horizontal?: number[] } | null {
+  getGuides(): {
+    vertical?: number[];
+    horizontal?: number[];
+    spacing?: SpacingGuide[];
+  } | null {
     return this.guides;
   }
 
@@ -612,6 +630,16 @@ export class CanvasEngine
     if (this.role === Role.VIEWER) return;
     const { selectedIds } = useCanvasStore.getState();
     this.repository.distributeElements(selectedIds, direction);
+    this.isContentDirty = true;
+  }
+
+  public standardizeSpacingSelected(
+    direction: "horizontal" | "vertical",
+    customGap?: number,
+  ): void {
+    if (this.role === Role.VIEWER) return;
+    const { selectedIds } = useCanvasStore.getState();
+    this.repository.standardizeSpacing(selectedIds, direction, customGap);
     this.isContentDirty = true;
   }
 

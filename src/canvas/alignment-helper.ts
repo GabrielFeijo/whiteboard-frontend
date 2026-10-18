@@ -20,11 +20,21 @@ export const DistributionType = {
 export type DistributionType =
   (typeof DistributionType)[keyof typeof DistributionType];
 
+export interface SpacingGuide {
+  axis: "horizontal" | "vertical";
+  start: number;
+  end: number;
+  crossStart: number;
+  crossEnd: number;
+  gap: number;
+}
+
 export interface SmartGuideMatch {
   snappedX?: number;
   snappedY?: number;
   verticalGuides: number[];
   horizontalGuides: number[];
+  spacingGuides: SpacingGuide[];
 }
 
 export interface ResizeSmartGuideMatch {
@@ -147,7 +157,7 @@ function resolveDragAxisSnap(
   eligibleOthers: readonly ElementData[],
   getCoords: (el: ElementData) => { start: number; center: number; end: number },
   threshold: number,
-): { snappedPos?: number; guides: number[] } {
+): { snappedPos?: number; guides: number[]; minDelta: number } {
   const dStart = draggedPos;
   const dCenter = draggedPos + draggedSize / 2;
   const dEnd = draggedPos + draggedSize;
@@ -189,6 +199,135 @@ function resolveDragAxisSnap(
   return {
     snappedPos: snappedPos !== undefined ? Math.round(snappedPos) : undefined,
     guides,
+    minDelta,
+  };
+}
+
+interface SpacingSnapResult {
+  snappedPos?: number;
+  spacingGuides: SpacingGuide[];
+  delta: number;
+}
+
+function resolveAxisSpacingSnap(
+  draggedPos: number,
+  draggedSize: number,
+  draggedCrossPos: number,
+  draggedCrossSize: number,
+  axis: "horizontal" | "vertical",
+  elements: readonly ElementData[],
+  threshold: number,
+): SpacingSnapResult {
+  const posKey = axis === "horizontal" ? "x" : "y";
+  const sizeKey = axis === "horizontal" ? "w" : "h";
+  const crossPosKey = axis === "horizontal" ? "y" : "x";
+  const crossSizeKey = axis === "horizontal" ? "h" : "w";
+
+  let bestDelta = threshold + 1;
+  let bestSnappedPos: number | undefined;
+  let bestGuides: SpacingGuide[] = [];
+
+  const sorted = [...elements].sort((a, b) => a[posKey] - b[posKey]);
+
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const a = sorted[i];
+    const b = sorted[i + 1];
+
+    const aEnd = a[posKey] + a[sizeKey];
+    const bStart = b[posKey];
+    const gap = bStart - aEnd;
+
+    if (gap < 0) continue;
+
+    const crossOverlap =
+      Math.max(a[crossPosKey], b[crossPosKey]) <
+      Math.min(a[crossPosKey] + a[crossSizeKey], b[crossPosKey] + b[crossSizeKey]) + 80;
+
+    if (!crossOverlap) continue;
+
+    const referenceGuide: SpacingGuide = {
+      axis,
+      start: aEnd,
+      end: bStart,
+      crossStart: Math.min(a[crossPosKey], b[crossPosKey]),
+      crossEnd: Math.max(a[crossPosKey] + a[crossSizeKey], b[crossPosKey] + b[crossSizeKey]),
+      gap,
+    };
+
+    const bEnd = b[posKey] + b[sizeKey];
+    const targetRight = bEnd + gap;
+    const deltaRight = Math.abs(draggedPos - targetRight);
+
+    if (deltaRight <= threshold && deltaRight < bestDelta) {
+      bestDelta = deltaRight;
+      bestSnappedPos = targetRight;
+      bestGuides = [
+        referenceGuide,
+        {
+          axis,
+          start: bEnd,
+          end: targetRight,
+          crossStart: Math.min(b[crossPosKey], draggedCrossPos),
+          crossEnd: Math.max(b[crossPosKey] + b[crossSizeKey], draggedCrossPos + draggedCrossSize),
+          gap,
+        },
+      ];
+    }
+
+    const aStart = a[posKey];
+    const targetLeft = aStart - gap - draggedSize;
+    const deltaLeft = Math.abs(draggedPos - targetLeft);
+
+    if (deltaLeft <= threshold && deltaLeft < bestDelta) {
+      bestDelta = deltaLeft;
+      bestSnappedPos = targetLeft;
+      bestGuides = [
+        {
+          axis,
+          start: targetLeft + draggedSize,
+          end: aStart,
+          crossStart: Math.min(a[crossPosKey], draggedCrossPos),
+          crossEnd: Math.max(a[crossPosKey] + a[crossSizeKey], draggedCrossPos + draggedCrossSize),
+          gap,
+        },
+        referenceGuide,
+      ];
+    }
+
+    if (gap > draggedSize) {
+      const centerGap = (gap - draggedSize) / 2;
+      const targetCenter = aEnd + centerGap;
+      const deltaCenter = Math.abs(draggedPos - targetCenter);
+
+      if (deltaCenter <= threshold && deltaCenter < bestDelta) {
+        bestDelta = deltaCenter;
+        bestSnappedPos = targetCenter;
+        bestGuides = [
+          {
+            axis,
+            start: aEnd,
+            end: targetCenter,
+            crossStart: Math.min(a[crossPosKey], draggedCrossPos),
+            crossEnd: Math.max(a[crossPosKey] + a[crossSizeKey], draggedCrossPos + draggedCrossSize),
+            gap: centerGap,
+          },
+          {
+            axis,
+            start: targetCenter + draggedSize,
+            end: bStart,
+            crossStart: Math.min(b[crossPosKey], draggedCrossPos),
+            crossEnd: Math.max(b[crossPosKey] + b[crossSizeKey], draggedCrossPos + draggedCrossSize),
+            gap: centerGap,
+          },
+        ];
+      }
+    }
+  }
+
+  return {
+    snappedPos: bestSnappedPos !== undefined ? Math.round(bestSnappedPos) : undefined,
+    spacingGuides: bestGuides,
+    delta: bestDelta,
   };
 }
 
@@ -199,7 +338,7 @@ export function calculateSmartGuides(
 ): SmartGuideMatch {
   const eligibleOthers = otherElements.filter(isStructuralElement);
   if (eligibleOthers.length === 0) {
-    return { verticalGuides: [], horizontalGuides: [] };
+    return { verticalGuides: [], horizontalGuides: [], spacingGuides: [] };
   }
 
   const snapX = resolveDragAxisSnap(
@@ -218,12 +357,98 @@ export function calculateSmartGuides(
     threshold,
   );
 
+  const spacingSnapX = resolveAxisSpacingSnap(
+    draggedBounds.x,
+    draggedBounds.w,
+    draggedBounds.y,
+    draggedBounds.h,
+    "horizontal",
+    eligibleOthers,
+    threshold,
+  );
+
+  const spacingSnapY = resolveAxisSpacingSnap(
+    draggedBounds.y,
+    draggedBounds.h,
+    draggedBounds.x,
+    draggedBounds.w,
+    "vertical",
+    eligibleOthers,
+    threshold,
+  );
+
+  let finalSnappedX = snapX.snappedPos;
+  let finalVerticalGuides = snapX.guides;
+  const finalSpacingGuides: SpacingGuide[] = [];
+
+  const shouldApplySpacingX =
+    spacingSnapX.snappedPos !== undefined &&
+    (finalSnappedX === undefined || spacingSnapX.delta <= snapX.minDelta);
+
+  if (shouldApplySpacingX) {
+    finalSnappedX = spacingSnapX.snappedPos;
+    finalSpacingGuides.push(...spacingSnapX.spacingGuides);
+    if (spacingSnapX.delta < snapX.minDelta) {
+      finalVerticalGuides = [];
+    }
+  }
+
+  let finalSnappedY = snapY.snappedPos;
+  let finalHorizontalGuides = snapY.guides;
+
+  const shouldApplySpacingY =
+    spacingSnapY.snappedPos !== undefined &&
+    (finalSnappedY === undefined || spacingSnapY.delta <= snapY.minDelta);
+
+  if (shouldApplySpacingY) {
+    finalSnappedY = spacingSnapY.snappedPos;
+    finalSpacingGuides.push(...spacingSnapY.spacingGuides);
+    if (spacingSnapY.delta < snapY.minDelta) {
+      finalHorizontalGuides = [];
+    }
+  }
+
   return {
-    snappedX: snapX.snappedPos,
-    snappedY: snapY.snappedPos,
-    verticalGuides: snapX.guides,
-    horizontalGuides: snapY.guides,
+    snappedX: finalSnappedX,
+    snappedY: finalSnappedY,
+    verticalGuides: finalVerticalGuides,
+    horizontalGuides: finalHorizontalGuides,
+    spacingGuides: finalSpacingGuides,
   };
+}
+
+export function calculateStandardizedSpacingPositions(
+  elements: readonly ElementData[],
+  axis: "horizontal" | "vertical",
+  customGap?: number,
+): Map<string, { x?: number; y?: number }> {
+  const result = new Map<string, { x?: number; y?: number }>();
+  const structuralElements = elements.filter(isStructuralElement);
+  if (structuralElements.length < 2) return result;
+
+  const posKey = axis === "horizontal" ? "x" : "y";
+  const sizeKey = axis === "horizontal" ? "w" : "h";
+
+  const sorted = [...structuralElements].sort((a, b) => a[posKey] - b[posKey]);
+  const first = sorted[0];
+  const second = sorted[1];
+
+  const targetGap =
+    customGap !== undefined
+      ? Math.max(0, customGap)
+      : Math.max(0, second[posKey] - (first[posKey] + first[sizeKey]));
+
+  let current = first[posKey] + first[sizeKey] + targetGap;
+
+  for (let i = 1; i < sorted.length; i++) {
+    const el = sorted[i];
+    if (!el.locked) {
+      result.set(el.id, { [posKey]: Math.round(current) });
+    }
+    current += el[sizeKey] + targetGap;
+  }
+
+  return result;
 }
 
 function snapResizeAxis(

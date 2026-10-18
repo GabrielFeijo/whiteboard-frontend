@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { CanvasEngine } from "@/canvas/canvas-engine";
 import { AlignmentType, DistributionType } from "@/canvas/alignment-helper";
 import { ElementType } from "@/shared";
@@ -20,9 +21,11 @@ import {
   AlignEndHorizontal,
   AlignEndVertical,
   AlignHorizontalDistributeCenter,
+  AlignHorizontalSpaceAround,
   AlignStartHorizontal,
   AlignStartVertical,
   AlignVerticalDistributeCenter,
+  AlignVerticalSpaceAround,
   Group,
   Lock,
   Unlock,
@@ -66,6 +69,8 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
     setOpacity,
     selectedIds,
   } = useCanvasStore();
+
+  const [spacingGap, setSpacingGap] = useState<number>(4);
 
   const selectedElements =
     selectedIds.length > 0 && engine ? engine.getSelectedElements() : [];
@@ -275,6 +280,64 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
                 </button>
               </>
             )}
+          </div>
+
+          <div className="mt-2 pt-2 border-t border-border-subtle flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium text-text-muted">
+                {t("studio.inspector.actions.standardizeSpacing")}
+              </span>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  min="0"
+                  max="500"
+                  value={spacingGap}
+                  onChange={(e) => setSpacingGap(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                  className="w-12 h-6 px-1.5 text-center text-xs rounded bg-surface border border-border-subtle text-text-primary focus:outline-none focus:border-brand-primary"
+                  title={t("studio.inspector.actions.spacingGap")}
+                />
+                <span className="text-[10px] text-text-muted">px</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-1">
+              <div className="flex items-center gap-1">
+                {[0, 4, 8, 16, 24].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setSpacingGap(preset)}
+                    className={`h-5 px-1.5 text-[10px] rounded transition-all ${
+                      spacingGap === preset
+                        ? "bg-brand-primary text-white font-medium"
+                        : "bg-surface text-text-muted hover:text-text-primary hover:bg-surface-raised"
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => engine?.standardizeSpacingSelected("horizontal", spacingGap)}
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
+                  title={t("studio.inspector.actions.standardizeHorizontal")}
+                >
+                  <AlignHorizontalSpaceAround className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => engine?.standardizeSpacingSelected("vertical", spacingGap)}
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised transition-all"
+                  title={t("studio.inspector.actions.standardizeVertical")}
+                >
+                  <AlignVerticalSpaceAround className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

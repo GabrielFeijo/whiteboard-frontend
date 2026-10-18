@@ -3,6 +3,7 @@ import {
   calculateAlignedPositions,
   calculateDistributedPositions,
   calculateSmartGuides,
+  calculateStandardizedSpacingPositions,
 } from "@/canvas/alignment-helper";
 import { ElementData } from "@/shared";
 
@@ -144,5 +145,54 @@ describe("Alignment and Distribution Helpers", () => {
     expect(left.has("arrow-1")).toBe(false);
     expect(left.get("1")?.x).toBe(10);
     expect(left.get("2")?.x).toBe(10);
+  });
+
+  it("standardizes horizontal spacing between rectangles based on the first pair's 4px gap", () => {
+    const el1 = makeEl("1", 0, 0, 50, 50);
+    const el2 = makeEl("2", 54, 0, 50, 50);
+    const el3 = makeEl("3", 200, 0, 50, 50);
+
+    const updates = calculateStandardizedSpacingPositions([el1, el2, el3], "horizontal");
+    expect(updates.get("2")?.x).toBe(54);
+    expect(updates.get("3")?.x).toBe(108);
+  });
+
+  it("standardizes horizontal spacing with user-chosen custom gap (e.g. 16px)", () => {
+    const el1 = makeEl("1", 0, 0, 50, 50);
+    const el2 = makeEl("2", 30, 0, 50, 50);
+    const el3 = makeEl("3", 200, 0, 50, 50);
+
+    const updates = calculateStandardizedSpacingPositions([el1, el2, el3], "horizontal", 16);
+    expect(updates.get("2")?.x).toBe(66);
+    expect(updates.get("3")?.x).toBe(132);
+  });
+
+  it("standardizes vertical spacing with custom gap", () => {
+    const el1 = makeEl("1", 0, 0, 50, 40);
+    const el2 = makeEl("2", 0, 100, 50, 40);
+
+    const updates = calculateStandardizedSpacingPositions([el1, el2], "vertical", 8);
+    expect(updates.get("2")?.y).toBe(48);
+  });
+
+  it("snaps dragged element to match existing 4px gap between adjacent pairs and outputs spacing guides", () => {
+    const staticA = makeEl("a", 0, 100, 50, 50);
+    const staticB = makeEl("b", 54, 100, 50, 50);
+    const draggedC = { x: 106, y: 100, w: 50, h: 50 };
+
+    const match = calculateSmartGuides(draggedC, [staticA, staticB], 6);
+    expect(match.snappedX).toBe(108);
+    expect(match.spacingGuides.length).toBeGreaterThanOrEqual(2);
+    expect(match.spacingGuides.every((g) => g.gap === 4)).toBe(true);
+  });
+
+  it("preserves locked elements during spacing standardization", () => {
+    const el1 = makeEl("1", 0, 0, 50, 50);
+    const el2: ElementData = { ...makeEl("2", 50, 0, 50, 50), locked: true };
+    const el3 = makeEl("3", 200, 0, 50, 50);
+
+    const updates = calculateStandardizedSpacingPositions([el1, el2, el3], "horizontal", 10);
+    expect(updates.has("2")).toBe(false);
+    expect(updates.get("3")?.x).toBe(120);
   });
 });

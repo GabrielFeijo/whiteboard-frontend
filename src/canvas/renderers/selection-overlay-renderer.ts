@@ -3,6 +3,7 @@ import { getElementHandles } from "@/canvas/resize-helper";
 import { drawFreehand } from "@/canvas/renderers/freehand-renderer";
 import { Point } from "@/canvas/viewport";
 import { drawCurvedConnector, resolveArrowEndpoints } from "@/canvas/connector-helper";
+import { SpacingGuide } from "@/canvas/alignment-helper";
 
 export interface SelectionOverlayRenderParams {
   ctx: CanvasRenderingContext2D;
@@ -26,9 +27,92 @@ export interface SelectionOverlayRenderParams {
   guides?: {
     vertical?: number[];
     horizontal?: number[];
+    spacing?: SpacingGuide[];
   } | null;
   snapIndicator?: { active: Point | null; candidates: Point[] } | null;
   getElementById?: (id: string) => ElementData | null;
+}
+
+function drawSpacingBadge(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  centerX: number,
+  centerY: number,
+  zoom: number,
+): void {
+  const fontSize = Math.max(9, Math.round(10 / zoom));
+  ctx.font = `600 ${fontSize}px sans-serif`;
+  const textMetrics = ctx.measureText(text);
+  const paddingX = 4 / zoom;
+  const paddingY = 2 / zoom;
+  const badgeWidth = textMetrics.width + paddingX * 2;
+  const badgeHeight = fontSize + paddingY * 2;
+
+  ctx.fillStyle = "#ec4899";
+  ctx.beginPath();
+  ctx.roundRect(
+    centerX - badgeWidth / 2,
+    centerY - badgeHeight / 2,
+    badgeWidth,
+    badgeHeight,
+    3 / zoom,
+  );
+  ctx.fill();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, centerX, centerY);
+}
+
+function renderSpacingGuides(
+  ctx: CanvasRenderingContext2D,
+  spacing: SpacingGuide[] | undefined,
+  zoom: number,
+): void {
+  if (!spacing || spacing.length === 0) return;
+
+  ctx.save();
+  ctx.strokeStyle = "#ec4899";
+  ctx.lineWidth = 1.5 / zoom;
+  ctx.setLineDash([]);
+
+  for (const guide of spacing) {
+    if (guide.axis === "horizontal") {
+      const midY = (guide.crossStart + guide.crossEnd) / 2;
+      const tickHalf = 6 / zoom;
+
+      ctx.beginPath();
+      ctx.moveTo(guide.start, midY - tickHalf);
+      ctx.lineTo(guide.start, midY + tickHalf);
+      ctx.moveTo(guide.start, midY);
+      ctx.lineTo(guide.end, midY);
+      ctx.moveTo(guide.end, midY - tickHalf);
+      ctx.lineTo(guide.end, midY + tickHalf);
+      ctx.stroke();
+
+      const midX = (guide.start + guide.end) / 2;
+      drawSpacingBadge(ctx, `${Math.round(guide.gap)}px`, midX, midY, zoom);
+      continue;
+    }
+
+    const midX = (guide.crossStart + guide.crossEnd) / 2;
+    const tickHalf = 6 / zoom;
+
+    ctx.beginPath();
+    ctx.moveTo(midX - tickHalf, guide.start);
+    ctx.lineTo(midX + tickHalf, guide.start);
+    ctx.moveTo(midX, guide.start);
+    ctx.lineTo(midX, guide.end);
+    ctx.moveTo(midX - tickHalf, guide.end);
+    ctx.lineTo(midX + tickHalf, guide.end);
+    ctx.stroke();
+
+    const midY = (guide.start + guide.end) / 2;
+    drawSpacingBadge(ctx, `${Math.round(guide.gap)}px`, midX, midY, zoom);
+  }
+
+  ctx.restore();
 }
 
 function renderSmartGuides(
@@ -37,6 +121,8 @@ function renderSmartGuides(
   zoom: number,
 ): void {
   if (!guides) return;
+
+  renderSpacingGuides(ctx, guides.spacing, zoom);
 
   ctx.save();
   ctx.strokeStyle = "#ef4444";

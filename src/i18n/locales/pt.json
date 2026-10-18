@@ -322,6 +322,11 @@
         "alignBottom": "Alinhar à Base",
         "distributeHorizontal": "Distribuir Horizontalmente",
         "distributeVertical": "Distribuir Verticalmente",
+        "standardizeSpacing": "Padronizar Espaçamento",
+        "standardizeHorizontal": "Padronizar Espaçamento Horizontal",
+        "standardizeVertical": "Padronizar Espaçamento Vertical",
+        "spacingGap": "Espaçamento (px)",
+        "autoSpacing": "Automático",
         "lockedNotice": "O elemento está bloqueado. Desbloqueie para alterar propriedades."
       }
     },

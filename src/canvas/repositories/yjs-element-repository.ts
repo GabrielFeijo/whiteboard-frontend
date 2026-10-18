@@ -11,6 +11,7 @@ import {
   AlignmentType,
   calculateAlignedPositions,
   calculateDistributedPositions,
+  calculateStandardizedSpacingPositions,
   DistributionType,
 } from "@/canvas/alignment-helper";
 import { getElementBoundingBox, resolveArrowEndpoints } from "@/canvas/connector-helper";
@@ -473,6 +474,37 @@ export class YjsElementRepository {
     if (ids.length < 3) return;
     const elements = this.getManyByIds(ids);
     const updates = calculateDistributedPositions(elements, direction);
+    if (updates.size === 0) return;
+
+    const elementsMap = this.getElementsMap();
+    this.doc.transact(() => {
+      updates.forEach((pos, id) => {
+        const map = elementsMap.get(id);
+        if (!map) return;
+        YjsElementAdapter.updateYMap(map, pos);
+        const data = YjsElementAdapter.toElementData(map);
+        if (data) {
+          this.spatialIndex.remove(id);
+          this.spatialIndex.insert(id, data.x, data.y, data.w, data.h);
+        }
+      });
+    }, LOCAL_ORIGIN);
+
+    this.syncConnectedArrows(ids);
+  }
+
+  standardizeSpacing(
+    ids: readonly string[],
+    direction: "horizontal" | "vertical",
+    customGap?: number,
+  ): void {
+    if (ids.length < 2) return;
+    const elements = this.getManyByIds(ids);
+    const updates = calculateStandardizedSpacingPositions(
+      elements,
+      direction,
+      customGap,
+    );
     if (updates.size === 0) return;
 
     const elementsMap = this.getElementsMap();
