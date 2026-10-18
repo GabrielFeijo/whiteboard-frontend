@@ -13,7 +13,6 @@ export const ElementType = {
   IMAGE: 'image',
   GROUP: 'group',
 } as const;
-
 export const ELEMENT_TYPES = [
   ElementType.RECT,
   ElementType.ELLIPSE,
@@ -90,7 +89,7 @@ export const PresenceStateSchema = z.object({
   }),
   cursor: z.object({ x: finite, y: finite }).nullable(),
   selection: z.array(z.string().max(64)).max(5000),
-  draft: z.object({ type: z.literal('freehand'), points: z.array(finite) }).optional(),
+  draft: z.object({ type: z.literal(ElementType.FREEHAND), points: z.array(finite) }).optional(),
   viewport: z.object({ x: finite, y: finite, zoom: finite }).optional(),
 });
 export type PresenceState = z.infer<typeof PresenceStateSchema>;
@@ -110,3 +109,4 @@ export function isStructuralElement(el: { type: ElementType }): boolean {
     el.type !== ElementType.FREEHAND
   );
 }
+
