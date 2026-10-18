@@ -62,28 +62,12 @@ export function getElementHandles(bounds: Bounds): ResizeHandle[] {
   ];
 }
 
-export function getHandleAt(
+function findHitHandle(
+  handles: ResizeHandle[],
   screenPt: Point,
-  bounds: Bounds | ElementData,
   viewport: Viewport,
-  hitRadius = 10,
-  getElementById?: (id: string) => ElementData | null,
+  hitRadius: number,
 ): ResizeHandle | null {
-  const el = bounds as ElementData;
-  if (el.type === ElementType.LINE || el.type === ElementType.ARROW) {
-    const lineHandles = getLineHandles(el, getElementById);
-    for (const handle of lineHandles) {
-      const handleScreenPt = viewport.worldToScreen({ x: handle.x, y: handle.y });
-      const dist = Math.hypot(screenPt.x - handleScreenPt.x, screenPt.y - handleScreenPt.y);
-      if (dist <= hitRadius) {
-        return handle;
-      }
-    }
-    return null;
-  }
-
-  const handles = getElementHandles(bounds);
-
   for (const handle of handles) {
     const handleScreenPt = viewport.worldToScreen({ x: handle.x, y: handle.y });
     const dist = Math.hypot(screenPt.x - handleScreenPt.x, screenPt.y - handleScreenPt.y);
@@ -91,8 +75,29 @@ export function getHandleAt(
       return handle;
     }
   }
-
   return null;
+}
+
+function getTargetHandles(
+  bounds: Bounds | ElementData,
+  getElementById?: (id: string) => ElementData | null,
+): ResizeHandle[] {
+  const el = bounds as ElementData;
+  if (el.type === ElementType.LINE || el.type === ElementType.ARROW) {
+    return getLineHandles(el, getElementById);
+  }
+  return getElementHandles(bounds);
+}
+
+export function getHandleAt(
+  screenPt: Point,
+  bounds: Bounds | ElementData,
+  viewport: Viewport,
+  hitRadius = 10,
+  getElementById?: (id: string) => ElementData | null,
+): ResizeHandle | null {
+  const handles = getTargetHandles(bounds, getElementById);
+  return findHitHandle(handles, screenPt, viewport, hitRadius);
 }
 
 export interface ResizeOptions {
@@ -121,6 +126,31 @@ export const HANDLE_DIRECTIONS: Partial<Record<ResizeHandleType, HandleDirection
   [ResizeHandleType.W]: { dirX: -1, dirY: 0 },
 };
 
+function adjustDimensionsForAspectRatio(
+  w: number,
+  h: number,
+  ratio: number,
+  minWidth: number,
+  minHeight: number,
+  handle: ResizeHandleType,
+  config: HandleDirection,
+): { w: number; h: number } {
+  if (config.dirX !== 0 && config.dirY === 0) {
+    return { w, h: Math.max(minHeight, w / ratio) };
+  }
+  if (config.dirX === 0 && config.dirY !== 0) {
+    return { w: Math.max(minWidth, h * ratio), h };
+  }
+  if (handle === ResizeHandleType.SE) {
+    const candidateH = w / ratio;
+    if (candidateH >= minHeight) {
+      return { w, h: candidateH };
+    }
+    return { w: h * ratio, h };
+  }
+  return { w, h: w / ratio };
+}
+
 export function calculateResizedBounds({
   handle,
   initialBounds,
@@ -147,19 +177,17 @@ export function calculateResizedBounds({
   }
 
   if (keepAspectRatio) {
-    if (config.dirX !== 0 && config.dirY === 0) {
-      newH = Math.max(minHeight, newW / ratio);
-    } else if (config.dirX === 0 && config.dirY !== 0) {
-      newW = Math.max(minWidth, newH * ratio);
-    } else if (handle === "se") {
-      if (newW / ratio >= minHeight) {
-        newH = newW / ratio;
-      } else {
-        newW = newH * ratio;
-      }
-    } else {
-      newH = newW / ratio;
-    }
+    const adjusted = adjustDimensionsForAspectRatio(
+      newW,
+      newH,
+      ratio,
+      minWidth,
+      minHeight,
+      handle,
+      config,
+    );
+    newW = adjusted.w;
+    newH = adjusted.h;
   }
 
   if (config.dirX === -1) {
