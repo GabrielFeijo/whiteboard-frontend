@@ -32,3 +32,18 @@ export function useRestoreSnapshotMutation(boardId: string) {
     },
   });
 }
+
+export function useCreateSnapshotMutation(boardId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post<SnapshotItem>(
+        `/boards/${boardId}/snapshots`
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.boards.snapshots(boardId) });
+    },
+  });
+}

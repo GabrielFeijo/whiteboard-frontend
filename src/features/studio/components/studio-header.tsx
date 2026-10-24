@@ -44,15 +44,9 @@ export function StudioHeader({
   const router = useRouter();
   const isReadOnly = boardRole === Role.VIEWER;
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [titleInput, setTitleInput] = useState(boardTitle);
-  const [prevBoardTitle, setPrevBoardTitle] = useState(boardTitle);
+  const [editingTitle, setEditingTitle] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  if (boardTitle !== prevBoardTitle) {
-    setPrevBoardTitle(boardTitle);
-    setTitleInput(boardTitle);
-  }
+  const isEditing = editingTitle !== null;
 
   useEffect(() => {
     if (isEditing) {
@@ -62,26 +56,23 @@ export function StudioHeader({
   }, [isEditing]);
 
   const handleSave = async () => {
-    const trimmed = titleInput.trim();
+    if (editingTitle === null) return;
+    const trimmed = editingTitle.trim();
     if (!trimmed || trimmed === boardTitle) {
-      setTitleInput(boardTitle);
-      setIsEditing(false);
+      setEditingTitle(null);
       return;
     }
     try {
       if (onRenameBoard) {
         await onRenameBoard(trimmed);
       }
-      setIsEditing(false);
-    } catch {
-      setTitleInput(boardTitle);
-      setIsEditing(false);
+    } finally {
+      setEditingTitle(null);
     }
   };
 
   const handleCancel = () => {
-    setTitleInput(boardTitle);
-    setIsEditing(false);
+    setEditingTitle(null);
   };
 
   const canEditTitle = !isReadOnly && Boolean(onRenameBoard);
@@ -106,10 +97,10 @@ export function StudioHeader({
             <input
               ref={inputRef}
               type="text"
-              value={titleInput}
-              onChange={(e) => setTitleInput(e.target.value)}
+              value={editingTitle}
+              onChange={(e) => setEditingTitle(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleSave();
+                if (e.key === "Enter") void handleSave();
                 if (e.key === "Escape") handleCancel();
               }}
               className="h-6 w-36 sm:w-48 rounded border border-accent-primary bg-surface px-1.5 text-xs font-semibold text-text-primary outline-hidden"
@@ -117,7 +108,7 @@ export function StudioHeader({
             />
             <button
               type="button"
-              onClick={handleSave}
+              onClick={() => void handleSave()}
               className="rounded p-0.5 text-emerald-500 hover:bg-surface-hover"
               title={t("common.actions.save")}
             >
@@ -137,7 +128,7 @@ export function StudioHeader({
             className={`group flex items-center gap-1.5 ${
               canEditTitle ? "cursor-pointer" : ""
             }`}
-            onClick={() => canEditTitle && setIsEditing(true)}
+            onClick={() => canEditTitle && setEditingTitle(boardTitle)}
             title={canEditTitle ? t("studio.header.rename") : undefined}
           >
             <h1 className="text-xs font-semibold text-text-primary max-w-36 sm:max-w-64 truncate">

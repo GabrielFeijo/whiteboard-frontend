@@ -47,6 +47,8 @@
       "boardCreateError": "Could not create the board.",
       "versionRestored": "Version restored successfully!",
       "versionRestoreError": "Could not restore the previous version.",
+      "snapshotCreated": "Version saved to history successfully!",
+      "snapshotCreateError": "Could not save version.",
       "boardRenamed": "Board renamed successfully!",
       "boardRenameError": "Failed to rename board.",
       "networkError": "Failed to communicate with the server. Please check your connection."
@@ -292,7 +294,8 @@
         "transparent": "Transparent",
         "customFillColor": "Custom fill color",
         "strokeWidth": "Stroke Width",
-        "opacity": "Opacity"
+        "opacity": "Opacity",
+        "rotation": "Rotation"
       },
       "elementTypes": {
         "rect": "Rectangle",
@@ -310,10 +313,14 @@
         "unlock": "Unlock",
         "group": "Group",
         "ungroup": "Ungroup",
-        "lockShortcut": "Lock (Ctrl+Shift+L)",
-        "unlockShortcut": "Unlock (Ctrl+Shift+L)",
+        "lockShortcut": "Lock (Ctrl+Shift+L / Shift+L)",
+        "unlockShortcut": "Unlock (Ctrl+Shift+L / Shift+L)",
         "groupShortcut": "Group elements (Ctrl+G)",
         "ungroupShortcut": "Ungroup elements (Ctrl+Shift+G)",
+        "bringToFront": "Bring to Front (])",
+        "sendToBack": "Send to Back ([)",
+        "bringForward": "Bring Forward (Alt+])",
+        "sendBackward": "Send Backward (Alt+[)",
         "alignLeft": "Align Left",
         "alignCenter": "Align Center",
         "alignRight": "Align Right",
@@ -333,7 +340,32 @@
     "viewport": {
       "zoomIn": "Zoom In (+)",
       "zoomOut": "Zoom Out (-)",
-      "resetZoom": "Reset Zoom to 100%"
+      "resetZoom": "Reset Zoom to 100% (0)",
+      "fitToContent": "Fit to Content (Shift+1)",
+      "shortcutsHelp": "Keyboard Shortcuts (?)"
+    },
+    "contextMenu": {
+      "copy": "Copy (Ctrl+C)",
+      "cut": "Cut (Ctrl+X)",
+      "paste": "Paste (Ctrl+V)",
+      "duplicate": "Duplicate (Ctrl+D / Alt+D)",
+      "bringToFront": "Bring to Front (])",
+      "sendToBack": "Send to Back ([)",
+      "group": "Group (Ctrl+G)",
+      "ungroup": "Ungroup (Ctrl+Shift+G)",
+      "lock": "Lock / Unlock (Shift+L)",
+      "delete": "Delete (Del)",
+      "selectAll": "Select All (Ctrl+A)",
+      "fitToContent": "Fit to Content (Shift+1)",
+      "resetZoom": "Reset Zoom (100%)"
+    },
+    "shortcutsModal": {
+      "title": "Keyboard Shortcuts",
+      "subtitle": "Navigate, edit, and organize elements quickly without browser conflicts",
+      "tools": "Tools",
+      "editing": "Editing & Clipboard",
+      "arrangement": "Layers, Grouping & Lock",
+      "navigation": "Navigation & Zoom"
     },
     "minimap": {
       "toggle": "Toggle Minimap",
@@ -443,7 +475,9 @@
     },
     "actions": {
       "restore": "Restore",
-      "restoring": "Restoring..."
+      "restoring": "Restoring...",
+      "createManual": "Save Version Now",
+      "creatingManual": "Saving..."
     },
     "confirmRestore": {
       "title": "Are you absolutely sure?",

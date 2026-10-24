@@ -92,8 +92,7 @@ export function Minimap({ engine }: MinimapProps) {
 
   useEffect(() => {
     if (!isOpen || !engine) return;
-    const interval = setInterval(drawMinimap, 500);
-    return () => clearInterval(interval);
+    return engine.observeChanges(drawMinimap);
   }, [isOpen, engine, drawMinimap]);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -110,9 +109,10 @@ export function Minimap({ engine }: MinimapProps) {
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     isDraggingRef.current = false;
-    try {
-      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch {}
+    const target = e.target as HTMLElement;
+    if (typeof target.hasPointerCapture === "function" && target.hasPointerCapture(e.pointerId)) {
+      target.releasePointerCapture(e.pointerId);
+    }
   };
 
   const handleMinimapNavigation = (e: React.PointerEvent<HTMLCanvasElement>) => {

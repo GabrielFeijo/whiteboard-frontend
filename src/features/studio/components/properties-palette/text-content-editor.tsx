@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
 import type { CanvasEngine } from "@/canvas/canvas-engine";
 
 interface TextContentEditorProps {
@@ -15,45 +14,25 @@ interface TextContentEditorProps {
 export function TextContentEditor({
   initialText,
   onChange,
-  engine,
   placeholder,
   title,
 }: TextContentEditorProps) {
-  const [text, setText] = useState(initialText);
-  const textInputRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (!engine) return;
-    const handleFocus = () => {
-      textInputRef.current?.focus();
-      textInputRef.current?.select();
-    };
-    return engine.events.on("focusTextInput", handleFocus);
-  }, [engine]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      textInputRef.current?.focus();
-      textInputRef.current?.select();
-    }, 50);
-    return () => clearTimeout(timer);
-  }, []);
-
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const next = e.target.value;
-    setText(next);
-    onChange(next);
+    onChange(e.target.value);
   };
 
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <label className="text-[11px] font-medium text-text-secondary">{title}</label>
-        <span className="text-[10px] font-mono text-text-muted">{text.length}</span>
+        <label className="text-[11px] font-medium text-text-secondary">
+          {title}
+        </label>
+        <span className="text-[10px] font-mono text-text-muted">
+          {initialText.length}
+        </span>
       </div>
       <textarea
-        ref={textInputRef}
-        value={text}
+        value={initialText}
         onChange={handleChange}
         placeholder={placeholder}
         rows={3}

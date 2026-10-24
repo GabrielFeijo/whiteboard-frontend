@@ -15,8 +15,11 @@ import {
 } from "@/features/boards/api/boards.queries";
 import { ExportModal } from "@/features/export/components/export-modal";
 import { ShareModal } from "@/features/share/components/share-modal";
+import { CanvasContextMenu } from "@/features/studio/components/canvas-context-menu";
+import { InlineTextEditor } from "@/features/studio/components/inline-text-editor";
 import { Minimap } from "@/features/studio/components/minimap";
 import { PropertiesPalette } from "@/features/studio/components/properties-palette/properties-palette";
+import { ShortcutsModal } from "@/features/studio/components/shortcuts-modal";
 import { StudioHeader } from "@/features/studio/components/studio-header";
 import { StudioToolbar } from "@/features/studio/components/toolbar/studio-toolbar";
 import { ZoomControls } from "@/features/studio/components/zoom-controls";
@@ -36,6 +39,8 @@ interface BoardStudioProps {
   user: SessionUser | null;
   linkToken?: string;
 }
+
+type StudioModalType = "share" | "export" | "history" | "shortcuts" | null;
 
 export function BoardStudio({
   boardId,
@@ -66,9 +71,7 @@ export function BoardStudio({
     }
   }, [board, linkToken, user?.id, queryClient]);
 
-  const [showShareModal, setShowShareModal] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [activeModal, setActiveModal] = useState<StudioModalType>(null);
   const [showProperties, setShowProperties] = useState(false);
 
   const selectedIds = useCanvasStore((state) => state.selectedIds);
@@ -98,9 +101,16 @@ export function BoardStudio({
 
   useEffect(() => {
     if (!engine) return;
-    return engine.onUndoStackChange((status) => {
+    const unsubUndo = engine.onUndoStackChange((status) => {
       setUndoStatus(status);
     });
+    const unsubShortcuts = engine.events.on("openShortcutsHelp", () => {
+      setActiveModal((prev) => (prev === "shortcuts" ? null : "shortcuts"));
+    });
+    return () => {
+      unsubUndo();
+      unsubShortcuts();
+    };
   }, [engine]);
 
   useEffect(() => {
@@ -190,7 +200,10 @@ export function BoardStudio({
           className="absolute inset-0 pointer-events-none"
         />
         <canvas ref={overlayCanvasRef} className="absolute inset-0 touch-none" />
+        <InlineTextEditor engine={engine} />
       </div>
+
+      <CanvasContextMenu engine={engine} />
 
       <StudioHeader
         boardId={board.id}
@@ -200,9 +213,9 @@ export function BoardStudio({
         provider={provider}
         followingClientId={followingClientId}
         onFollowUser={setFollowingClientId}
-        onOpenHistory={() => setShowHistoryModal(true)}
-        onOpenExport={() => setShowExportModal(true)}
-        onOpenShare={() => setShowShareModal(true)}
+        onOpenHistory={() => setActiveModal("history")}
+        onOpenExport={() => setActiveModal("export")}
+        onOpenShare={() => setActiveModal("share")}
         onRenameBoard={handleRenameBoard}
       />
 
@@ -246,32 +259,43 @@ export function BoardStudio({
           onZoomIn={() => engine?.zoomIn()}
           onZoomOut={() => engine?.zoomOut()}
           onResetZoom={() => engine?.resetViewport()}
+          onFitToContent={() => engine?.fitToContent()}
+          onOpenShortcuts={() => setActiveModal("shortcuts")}
         />
       </div>
 
-      {showShareModal && (
+      <ShortcutsModal
+        isOpen={activeModal === "shortcuts"}
+        onClose={() => setActiveModal(null)}
+      />
+
+      {activeModal === "share" && (
         <ShareModal
-          isOpen={showShareModal}
+          isOpen
           boardId={board.id}
           boardTitle={board.title}
-          onClose={() => setShowShareModal(false)}
+          onClose={() => setActiveModal(null)}
         />
       )}
 
-      {showExportModal && provider && (
+      {activeModal === "export" && provider && (
         <ExportModal
           doc={provider.doc}
           boardTitle={board.title}
-          onClose={() => setShowExportModal(false)}
+          onClose={() => setActiveModal(null)}
         />
       )}
 
-      {showHistoryModal && (
+      {activeModal === "history" && (
         <VersionHistoryModal
           boardId={board.id}
           userRole={board.role}
-          onClose={() => setShowHistoryModal(false)}
-          onRestored={() => window.location.reload()}
+          onClose={() => setActiveModal(null)}
+          onRestored={() => {
+            engine?.reindexElements();
+            useCanvasStore.getState().setSelectedIds([]);
+            setActiveModal(null);
+          }}
         />
       )}
     </div>

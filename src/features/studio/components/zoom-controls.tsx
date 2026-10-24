@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, Plus } from "lucide-react";
+import { Keyboard, Maximize2, Minus, Plus } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useI18n } from "@/i18n/context";
 import { useCanvasStore } from "@/store/canvas-store";
@@ -9,12 +9,16 @@ interface ZoomControlsProps {
   onZoomIn?: () => void;
   onZoomOut?: () => void;
   onResetZoom?: () => void;
+  onFitToContent?: () => void;
+  onOpenShortcuts?: () => void;
 }
 
 export function ZoomControls({
   onZoomIn,
   onZoomOut,
   onResetZoom,
+  onFitToContent,
+  onOpenShortcuts,
 }: ZoomControlsProps) {
   const { zoom, setZoom, resetViewport } = useCanvasStore();
   const { t } = useI18n();
@@ -76,6 +80,43 @@ export function ZoomControls({
           <Plus className="h-3.5 w-3.5" />
         </button>
       </Tooltip>
+
+      {onFitToContent && (
+        <>
+          <div className="mx-0.5 h-4 w-px bg-border-subtle" />
+          <Tooltip
+            label={t("studio.viewport.fitToContent")}
+            shortcut="Shift+1"
+            side="top"
+          >
+            <button
+              type="button"
+              onClick={onFitToContent}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-text-secondary transition-all hover:bg-surface-hover hover:text-text-primary active:scale-95"
+              aria-label={t("studio.viewport.fitToContent")}
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+            </button>
+          </Tooltip>
+        </>
+      )}
+
+      {onOpenShortcuts && (
+        <Tooltip
+          label={t("studio.viewport.shortcutsHelp")}
+          shortcut="?"
+          side="top"
+        >
+          <button
+            type="button"
+            onClick={onOpenShortcuts}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-text-secondary transition-all hover:bg-surface-hover hover:text-text-primary active:scale-95"
+            aria-label={t("studio.viewport.shortcutsHelp")}
+          >
+            <Keyboard className="h-3.5 w-3.5" />
+          </button>
+        </Tooltip>
+      )}
     </div>
   );
 }

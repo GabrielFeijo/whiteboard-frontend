@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { BookmarkPlus, X } from "lucide-react";
 import { Role } from "@/shared";
 import { ConfirmDialog } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import {
+  useCreateSnapshotMutation,
   useRestoreSnapshotMutation,
   useSnapshotsQuery,
 } from "@/features/version-history/api/snapshots.queries";
@@ -30,9 +31,19 @@ export function VersionHistoryModal({
   const { t } = useI18n();
   const { data: snapshots = [], isLoading, error } = useSnapshotsQuery(boardId);
   const restoreMutation = useRestoreSnapshotMutation(boardId);
+  const createSnapshotMutation = useCreateSnapshotMutation(boardId);
 
   const canRestore = userRole === Role.OWNER || userRole === Role.EDITOR;
   const [restoringSnapshotId, setRestoringSnapshotId] = useState<string | null>(null);
+
+  const handleCreateManualSnapshot = async () => {
+    try {
+      await createSnapshotMutation.mutateAsync();
+      toast.success(t("common.toasts.snapshotCreated"));
+    } catch {
+      toast.error(t("common.toasts.snapshotCreateError"));
+    }
+  };
 
   const handleConfirmRestore = async () => {
     if (!restoringSnapshotId) return;
@@ -43,7 +54,7 @@ export function VersionHistoryModal({
       if (onRestored) {
         onRestored();
       } else {
-        window.location.reload();
+        onClose();
       }
     } catch {
       toast.error(t("common.toasts.versionRestoreError"));
@@ -65,14 +76,30 @@ export function VersionHistoryModal({
             </h2>
             <p className="mt-0.5 text-xs text-text-muted">{t("versionHistory.header.subtitle")}</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t("common.actions.close")}
-            className="rounded-lg p-1 text-text-muted hover:text-text-primary hover:bg-surface-hover"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {canRestore && (
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={handleCreateManualSnapshot}
+                disabled={createSnapshotMutation.isPending}
+                className="gap-1.5"
+              >
+                <BookmarkPlus className="h-3.5 w-3.5" />
+                {createSnapshotMutation.isPending
+                  ? t("versionHistory.actions.creatingManual")
+                  : t("versionHistory.actions.createManual")}
+              </Button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={t("common.actions.close")}
+              className="rounded-lg p-1 text-text-muted hover:text-text-primary hover:bg-surface-hover"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {error && (

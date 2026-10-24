@@ -47,6 +47,8 @@
       "boardCreateError": "Não foi possível criar o quadro.",
       "versionRestored": "Versão restaurada com sucesso!",
       "versionRestoreError": "Não foi possível restaurar a versão anterior.",
+      "snapshotCreated": "Versão salva no histórico com sucesso!",
+      "snapshotCreateError": "Não foi possível salvar a versão.",
       "boardRenamed": "Quadro renomeado com sucesso!",
       "boardRenameError": "Não foi possível renomear o quadro.",
       "networkError": "Falha na comunicação com o servidor. Verifique sua conexão."
@@ -292,7 +294,8 @@
         "transparent": "Transparente",
         "customFillColor": "Cor de preenchimento personalizada",
         "strokeWidth": "Espessura da Linha",
-        "opacity": "Opacidade"
+        "opacity": "Opacidade",
+        "rotation": "Rotação"
       },
       "elementTypes": {
         "rect": "Retângulo",
@@ -310,10 +313,14 @@
         "unlock": "Desbloquear",
         "group": "Agrupar",
         "ungroup": "Desagrupar",
-        "lockShortcut": "Bloquear (Ctrl+Shift+L)",
-        "unlockShortcut": "Desbloquear (Ctrl+Shift+L)",
+        "lockShortcut": "Bloquear (Ctrl+Shift+L / Shift+L)",
+        "unlockShortcut": "Desbloquear (Ctrl+Shift+L / Shift+L)",
         "groupShortcut": "Agrupar elementos (Ctrl+G)",
         "ungroupShortcut": "Desagrupar elementos (Ctrl+Shift+G)",
+        "bringToFront": "Trazer para Frente (])",
+        "sendToBack": "Enviar para Trás ([)",
+        "bringForward": "Avançar Camada (Alt+])",
+        "sendBackward": "Recuar Camada (Alt+[)",
         "alignLeft": "Alinhar à Esquerda",
         "alignCenter": "Alinhar ao Centro",
         "alignRight": "Alinhar à Direita",
@@ -333,7 +340,32 @@
     "viewport": {
       "zoomIn": "Aproximar (+)",
       "zoomOut": "Afastar (-)",
-      "resetZoom": "Redefinir Zoom para 100%"
+      "resetZoom": "Redefinir Zoom para 100% (0)",
+      "fitToContent": "Ajustar ao Conteúdo (Shift+1)",
+      "shortcutsHelp": "Atalhos de Teclado (?)"
+    },
+    "contextMenu": {
+      "copy": "Copiar (Ctrl+C)",
+      "cut": "Recortar (Ctrl+X)",
+      "paste": "Colar (Ctrl+V)",
+      "duplicate": "Duplicar (Ctrl+D / Alt+D)",
+      "bringToFront": "Trazer para Frente (])",
+      "sendToBack": "Enviar para Trás ([)",
+      "group": "Agrupar (Ctrl+G)",
+      "ungroup": "Desagrupar (Ctrl+Shift+G)",
+      "lock": "Bloquear / Desbloquear (Shift+L)",
+      "delete": "Excluir (Del)",
+      "selectAll": "Selecionar Tudo (Ctrl+A)",
+      "fitToContent": "Ajustar à Tela (Shift+1)",
+      "resetZoom": "Redefinir Zoom (100%)"
+    },
+    "shortcutsModal": {
+      "title": "Atalhos de Teclado",
+      "subtitle": "Navegue, edite e organize elementos rapidamente sem conflitos com o navegador",
+      "tools": "Ferramentas",
+      "editing": "Edição & Área de Transferência",
+      "arrangement": "Camadas, Agrupamento & Bloqueio",
+      "navigation": "Navegação & Zoom"
     },
     "minimap": {
       "toggle": "Alternar Minimapa",
@@ -443,7 +475,9 @@
     },
     "actions": {
       "restore": "Restaurar",
-      "restoring": "Restaurando..."
+      "restoring": "Restaurando...",
+      "createManual": "Salvar Versão Agora",
+      "creatingManual": "Salvando..."
     },
     "confirmRestore": {
       "title": "Tem certeza que deseja restaurar?",

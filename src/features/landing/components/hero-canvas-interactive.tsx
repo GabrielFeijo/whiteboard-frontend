@@ -8,8 +8,10 @@ import {
   StickyNote,
   Zap,
   MousePointerClick,
+  type LucideIcon,
 } from "lucide-react";
 import { useI18n } from "@/i18n/context";
+import type { TranslationKey } from "@/i18n/types";
 
 export const HeroItemType = {
   STICKY: "sticky",
@@ -26,6 +28,33 @@ export const HeroToolType = {
   STICKY: "sticky",
 } as const;
 export type HeroToolType = (typeof HeroToolType)[keyof typeof HeroToolType];
+
+const HERO_TOOLS: ReadonlyArray<{
+  tool: HeroToolType;
+  labelKey: TranslationKey;
+  icon: LucideIcon;
+}> = [
+  {
+    tool: HeroToolType.SELECT,
+    labelKey: "landing.interactive.toolSelect",
+    icon: MousePointer2,
+  },
+  {
+    tool: HeroToolType.PEN,
+    labelKey: "landing.interactive.toolPen",
+    icon: Pen,
+  },
+  {
+    tool: HeroToolType.RECT,
+    labelKey: "landing.interactive.toolRect",
+    icon: Square,
+  },
+  {
+    tool: HeroToolType.STICKY,
+    labelKey: "landing.interactive.toolSticky",
+    icon: StickyNote,
+  },
+];
 
 interface DraggableItem {
   id: string;
@@ -173,53 +202,21 @@ export function HeroCanvasInteractive() {
         />
 
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 rounded-xl border border-border-strong bg-surface-raised px-2 py-1 shadow-md">
-          <button
-            type="button"
-            onClick={() => setActiveTool(HeroToolType.SELECT)}
-            title={t("landing.interactive.toolSelect")}
-            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${activeTool === HeroToolType.SELECT
-              ? "bg-accent-primary text-white"
-              : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
+          {HERO_TOOLS.map(({ tool, labelKey, icon: Icon }) => (
+            <button
+              key={tool}
+              type="button"
+              onClick={() => setActiveTool(tool)}
+              title={t(labelKey)}
+              className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${
+                activeTool === tool
+                  ? "bg-accent-primary text-white"
+                  : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
               }`}
-          >
-            <MousePointer2 className="h-3.5 w-3.5" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTool(HeroToolType.PEN)}
-            title={t("landing.interactive.toolPen")}
-            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${activeTool === HeroToolType.PEN
-              ? "bg-accent-primary text-white"
-              : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
-              }`}
-          >
-            <Pen className="h-3.5 w-3.5" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTool(HeroToolType.RECT)}
-            title={t("landing.interactive.toolRect")}
-            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${activeTool === HeroToolType.RECT
-              ? "bg-accent-primary text-white"
-              : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
-              }`}
-          >
-            <Square className="h-3.5 w-3.5" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTool(HeroToolType.STICKY)}
-            title={t("landing.interactive.toolSticky")}
-            className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${activeTool === HeroToolType.STICKY
-              ? "bg-accent-primary text-white"
-              : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
-              }`}
-          >
-            <StickyNote className="h-3.5 w-3.5" />
-          </button>
+            >
+              <Icon className="h-3.5 w-3.5" />
+            </button>
+          ))}
         </div>
 
         <svg className="absolute inset-0 h-full w-full pointer-events-none">
