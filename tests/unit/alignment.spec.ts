@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateAlignedPositions,
+  calculateAutoStandardizedSpacingPositions,
   calculateDistributedPositions,
   calculateSmartGuides,
   calculateStandardizedSpacingPositions,
@@ -194,5 +195,31 @@ describe("Alignment and Distribution Helpers", () => {
     const updates = calculateStandardizedSpacingPositions([el1, el2, el3], "horizontal", 10);
     expect(updates.has("2")).toBe(false);
     expect(updates.get("3")?.x).toBe(120);
+  });
+
+  it("standardizes horizontal and vertical spacing independently across rows and columns in a 2x2 grid", () => {
+    const topLeft = makeEl("tl", 423, 110, 200, 183);
+    const topRight = makeEl("tr", 897, 100, 200, 183);
+    const bottomLeft = makeEl("bl", 423, 309, 200, 183);
+    const bottomRight = makeEl("br", 897, 299, 200, 183);
+    const grid = [topLeft, topRight, bottomLeft, bottomRight];
+
+    const horizUpdates = calculateStandardizedSpacingPositions(grid, "horizontal", 8);
+    expect(horizUpdates.has("tl")).toBe(false);
+    expect(horizUpdates.has("bl")).toBe(false);
+    expect(horizUpdates.get("tr")?.x).toBe(631);
+    expect(horizUpdates.get("br")?.x).toBe(631);
+
+    const vertUpdates = calculateStandardizedSpacingPositions(grid, "vertical", 8);
+    expect(vertUpdates.get("tl")?.y).toBe(100);
+    expect(vertUpdates.has("tr")).toBe(false);
+    expect(vertUpdates.get("bl")?.y).toBe(291);
+    expect(vertUpdates.get("br")?.y).toBe(291);
+
+    const autoUpdates = calculateAutoStandardizedSpacingPositions(grid, 8);
+    expect(autoUpdates.get("tl")).toEqual({ y: 100 });
+    expect(autoUpdates.get("tr")).toEqual({ x: 631 });
+    expect(autoUpdates.get("bl")).toEqual({ y: 291 });
+    expect(autoUpdates.get("br")).toEqual({ x: 631, y: 291 });
   });
 });

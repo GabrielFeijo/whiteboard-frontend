@@ -10,6 +10,7 @@ import { YjsElementAdapter } from "@/canvas/yjs-element-adapter";
 import {
   AlignmentType,
   calculateAlignedPositions,
+  calculateAutoStandardizedSpacingPositions,
   calculateDistributedPositions,
   calculateStandardizedSpacingPositions,
   DistributionType,
@@ -591,15 +592,16 @@ export class YjsElementRepository {
 
   standardizeSpacing(
     ids: readonly string[],
-    direction: "horizontal" | "vertical",
+    direction: "horizontal" | "vertical" | "auto",
     customGap?: number,
   ): void {
     if (ids.length < 2) return;
     const elements = this.getManyByIds(ids);
-    this.applyPositionUpdates(
-      ids,
-      calculateStandardizedSpacingPositions(elements, direction, customGap),
-    );
+    const updates =
+      direction === "auto"
+        ? calculateAutoStandardizedSpacingPositions(elements, customGap ?? 4)
+        : calculateStandardizedSpacingPositions(elements, direction, customGap);
+    this.applyPositionUpdates(ids, updates);
   }
 
   syncConnectedArrows(movedIds: readonly string[]): void {

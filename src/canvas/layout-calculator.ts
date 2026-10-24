@@ -125,6 +125,87 @@ export function calculateDistributedPositions(
     : distributeAxis(structuralElements, "y", "h");
 }
 
+function groupByCrossAxisClusters(
+  elements: readonly ElementData[],
+  axis: "horizontal" | "vertical",
+): ElementData[][] {
+  const crossPos = axis === "horizontal" ? "y" : "x";
+  const crossSize = axis === "horizontal" ? "h" : "w";
+
+  const sortedByCrossCenter = [...elements].sort(
+    (a, b) =>
+      a[crossPos] + a[crossSize] / 2 - (b[crossPos] + b[crossSize] / 2),
+  );
+
+  const clusters: Array<{
+    min: number;
+    max: number;
+    items: ElementData[];
+  }> = [];
+
+  for (const el of sortedByCrossCenter) {
+    const start = el[crossPos];
+    const end = start + el[crossSize];
+    const lastCluster = clusters[clusters.length - 1];
+
+    if (!lastCluster) {
+      clusters.push({ min: start, max: end, items: [el] });
+      continue;
+    }
+
+    const overlap = Math.min(end, lastCluster.max) - Math.max(start, lastCluster.min);
+    const minSpan = Math.min(el[crossSize], lastCluster.max - lastCluster.min);
+
+    if (overlap >= minSpan * 0.35) {
+      lastCluster.items.push(el);
+      lastCluster.min = Math.min(lastCluster.min, start);
+      lastCluster.max = Math.max(lastCluster.max, end);
+    } else {
+      clusters.push({ min: start, max: end, items: [el] });
+    }
+  }
+
+  return clusters.map((c) => c.items);
+}
+
+function standardizeSingleLane(
+  laneElements: readonly ElementData[],
+  posKey: "x" | "y",
+  sizeKey: "w" | "h",
+  customGap: number | undefined,
+  result: Map<string, { x?: number; y?: number }>,
+  anchorStart?: number,
+): void {
+  if (laneElements.length < 2) return;
+
+  const sorted = [...laneElements].sort(
+    (a, b) => a[posKey] - b[posKey] || a.id.localeCompare(b.id),
+  );
+  const first = sorted[0];
+  const second = sorted[1];
+
+  const targetGap =
+    customGap !== undefined
+      ? Math.max(0, customGap)
+      : Math.max(0, second[posKey] - (first[posKey] + first[sizeKey]));
+
+  const startPos =
+    anchorStart !== undefined ? Math.round(anchorStart) : first[posKey];
+  if (anchorStart !== undefined && !first.locked && first[posKey] !== startPos) {
+    result.set(first.id, { [posKey]: startPos });
+  }
+
+  let current = startPos + first[sizeKey] + targetGap;
+
+  for (let i = 1; i < sorted.length; i++) {
+    const el = sorted[i];
+    if (!el.locked) {
+      result.set(el.id, { [posKey]: Math.round(current) });
+    }
+    current += el[sizeKey] + targetGap;
+  }
+}
+
 export function calculateStandardizedSpacingPositions(
   elements: readonly ElementData[],
   axis: "horizontal" | "vertical",
@@ -137,24 +218,94 @@ export function calculateStandardizedSpacingPositions(
   const posKey = axis === "horizontal" ? "x" : "y";
   const sizeKey = axis === "horizontal" ? "w" : "h";
 
-  const sorted = [...structuralElements].sort((a, b) => a[posKey] - b[posKey]);
-  const first = sorted[0];
-  const second = sorted[1];
+  const clusters = groupByCrossAxisClusters(structuralElements, axis);
+  const isMultiLaneGrid =
+    clusters.length >= 2 && clusters.some((cluster) => cluster.length >= 2);
 
-  const targetGap =
-    customGap !== undefined
-      ? Math.max(0, customGap)
-      : Math.max(0, second[posKey] - (first[posKey] + first[sizeKey]));
-
-  let current = first[posKey] + first[sizeKey] + targetGap;
-
-  for (let i = 1; i < sorted.length; i++) {
-    const el = sorted[i];
-    if (!el.locked) {
-      result.set(el.id, { [posKey]: Math.round(current) });
+  if (isMultiLaneGrid) {
+    const multiElementClusters = clusters.filter((c) => c.length >= 2);
+    const gridStart = Math.min(
+      ...multiElementClusters.flatMap((c) => c.map((el) => el[posKey])),
+    );
+    for (const cluster of multiElementClusters) {
+      standardizeSingleLane(
+        cluster,
+        posKey,
+        sizeKey,
+        customGap,
+        result,
+        gridStart,
+      );
     }
-    current += el[sizeKey] + targetGap;
+    return result;
   }
 
+  standardizeSingleLane(structuralElements, posKey, sizeKey, customGap, result);
   return result;
+}
+
+export function calculateAutoStandardizedSpacingPositions(
+  elements: readonly ElementData[],
+  customGap: number,
+): Map<string, { x?: number; y?: number }> {
+  const structuralElements = elements.filter(isStructuralElement);
+  if (structuralElements.length < 2) return new Map();
+
+  const rowClusters = groupByCrossAxisClusters(structuralElements, "horizontal");
+  const colClusters = groupByCrossAxisClusters(structuralElements, "vertical");
+
+  const hasMultiElementRows = rowClusters.some((c) => c.length >= 2);
+  const hasMultiElementCols = colClusters.some((c) => c.length >= 2);
+
+  if (hasMultiElementRows && hasMultiElementCols) {
+    const horizontalUpdates = calculateStandardizedSpacingPositions(
+      structuralElements,
+      "horizontal",
+      customGap,
+    );
+    const updatedElements = structuralElements.map((el) => {
+      const hUpdate = horizontalUpdates.get(el.id);
+      return hUpdate?.x !== undefined ? { ...el, x: hUpdate.x } : el;
+    });
+    const verticalUpdates = calculateStandardizedSpacingPositions(
+      updatedElements,
+      "vertical",
+      customGap,
+    );
+
+    const merged = new Map<string, { x?: number; y?: number }>(horizontalUpdates);
+    verticalUpdates.forEach((vPos, id) => {
+      const prev = merged.get(id) ?? {};
+      merged.set(id, { ...prev, ...vPos });
+    });
+    return merged;
+  }
+
+  if (hasMultiElementRows) {
+    return calculateStandardizedSpacingPositions(
+      structuralElements,
+      "horizontal",
+      customGap,
+    );
+  }
+
+  if (hasMultiElementCols) {
+    return calculateStandardizedSpacingPositions(
+      structuralElements,
+      "vertical",
+      customGap,
+    );
+  }
+
+  const bounds = computeElementsBounds(structuralElements);
+  const dominantAxis =
+    bounds.maxX - bounds.minX >= bounds.maxY - bounds.minY
+      ? "horizontal"
+      : "vertical";
+
+  return calculateStandardizedSpacingPositions(
+    structuralElements,
+    dominantAxis,
+    customGap,
+  );
 }

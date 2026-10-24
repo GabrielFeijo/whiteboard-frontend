@@ -717,7 +717,7 @@ export class CanvasEngine
   }
 
   public standardizeSpacingSelected(
-    direction: "horizontal" | "vertical",
+    direction: "horizontal" | "vertical" | "auto",
     customGap?: number,
   ): void {
     this.mutateSelected((ids) =>

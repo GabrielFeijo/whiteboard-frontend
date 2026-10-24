@@ -3,6 +3,7 @@ export {
   AlignmentType,
   type AlignmentBounds,
   calculateAlignedPositions,
+  calculateAutoStandardizedSpacingPositions,
   calculateDistributedPositions,
   calculateStandardizedSpacingPositions,
   computeElementsBounds,

@@ -75,6 +75,12 @@ export function PaletteAlignmentSection({
   const { t } = useI18n();
   const [spacingGap, setSpacingGap] = useState<number>(4);
 
+  const handleApplySpacingGap = (nextGap: number) => {
+    const clamped = Math.max(0, Math.min(500, nextGap));
+    setSpacingGap(clamped);
+    engine?.standardizeSpacingSelected("auto", clamped);
+  };
+
   return (
     <div className="border-b border-border-subtle pb-2.5">
       <div className="flex items-center justify-between gap-0.5 rounded-lg border border-border-subtle bg-surface p-0.5">
@@ -143,7 +149,7 @@ export function PaletteAlignmentSection({
               max="500"
               value={spacingGap}
               onChange={(e) =>
-                setSpacingGap(Math.max(0, parseInt(e.target.value, 10) || 0))
+                handleApplySpacingGap(parseInt(e.target.value, 10) || 0)
               }
               className="w-12 h-6 px-1.5 text-center text-xs rounded bg-surface border border-border-subtle text-text-primary focus:outline-none focus:border-accent-primary"
               title={t("studio.inspector.actions.spacingGap")}
@@ -158,7 +164,7 @@ export function PaletteAlignmentSection({
               <button
                 key={preset}
                 type="button"
-                onClick={() => setSpacingGap(preset)}
+                onClick={() => handleApplySpacingGap(preset)}
                 className={`h-5 px-1.5 text-[10px] rounded transition-all font-medium ${
                   spacingGap === preset
                     ? "bg-accent-primary text-accent-text shadow-xs"
