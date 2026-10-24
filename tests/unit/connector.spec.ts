@@ -8,6 +8,7 @@ import {
 } from "@/canvas/connector-helper";
 import { YjsElementRepository } from "@/canvas/repositories/yjs-element-repository";
 import { SpatialIndex } from "@/canvas/spatial-index";
+import { YjsElementAdapter } from "@/canvas/yjs-element-adapter";
 import { ElementData } from "@/shared";
 
 function makeShape(id: string, x: number, y: number, w: number, h: number): ElementData {
@@ -133,5 +134,67 @@ describe("Smart Connectors and Magnetic Arrows", () => {
     expect(updatedArrow?.w).toBe(150);
     expect(updatedArrow?.h).toBe(100);
     expect(updatedArrow?.points).toEqual([150, 150, 300, 50]);
+  });
+
+  it("removes startBinding/endBinding when updated with null and preserves when undefined", () => {
+    const arrow: ElementData = {
+      id: "arr-unbind",
+      type: "arrow",
+      x: 0,
+      y: 0,
+      w: 100,
+      h: 100,
+      rotation: 0,
+      z: "a1",
+      style: { fill: "transparent", stroke: "#000", strokeWidth: 2, opacity: 1 },
+      createdBy: "user-1",
+      startBinding: { elementId: "a", anchor: "right" },
+      endBinding: { elementId: "b", anchor: "left" },
+    };
+
+    const doc = new Y.Doc();
+    const ymap = YjsElementAdapter.createYMap(arrow);
+    doc.getMap("elements").set(arrow.id, ymap);
+    expect(ymap.get("startBinding")).toEqual({ elementId: "a", anchor: "right" });
+
+    YjsElementAdapter.updateYMap(ymap, { x: 10 });
+    expect(ymap.get("startBinding")).toEqual({ elementId: "a", anchor: "right" });
+
+    YjsElementAdapter.updateYMap(ymap, { startBinding: null });
+    expect(ymap.get("startBinding")).toBeUndefined();
+    expect(ymap.get("endBinding")).toEqual({ elementId: "b", anchor: "left" });
+  });
+
+  it("clears orphaned arrow bindings when a bound shape is deleted", () => {
+    const doc = new Y.Doc();
+    const spatialIndex = new SpatialIndex();
+    const repo = new YjsElementRepository(doc, spatialIndex);
+
+    const shapeA = makeShape("a", 0, 0, 100, 100);
+    const shapeB = makeShape("b", 300, 0, 100, 100);
+    const arrow: ElementData = {
+      id: "arr",
+      type: "arrow",
+      x: 100,
+      y: 50,
+      w: 200,
+      h: 0,
+      rotation: 0,
+      z: "a2",
+      style: { fill: "transparent", stroke: "#000", strokeWidth: 2, opacity: 1 },
+      createdBy: "user-1",
+      startBinding: { elementId: "a", anchor: "right" },
+      endBinding: { elementId: "b", anchor: "left" },
+    };
+
+    repo.commitElement(shapeA);
+    repo.commitElement(shapeB);
+    repo.commitElement(arrow);
+
+    repo.deleteByIds(["a"]);
+
+    const updatedArrow = repo.getById("arr");
+    expect(updatedArrow?.startBinding).toBeUndefined();
+    expect(updatedArrow?.endBinding).toEqual({ elementId: "b", anchor: "left" });
   });
 });

@@ -116,8 +116,14 @@ export class YjsElementAdapter {
 
   static updateYMap(
     map: Y.Map<unknown>,
-    patch: Omit<Partial<ElementData>, "style"> & {
+    patch: Omit<
+      Partial<ElementData>,
+      "style" | "startBinding" | "endBinding" | "groupId"
+    > & {
       style?: Partial<ElementData["style"]>;
+      startBinding?: ElementData["startBinding"] | null;
+      endBinding?: ElementData["endBinding"] | null;
+      groupId?: string | null;
     },
   ): void {
     if (patch.x !== undefined) map.set("x", Math.round(patch.x));

@@ -186,15 +186,12 @@ function computeControlPoint(
   };
 }
 
-export function drawCurvedConnector(
-  ctx: CanvasRenderingContext2D,
+export function computeConnectorCurve(
   from: Point,
   to: Point,
-  style: ElementData["style"],
   startAnchor?: AnchorPoint,
   endAnchor?: AnchorPoint,
-  withArrow = true,
-): void {
+): { cp1: Point; cp2: Point } {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const dist = Math.hypot(dx, dy);
@@ -208,6 +205,20 @@ export function drawCurvedConnector(
     x: -dx * 0.25,
     y: -dy * 0.1,
   });
+
+  return { cp1, cp2 };
+}
+
+export function drawCurvedConnector(
+  ctx: CanvasRenderingContext2D,
+  from: Point,
+  to: Point,
+  style: ElementData["style"],
+  startAnchor?: AnchorPoint,
+  endAnchor?: AnchorPoint,
+  withArrow = true,
+): void {
+  const { cp1, cp2 } = computeConnectorCurve(from, to, startAnchor, endAnchor);
 
   ctx.beginPath();
   ctx.moveTo(from.x, from.y);
