@@ -243,10 +243,9 @@ export class CanvasEngine
       el.type === ElementType.ELLIPSE ||
       el.type === ElementType.DIAMOND;
 
-    if (canEditText) {
-      this.selectAndSync([hitId]);
-      this.events.emit("focusTextInput", { elementId: hitId });
-    }
+    if (!canEditText) return;
+    this.selectAndSync([hitId]);
+    this.events.emit("focusTextInput", { elementId: hitId });
   }
 
   onDropFile(file: File, worldPt: Point): void {
@@ -428,13 +427,13 @@ export class CanvasEngine
     if (selectedIds.length === 0) return;
     const store = useCanvasStore.getState();
     const data = this.repository.getById(selectedIds[0]);
-    if (data?.style) {
-      if (data.style.stroke) store.setStrokeColor(data.style.stroke);
-      if (data.style.fill) store.setFillColor(data.style.fill);
-      if (data.style.strokeWidth) store.setStrokeWidth(data.style.strokeWidth);
-      if (data.style.opacity !== undefined)
-        store.setOpacity(data.style.opacity);
-    }
+    if (!data?.style) return;
+
+    const { stroke, fill, strokeWidth, opacity } = data.style;
+    if (stroke) store.setStrokeColor(stroke);
+    if (fill) store.setFillColor(fill);
+    if (strokeWidth) store.setStrokeWidth(strokeWidth);
+    if (opacity !== undefined) store.setOpacity(opacity);
   }
 
   public zoomIn(): void {

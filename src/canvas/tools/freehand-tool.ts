@@ -31,50 +31,52 @@ export class FreehandTool implements CanvasTool {
     this.isDrawing = false;
 
     const draft = this.host.getFreehandDraft();
-
-    if (draft.length >= 6) {
-      let minX = Infinity;
-      let minY = Infinity;
-      let maxX = -Infinity;
-      let maxY = -Infinity;
-
-      for (let i = 0; i < draft.length; i += 3) {
-        const px = draft[i];
-        const py = draft[i + 1];
-        if (px < minX) minX = px;
-        if (py < minY) minY = py;
-        if (px > maxX) maxX = px;
-        if (py > maxY) maxY = py;
-      }
-
-      const w = Math.max(10, maxX - minX);
-      const h = Math.max(10, maxY - minY);
-      const store = useCanvasStore.getState();
-      const id = nanoid(10);
-      const z = this.host.getNextZIndex();
-
-      const element: ElementData = {
-        id,
-        type: ElementType.FREEHAND,
-        x: Math.round(minX),
-        y: Math.round(minY),
-        w: Math.round(w),
-        h: Math.round(h),
-        rotation: 0,
-        z,
-        style: {
-          fill: "transparent",
-          stroke: store.strokeColor,
-          strokeWidth: store.strokeWidth,
-          opacity: store.opacity,
-        },
-        points: draft,
-        createdBy: this.host.userId,
-      };
-
-      this.host.commitElement(element);
+    if (draft.length < 6) {
+      this.host.setFreehandDraft([]);
+      this.host.setDirty();
+      return;
     }
 
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    for (let i = 0; i < draft.length; i += 3) {
+      const px = draft[i];
+      const py = draft[i + 1];
+      minX = Math.min(minX, px);
+      minY = Math.min(minY, py);
+      maxX = Math.max(maxX, px);
+      maxY = Math.max(maxY, py);
+    }
+
+    const w = Math.max(10, maxX - minX);
+    const h = Math.max(10, maxY - minY);
+    const store = useCanvasStore.getState();
+    const id = nanoid(10);
+    const z = this.host.getNextZIndex();
+
+    const element: ElementData = {
+      id,
+      type: ElementType.FREEHAND,
+      x: Math.round(minX),
+      y: Math.round(minY),
+      w: Math.round(w),
+      h: Math.round(h),
+      rotation: 0,
+      z,
+      style: {
+        fill: "transparent",
+        stroke: store.strokeColor,
+        strokeWidth: store.strokeWidth,
+        opacity: store.opacity,
+      },
+      points: draft,
+      createdBy: this.host.userId,
+    };
+
+    this.host.commitElement(element);
     this.host.setFreehandDraft([]);
     this.host.setDirty();
   }
