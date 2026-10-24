@@ -1,5 +1,9 @@
 import { Point, Viewport } from "@/canvas/viewport";
 import { CanvasTool } from "@/canvas/tools/tool.interface";
+import {
+  isEditableDomElement,
+  isModalDialogOpen,
+} from "@/canvas/controllers/canvas-keyboard-controller";
 import { useCanvasStore } from "@/store/canvas-store";
 
 export interface InputControllerHost {
@@ -10,15 +14,6 @@ export interface InputControllerHost {
   onDoubleClickAtWorld(worldPt: Point): void;
   onViewportMutated(): void;
   onDropFile?(file: File, worldPt: Point): void;
-}
-
-function isEditableDomElement(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return (
-    target.tagName === "INPUT" ||
-    target.tagName === "TEXTAREA" ||
-    target.isContentEditable
-  );
 }
 
 export class CanvasInputController {
@@ -56,11 +51,21 @@ export class CanvasInputController {
   }
 
   private onKeyDown = (e: KeyboardEvent): void => {
-    if (isEditableDomElement(e.target)) return;
-    if (e.code === "Space" && !this.isSpacePressed) {
-      this.isSpacePressed = true;
-      if (!this.isPointerDown) {
-        this.setCursor("grab");
+    if (isEditableDomElement(e.target) || isModalDialogOpen()) return;
+    if (e.code === "Space" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      if (
+        typeof document !== "undefined" &&
+        document.activeElement instanceof HTMLElement &&
+        document.activeElement.tagName === "BUTTON"
+      ) {
+        document.activeElement.blur();
+      }
+      if (!this.isSpacePressed) {
+        this.isSpacePressed = true;
+        if (!this.isPointerDown) {
+          this.setCursor("grab");
+        }
       }
     }
   };
@@ -187,20 +192,12 @@ export class CanvasInputController {
 
     if (e.ctrlKey || e.metaKey) {
       const zoomFactor = Math.pow(0.995, e.deltaY);
-      const newZoom = Math.min(Math.max(viewport.zoom * zoomFactor, 0.1), 5.0);
-
       const rect = this.host.overlayCanvas.getBoundingClientRect();
       const mouseScreen = { x: e.clientX - rect.left, y: e.clientY - rect.top };
 
-      viewport.pan.x =
-        mouseScreen.x -
-        (mouseScreen.x - viewport.pan.x) * (newZoom / viewport.zoom);
-      viewport.pan.y =
-        mouseScreen.y -
-        (mouseScreen.y - viewport.pan.y) * (newZoom / viewport.zoom);
-      viewport.zoom = newZoom;
+      viewport.zoomToPoint(viewport.zoom * zoomFactor, mouseScreen);
 
-      useCanvasStore.getState().setZoom(newZoom);
+      useCanvasStore.getState().setZoom(viewport.zoom);
       useCanvasStore.getState().setPan({ ...viewport.pan });
     } else {
       viewport.pan.x -= e.deltaX;

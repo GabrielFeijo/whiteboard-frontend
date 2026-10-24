@@ -3,7 +3,11 @@ import {
   CanvasKeyboardController,
   type KeyboardControllerTarget,
 } from "@/canvas/controllers/canvas-keyboard-controller";
+import { YjsElementRepository } from "@/canvas/repositories/yjs-element-repository";
+import { CanvasClipboardService } from "@/canvas/services/canvas-clipboard.service";
+import { SpatialIndex } from "@/canvas/spatial-index";
 import { useCanvasStore } from "@/store/canvas-store";
+import * as Y from "yjs";
 
 class MockEventTarget {
   private listeners: Record<string, ((e: unknown) => void)[]> = {};
@@ -35,6 +39,7 @@ class MockHTMLElement extends MockEventTarget {
 class MockKeyboardEvent {
   type: string;
   key: string;
+  code: string;
   ctrlKey: boolean;
   metaKey: boolean;
   shiftKey: boolean;
@@ -46,6 +51,7 @@ class MockKeyboardEvent {
     type: string,
     init?: {
       key?: string;
+      code?: string;
       ctrlKey?: boolean;
       metaKey?: boolean;
       shiftKey?: boolean;
@@ -55,6 +61,7 @@ class MockKeyboardEvent {
   ) {
     this.type = type;
     this.key = init?.key ?? "";
+    this.code = init?.code ?? "";
     this.ctrlKey = !!init?.ctrlKey;
     this.metaKey = !!init?.metaKey;
     this.shiftKey = !!init?.shiftKey;
@@ -118,7 +125,20 @@ describe("CanvasKeyboardController shortcuts", () => {
       groupSelected: vi.fn(),
       ungroupSelected: vi.fn(),
       toggleLockSelected: vi.fn(),
+      bringSelectedToFront: vi.fn(),
+      sendSelectedToBack: vi.fn(),
+      bringSelectedForward: vi.fn(),
+      sendSelectedBackward: vi.fn(),
+      zoomIn: vi.fn(),
+      zoomOut: vi.fn(),
+      resetViewport: vi.fn(),
+      fitToContent: vi.fn(),
+      copySelected: vi.fn(),
+      cutSelected: vi.fn(),
+      pasteCopiedElements: vi.fn().mockReturnValue(false),
       pasteImage: vi.fn(),
+      pasteText: vi.fn(),
+      openShortcutsHelp: vi.fn(),
       setDirty: vi.fn(),
     };
 
@@ -240,5 +260,183 @@ describe("CanvasKeyboardController shortcuts", () => {
       new MockKeyboardEvent("keydown", { key: "a", ctrlKey: true }),
     );
     expect(mockTarget.selectAll).not.toHaveBeenCalled();
+  });
+
+  it("handles Ctrl+Shift+G (ungroup) and Ctrl+Shift+Z (redo) and prevents browser default", () => {
+    useCanvasStore.setState({ selectedIds: ["id-1", "id-2"] });
+
+    const ungroupEvent = new MockKeyboardEvent("keydown", {
+      key: "G",
+      code: "KeyG",
+      ctrlKey: true,
+      shiftKey: true,
+    });
+    mockWindow.dispatchEvent(ungroupEvent);
+    expect(ungroupEvent.defaultPrevented).toBe(true);
+    expect(mockTarget.ungroupSelected).toHaveBeenCalledTimes(1);
+
+    const redoEvent = new MockKeyboardEvent("keydown", {
+      key: "Z",
+      code: "KeyZ",
+      ctrlKey: true,
+      shiftKey: true,
+    });
+    mockWindow.dispatchEvent(redoEvent);
+    expect(redoEvent.defaultPrevented).toBe(true);
+    expect(mockTarget.redo).toHaveBeenCalledTimes(1);
+  });
+
+  it("intercepts Ctrl/Cmd zoom shortcuts (=, -, 0) to zoom canvas instead of browser DOM", () => {
+    const zoomInEv = new MockKeyboardEvent("keydown", {
+      key: "=",
+      code: "Equal",
+      ctrlKey: true,
+    });
+    mockWindow.dispatchEvent(zoomInEv);
+    expect(zoomInEv.defaultPrevented).toBe(true);
+    expect(mockTarget.zoomIn).toHaveBeenCalledTimes(1);
+
+    const zoomOutEv = new MockKeyboardEvent("keydown", {
+      key: "-",
+      code: "Minus",
+      ctrlKey: true,
+    });
+    mockWindow.dispatchEvent(zoomOutEv);
+    expect(zoomOutEv.defaultPrevented).toBe(true);
+    expect(mockTarget.zoomOut).toHaveBeenCalledTimes(1);
+
+    const resetEv = new MockKeyboardEvent("keydown", {
+      key: "0",
+      code: "Digit0",
+      ctrlKey: true,
+    });
+    mockWindow.dispatchEvent(resetEv);
+    expect(resetEv.defaultPrevented).toBe(true);
+    expect(mockTarget.resetViewport).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores AltGr combinations (ctrlKey + altKey) so international characters do not trigger shortcuts", () => {
+    useCanvasStore.setState({ selectedIds: ["id-1"] });
+    const altGrEv = new MockKeyboardEvent("keydown", {
+      key: "d",
+      code: "KeyD",
+      ctrlKey: true,
+      altKey: true,
+    });
+    mockWindow.dispatchEvent(altGrEv);
+    expect(altGrEv.defaultPrevented).toBe(false);
+    expect(mockTarget.duplicateSelected).not.toHaveBeenCalled();
+  });
+
+  it("supports conflict-free alternatives (Alt+D, Shift+L, [, ], Shift+1, ?)", () => {
+    useCanvasStore.setState({ selectedIds: ["id-1"] });
+
+    mockWindow.dispatchEvent(
+      new MockKeyboardEvent("keydown", { key: "d", code: "KeyD", altKey: true }),
+    );
+    expect(mockTarget.duplicateSelected).toHaveBeenCalledTimes(1);
+
+    mockWindow.dispatchEvent(
+      new MockKeyboardEvent("keydown", { key: "L", code: "KeyL", shiftKey: true }),
+    );
+    expect(mockTarget.toggleLockSelected).toHaveBeenCalledTimes(1);
+
+    mockWindow.dispatchEvent(new MockKeyboardEvent("keydown", { key: "[" }));
+    expect(mockTarget.sendSelectedToBack).toHaveBeenCalledTimes(1);
+
+    mockWindow.dispatchEvent(new MockKeyboardEvent("keydown", { key: "]" }));
+    expect(mockTarget.bringSelectedToFront).toHaveBeenCalledTimes(1);
+
+    mockWindow.dispatchEvent(
+      new MockKeyboardEvent("keydown", { key: "!", code: "Digit1", shiftKey: true }),
+    );
+    expect(mockTarget.fitToContent).toHaveBeenCalledTimes(1);
+
+    mockWindow.dispatchEvent(new MockKeyboardEvent("keydown", { key: "?" }));
+    expect(mockTarget.openShortcutsHelp).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores canvas shortcuts while a modal dialog is open", () => {
+    const originalDocument = (globalThis as Record<string, unknown>).document;
+    (globalThis as Record<string, unknown>).document = {
+      querySelector: vi.fn().mockReturnValue({}),
+    };
+
+    try {
+      mockWindow.dispatchEvent(new MockKeyboardEvent("keydown", { key: "r" }));
+      expect(useCanvasStore.getState().activeTool).toBe("select");
+    } finally {
+      if (originalDocument === undefined) {
+        delete (globalThis as Record<string, unknown>).document;
+      } else {
+        (globalThis as Record<string, unknown>).document = originalDocument;
+      }
+    }
+  });
+
+  it("handles Ctrl+C, Ctrl+X, Ctrl+V and remaps groupIds and bindings in CanvasClipboardService", () => {
+    useCanvasStore.setState({ selectedIds: ["el-1"] });
+
+    mockWindow.dispatchEvent(
+      new MockKeyboardEvent("keydown", { key: "c", code: "KeyC", ctrlKey: true }),
+    );
+    expect(mockTarget.copySelected).toHaveBeenCalledTimes(1);
+
+    mockWindow.dispatchEvent(
+      new MockKeyboardEvent("keydown", { key: "x", code: "KeyX", ctrlKey: true }),
+    );
+    expect(mockTarget.cutSelected).toHaveBeenCalledTimes(1);
+
+    mockWindow.dispatchEvent(
+      new MockKeyboardEvent("keydown", { key: "v", code: "KeyV", ctrlKey: true }),
+    );
+    expect(mockTarget.pasteCopiedElements).toHaveBeenCalledTimes(1);
+
+    const doc = new Y.Doc();
+    const repo = new YjsElementRepository(doc, new SpatialIndex());
+    const clipboard = new CanvasClipboardService();
+
+    clipboard.copy([
+      {
+        id: "node-1",
+        type: "rect",
+        x: 10,
+        y: 20,
+        w: 100,
+        h: 80,
+        rotation: 0,
+        z: "a0",
+        groupId: "g-old",
+        createdBy: "u1",
+        style: { fill: "#fff", stroke: "#000", strokeWidth: 2, opacity: 1 },
+      },
+      {
+        id: "arrow-1",
+        type: "arrow",
+        x: 110,
+        y: 60,
+        w: 80,
+        h: 0,
+        rotation: 0,
+        z: "a1",
+        groupId: "g-old",
+        points: [110, 60, 190, 60],
+        startBinding: { elementId: "node-1", anchor: "right" },
+        createdBy: "u1",
+        style: { fill: "transparent", stroke: "#000", strokeWidth: 2, opacity: 1 },
+      },
+    ]);
+
+    const newIds = clipboard.pasteIntoRepository(repo, "u2");
+    expect(newIds).toHaveLength(2);
+
+    const pastedNode = repo.getById(newIds[0])!;
+    const pastedArrow = repo.getById(newIds[1])!;
+    expect(pastedNode.x).toBe(34);
+    expect(pastedNode.y).toBe(44);
+    expect(pastedNode.groupId).toBeDefined();
+    expect(pastedNode.groupId).not.toBe("g-old");
+    expect(pastedArrow.groupId).toBe(pastedNode.groupId);
+    expect(pastedArrow.startBinding?.elementId).toBe(pastedNode.id);
   });
 });
