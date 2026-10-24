@@ -3,9 +3,11 @@ import * as Y from "yjs";
 import { Viewport } from "../../src/canvas/viewport";
 import {
   calculateResizedBounds,
+  calculateRotationAngle,
   getElementHandles,
   getHandleAt,
   getLineHandles,
+  getRotationHandle,
   isPointInElement,
   ResizeHandleType,
   scaleFreehandPoints,
@@ -557,5 +559,43 @@ describe("element resizing logic", () => {
 
     expect(match.snappedBounds).toEqual(rawBounds);
     expect(match.verticalGuides).toHaveLength(0);
+  });
+
+  it("computes rotation handle and calculates rotation angles with 15-degree Shift snapping", () => {
+    const rect: ElementData = {
+      id: "rot-1",
+      type: "rect",
+      x: 100,
+      y: 100,
+      w: 100,
+      h: 100,
+      rotation: 0,
+      z: "a0",
+      style: { fill: "#fff", stroke: "#000", strokeWidth: 1, opacity: 1 },
+      createdBy: "u1",
+    };
+
+    const rotHandle = getRotationHandle(rect, 1);
+    expect(rotHandle).toEqual({
+      type: "rotate",
+      x: 150,
+      y: 76,
+      cursor: "grab",
+    });
+
+    const vp = new Viewport({ x: 0, y: 0 }, 1);
+    const hit = getHandleAt({ x: 150, y: 76 }, rect, vp, 10);
+    expect(hit?.type).toBe("rotate");
+
+    const center = { x: 150, y: 150 };
+    expect(calculateRotationAngle(center, { x: 250, y: 150 }, false)).toBe(90);
+    expect(calculateRotationAngle(center, { x: 150, y: 250 }, false)).toBe(180);
+    expect(calculateRotationAngle(center, { x: 50, y: 150 }, false)).toBe(270);
+
+    const slightlyOff45 = {
+      x: 150 + Math.cos((-43 * Math.PI) / 180) * 100,
+      y: 150 + Math.sin((-43 * Math.PI) / 180) * 100,
+    };
+    expect(calculateRotationAngle(center, slightlyOff45, true)).toBe(45);
   });
 });

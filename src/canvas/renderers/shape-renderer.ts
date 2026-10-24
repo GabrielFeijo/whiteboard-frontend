@@ -6,6 +6,32 @@ import {
 } from "@/canvas/connector-helper";
 import { wrapText } from "./text-wrap-helper";
 
+function drawWrappedShapeText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  cx: number,
+  cy: number,
+  maxTextWidth: number,
+  color: string,
+): void {
+  ctx.save();
+  ctx.font = "14px Inter, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = color;
+
+  const lines = wrapText(ctx, text, Math.max(20, maxTextWidth));
+  const lineHeight = 18;
+  const totalHeight = lines.length * lineHeight;
+  const startY = cy - totalHeight / 2 + lineHeight / 2;
+
+  lines.forEach((line, idx) => {
+    ctx.fillText(line, cx, startY + idx * lineHeight);
+  });
+
+  ctx.restore();
+}
+
 export function drawRect(ctx: CanvasRenderingContext2D, el: ElementData) {
   ctx.beginPath();
   ctx.roundRect(el.x, el.y, el.w, el.h, 6);
@@ -19,24 +45,14 @@ export function drawRect(ctx: CanvasRenderingContext2D, el: ElementData) {
     ctx.stroke();
   }
   if (el.text) {
-    ctx.save();
-    ctx.font = "14px Inter, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = el.style.stroke || "#0f172a";
-
-    const pad = 8;
-    const maxTextW = Math.max(0, el.w - pad * 2);
-    const lines = wrapText(ctx, el.text, maxTextW);
-    const lineHeight = 18;
-    const totalHeight = lines.length * lineHeight;
-    const startY = el.y + el.h / 2 - totalHeight / 2 + lineHeight / 2;
-
-    lines.forEach((line, idx) => {
-      ctx.fillText(line, el.x + el.w / 2, startY + idx * lineHeight);
-    });
-
-    ctx.restore();
+    drawWrappedShapeText(
+      ctx,
+      el.text,
+      el.x + el.w / 2,
+      el.y + el.h / 2,
+      el.w - 16,
+      el.style.stroke || "#0f172a",
+    );
   }
 }
 
@@ -57,13 +73,14 @@ export function drawEllipse(ctx: CanvasRenderingContext2D, el: ElementData) {
     ctx.stroke();
   }
   if (el.text) {
-    ctx.save();
-    ctx.font = "14px Inter, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = el.style.stroke || "#0f172a";
-    ctx.fillText(el.text, cx, cy);
-    ctx.restore();
+    drawWrappedShapeText(
+      ctx,
+      el.text,
+      cx,
+      cy,
+      el.w * 0.72,
+      el.style.stroke || "#0f172a",
+    );
   }
 }
 
@@ -86,13 +103,14 @@ export function drawDiamond(ctx: CanvasRenderingContext2D, el: ElementData) {
     ctx.stroke();
   }
   if (el.text) {
-    ctx.save();
-    ctx.font = "14px Inter, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = el.style.stroke || "#0f172a";
-    ctx.fillText(el.text, midX, midY);
-    ctx.restore();
+    drawWrappedShapeText(
+      ctx,
+      el.text,
+      midX,
+      midY,
+      el.w * 0.56,
+      el.style.stroke || "#0f172a",
+    );
   }
 }
 

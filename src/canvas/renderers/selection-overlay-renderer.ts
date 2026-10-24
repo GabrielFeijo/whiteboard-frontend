@@ -1,5 +1,5 @@
 import { ElementData, ElementType } from "@/shared";
-import { getElementHandles } from "@/canvas/resize-helper";
+import { getElementHandles, getRotationHandle } from "@/canvas/resize-helper";
 import { drawFreehand } from "@/canvas/renderers/freehand-renderer";
 import { Point } from "@/canvas/viewport";
 import { drawCurvedConnector, resolveArrowEndpoints } from "@/canvas/connector-helper";
@@ -76,40 +76,38 @@ function renderSpacingGuides(
   ctx.strokeStyle = "#ec4899";
   ctx.lineWidth = 1.5 / zoom;
   ctx.setLineDash([]);
+  const tickHalf = 6 / zoom;
 
   for (const guide of spacing) {
-    if (guide.axis === "horizontal") {
-      const midY = (guide.crossStart + guide.crossEnd) / 2;
-      const tickHalf = 6 / zoom;
-
-      ctx.beginPath();
-      ctx.moveTo(guide.start, midY - tickHalf);
-      ctx.lineTo(guide.start, midY + tickHalf);
-      ctx.moveTo(guide.start, midY);
-      ctx.lineTo(guide.end, midY);
-      ctx.moveTo(guide.end, midY - tickHalf);
-      ctx.lineTo(guide.end, midY + tickHalf);
-      ctx.stroke();
-
-      const midX = (guide.start + guide.end) / 2;
-      drawSpacingBadge(ctx, `${Math.round(guide.gap)}px`, midX, midY, zoom);
-      continue;
-    }
-
-    const midX = (guide.crossStart + guide.crossEnd) / 2;
-    const tickHalf = 6 / zoom;
+    const crossMid = (guide.crossStart + guide.crossEnd) / 2;
+    const spanMid = (guide.start + guide.end) / 2;
+    const isHoriz = guide.axis === "horizontal";
 
     ctx.beginPath();
-    ctx.moveTo(midX - tickHalf, guide.start);
-    ctx.lineTo(midX + tickHalf, guide.start);
-    ctx.moveTo(midX, guide.start);
-    ctx.lineTo(midX, guide.end);
-    ctx.moveTo(midX - tickHalf, guide.end);
-    ctx.lineTo(midX + tickHalf, guide.end);
+    if (isHoriz) {
+      ctx.moveTo(guide.start, crossMid - tickHalf);
+      ctx.lineTo(guide.start, crossMid + tickHalf);
+      ctx.moveTo(guide.start, crossMid);
+      ctx.lineTo(guide.end, crossMid);
+      ctx.moveTo(guide.end, crossMid - tickHalf);
+      ctx.lineTo(guide.end, crossMid + tickHalf);
+    } else {
+      ctx.moveTo(crossMid - tickHalf, guide.start);
+      ctx.lineTo(crossMid + tickHalf, guide.start);
+      ctx.moveTo(crossMid, guide.start);
+      ctx.lineTo(crossMid, guide.end);
+      ctx.moveTo(crossMid - tickHalf, guide.end);
+      ctx.lineTo(crossMid + tickHalf, guide.end);
+    }
     ctx.stroke();
 
-    const midY = (guide.start + guide.end) / 2;
-    drawSpacingBadge(ctx, `${Math.round(guide.gap)}px`, midX, midY, zoom);
+    drawSpacingBadge(
+      ctx,
+      `${Math.round(guide.gap)}px`,
+      isHoriz ? spanMid : crossMid,
+      isHoriz ? crossMid : spanMid,
+      zoom,
+    );
   }
 
   ctx.restore();
@@ -242,6 +240,15 @@ function renderBoundingBoxSelection(
   zoom: number,
   isSingleSelection: boolean,
 ): void {
+  ctx.save();
+  if (el.rotation && el.rotation % 360 !== 0) {
+    const cx = el.x + el.w / 2;
+    const cy = el.y + el.h / 2;
+    ctx.translate(cx, cy);
+    ctx.rotate((el.rotation * Math.PI) / 180);
+    ctx.translate(-cx, -cy);
+  }
+
   ctx.strokeStyle = el.locked ? "#f43f5e" : "#4f46e5";
   ctx.lineWidth = 1.5 / zoom;
   ctx.strokeRect(el.x, el.y, el.w, el.h);
@@ -271,7 +278,21 @@ function renderBoundingBoxSelection(
         handleSize,
       );
     });
+
+    if (el.type !== ElementType.FREEHAND) {
+      const rotHandle = getRotationHandle(el, zoom);
+      ctx.beginPath();
+      ctx.moveTo(el.x + el.w / 2, el.y);
+      ctx.lineTo(rotHandle.x, rotHandle.y);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(rotHandle.x, rotHandle.y, 4.5 / zoom, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
   }
+  ctx.restore();
 }
 
 function renderSelectedElements(
@@ -354,6 +375,20 @@ type DraftRenderer = (
   zoom: number,
 ) => void;
 
+function strokeDashedOutline(
+  ctx: CanvasRenderingContext2D,
+  zoom: number,
+  buildPath: () => void,
+): void {
+  ctx.strokeStyle = "#4f46e5";
+  ctx.lineWidth = 1.5 / zoom;
+  ctx.setLineDash([4 / zoom, 4 / zoom]);
+  ctx.beginPath();
+  buildPath();
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
 const SHAPE_DRAFT_RENDERERS: Record<string, DraftRenderer> = {
   arrow: (ctx, draft, style) => {
     const fromX = draft.x;
@@ -395,39 +430,27 @@ const SHAPE_DRAFT_RENDERERS: Record<string, DraftRenderer> = {
     ctx.stroke();
   },
   ellipse: (ctx, draft, _style, zoom) => {
-    ctx.strokeStyle = "#4f46e5";
-    ctx.lineWidth = 1.5 / zoom;
-    ctx.setLineDash([4 / zoom, 4 / zoom]);
-    ctx.beginPath();
-    const rx = Math.abs(draft.w / 2);
-    const ry = Math.abs(draft.h / 2);
-    ctx.ellipse(draft.x + rx, draft.y + ry, rx, ry, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    strokeDashedOutline(ctx, zoom, () => {
+      const rx = Math.abs(draft.w / 2);
+      const ry = Math.abs(draft.h / 2);
+      ctx.ellipse(draft.x + rx, draft.y + ry, rx, ry, 0, 0, Math.PI * 2);
+    });
   },
   diamond: (ctx, draft, _style, zoom) => {
-    ctx.strokeStyle = "#4f46e5";
-    ctx.lineWidth = 1.5 / zoom;
-    ctx.setLineDash([4 / zoom, 4 / zoom]);
-    ctx.beginPath();
-    const midX = draft.x + draft.w / 2;
-    const midY = draft.y + draft.h / 2;
-    ctx.moveTo(midX, draft.y);
-    ctx.lineTo(draft.x + draft.w, midY);
-    ctx.lineTo(midX, draft.y + draft.h);
-    ctx.lineTo(draft.x, midY);
-    ctx.closePath();
-    ctx.stroke();
-    ctx.setLineDash([]);
+    strokeDashedOutline(ctx, zoom, () => {
+      const midX = draft.x + draft.w / 2;
+      const midY = draft.y + draft.h / 2;
+      ctx.moveTo(midX, draft.y);
+      ctx.lineTo(draft.x + draft.w, midY);
+      ctx.lineTo(midX, draft.y + draft.h);
+      ctx.lineTo(draft.x, midY);
+      ctx.closePath();
+    });
   },
   rect: (ctx, draft, _style, zoom) => {
-    ctx.strokeStyle = "#4f46e5";
-    ctx.lineWidth = 1.5 / zoom;
-    ctx.setLineDash([4 / zoom, 4 / zoom]);
-    ctx.beginPath();
-    ctx.roundRect(draft.x, draft.y, draft.w, draft.h, 6);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    strokeDashedOutline(ctx, zoom, () => {
+      ctx.roundRect(draft.x, draft.y, draft.w, draft.h, 6);
+    });
   },
 };
 

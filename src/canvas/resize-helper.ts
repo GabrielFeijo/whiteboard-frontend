@@ -13,6 +13,7 @@ export const ResizeHandleType = {
   W: "w",
   START: "start",
   END: "end",
+  ROTATE: "rotate",
 } as const;
 export type ResizeHandleType =
   (typeof ResizeHandleType)[keyof typeof ResizeHandleType];
@@ -62,6 +63,48 @@ export function getElementHandles(bounds: Bounds): ResizeHandle[] {
   ];
 }
 
+export function getRotationHandle(bounds: Bounds, zoom = 1): ResizeHandle {
+  const midX = bounds.x + bounds.w / 2;
+  const topY = bounds.y - 24 / Math.max(0.1, zoom);
+  return {
+    type: ResizeHandleType.ROTATE,
+    x: midX,
+    y: topY,
+    cursor: "grab",
+  };
+}
+
+export function calculateRotationAngle(
+  center: Point,
+  pointer: Point,
+  snapTo15 = false,
+): number {
+  const rawDeg =
+    ((Math.atan2(pointer.y - center.y, pointer.x - center.x) * 180) / Math.PI +
+      90 +
+      360) %
+    360;
+  if (snapTo15) {
+    return (Math.round(rawDeg / 15) * 15) % 360;
+  }
+  return Math.round(rawDeg) % 360;
+}
+
+function rotatePointAroundCenter(pt: Point, bounds: Bounds, rotationDeg?: number): Point {
+  if (!rotationDeg || rotationDeg % 360 === 0) return pt;
+  const cx = bounds.x + bounds.w / 2;
+  const cy = bounds.y + bounds.h / 2;
+  const rad = (rotationDeg * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const dx = pt.x - cx;
+  const dy = pt.y - cy;
+  return {
+    x: cx + dx * cos - dy * sin,
+    y: cy + dx * sin + dy * cos,
+  };
+}
+
 function findHitHandle(
   handles: ResizeHandle[],
   screenPt: Point,
@@ -81,12 +124,24 @@ function findHitHandle(
 function getTargetHandles(
   bounds: Bounds | ElementData,
   getElementById?: (id: string) => ElementData | null,
+  zoom = 1,
 ): ResizeHandle[] {
   const el = bounds as ElementData;
   if (el.type === ElementType.LINE || el.type === ElementType.ARROW) {
     return getLineHandles(el, getElementById);
   }
-  return getElementHandles(bounds);
+  const baseHandles = getElementHandles(bounds);
+  if ("type" in bounds && el.type !== ElementType.FREEHAND) {
+    baseHandles.push(getRotationHandle(bounds, zoom));
+  }
+  const rotation = "rotation" in bounds ? el.rotation : 0;
+  if (!rotation || rotation % 360 === 0) {
+    return baseHandles;
+  }
+  return baseHandles.map((h) => {
+    const rotated = rotatePointAroundCenter({ x: h.x, y: h.y }, bounds, rotation);
+    return { ...h, x: rotated.x, y: rotated.y };
+  });
 }
 
 export function getHandleAt(
@@ -96,7 +151,7 @@ export function getHandleAt(
   hitRadius = 10,
   getElementById?: (id: string) => ElementData | null,
 ): ResizeHandle | null {
-  const handles = getTargetHandles(bounds, getElementById);
+  const handles = getTargetHandles(bounds, getElementById, viewport.zoom);
   return findHitHandle(handles, screenPt, viewport, hitRadius);
 }
 

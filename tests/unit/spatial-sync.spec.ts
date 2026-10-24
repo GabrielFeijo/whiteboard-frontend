@@ -135,4 +135,36 @@ describe("spatial synchronization and cookie/in-memory stores", () => {
     expect(cachedTime).toBeLessThan(uncachedTime);
     expect(repo.getVisibleElements(bounds).length).toBe(50);
   });
+
+  it("steps z-order with bringForward and sendBackward and updates rotation", () => {
+    const doc = new Y.Doc();
+    const spatialIndex = new SpatialIndex();
+    const repo = new YjsElementRepository(doc, spatialIndex);
+
+    const makeRect = (id: string, z: string): ElementData => ({
+      id,
+      type: "rect",
+      x: 0,
+      y: 0,
+      w: 50,
+      h: 50,
+      rotation: 0,
+      z,
+      style: { fill: "#fff", stroke: "#000", strokeWidth: 1, opacity: 1 },
+      createdBy: "u1",
+    });
+
+    repo.commitElement(makeRect("el-1", "a0"));
+    repo.commitElement(makeRect("el-2", "a1"));
+    repo.commitElement(makeRect("el-3", "a2"));
+
+    repo.bringForward(["el-1"]);
+    expect(repo.getAllElements().map((e) => e.id)).toEqual(["el-2", "el-1", "el-3"]);
+
+    repo.sendBackward(["el-3"]);
+    expect(repo.getAllElements().map((e) => e.id)).toEqual(["el-2", "el-3", "el-1"]);
+
+    repo.updateRotationForIds(["el-1"], 45);
+    expect(repo.getById("el-1")?.rotation).toBe(45);
+  });
 });

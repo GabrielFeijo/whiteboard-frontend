@@ -236,6 +236,20 @@ export class YjsElementRepository {
     }, LOCAL_ORIGIN);
   }
 
+  updateRotationForIds(ids: readonly string[], rotation: number): void {
+    if (ids.length === 0) return;
+    const normalized = ((rotation % 360) + 360) % 360;
+    const elementsMap = this.getElementsMap();
+    this.doc.transact(() => {
+      ids.forEach((id) => {
+        const map = elementsMap.get(id);
+        if (map && map.get("locked") !== true) {
+          YjsElementAdapter.updateYMap(map, { rotation: Math.round(normalized) });
+        }
+      });
+    }, LOCAL_ORIGIN);
+  }
+
   updateTextForIds(ids: readonly string[], text: string): void {
     if (ids.length === 0) return;
     const elementsMap = this.getElementsMap();
@@ -259,6 +273,7 @@ export class YjsElementRepository {
   deleteByIds(ids: readonly string[]): void {
     if (ids.length === 0) return;
     const elementsMap = this.getElementsMap();
+    const deletedSet = new Set<string>();
     this.doc.transact(() => {
       ids.forEach((id) => {
         const map = elementsMap.get(id);
@@ -266,7 +281,33 @@ export class YjsElementRepository {
         elementsMap.delete(id);
         this.elementCache.delete(id);
         this.spatialIndex.remove(id);
+        deletedSet.add(id);
       });
+
+      if (deletedSet.size > 0) {
+        elementsMap.forEach((map) => {
+          const type = YjsElementAdapter.getType(map);
+          if (type !== ElementType.ARROW && type !== ElementType.LINE) return;
+          const start = map.get("startBinding") as
+            | { elementId?: string }
+            | undefined;
+          const end = map.get("endBinding") as
+            | { elementId?: string }
+            | undefined;
+          const clearStart = Boolean(
+            start?.elementId && deletedSet.has(start.elementId),
+          );
+          const clearEnd = Boolean(
+            end?.elementId && deletedSet.has(end.elementId),
+          );
+          if (clearStart || clearEnd) {
+            YjsElementAdapter.updateYMap(map, {
+              startBinding: clearStart ? null : undefined,
+              endBinding: clearEnd ? null : undefined,
+            });
+          }
+        });
+      }
     }, LOCAL_ORIGIN);
   }
 
@@ -342,6 +383,72 @@ export class YjsElementRepository {
           YjsElementAdapter.updateYMap(map, { z: lowest });
         }
       });
+    }, LOCAL_ORIGIN);
+  }
+
+  bringForward(ids: readonly string[]): void {
+    if (ids.length === 0) return;
+    const selectedSet = new Set(ids);
+    const sorted = this.getAllElements();
+    const elementsMap = this.getElementsMap();
+
+    this.doc.transact(() => {
+      for (let i = sorted.length - 1; i >= 0; i--) {
+        const current = sorted[i];
+        if (!selectedSet.has(current.id)) continue;
+
+        let nextUnselectedIdx = -1;
+        for (let j = i + 1; j < sorted.length; j++) {
+          if (!selectedSet.has(sorted[j].id)) {
+            nextUnselectedIdx = j;
+            break;
+          }
+        }
+        if (nextUnselectedIdx === -1) continue;
+
+        const aboveEl = sorted[nextUnselectedIdx];
+        const afterAboveEl = sorted[nextUnselectedIdx + 1];
+        const newZ = generateKeyBetween(aboveEl.z, afterAboveEl ? afterAboveEl.z : null);
+        const map = elementsMap.get(current.id);
+        if (map) {
+          YjsElementAdapter.updateYMap(map, { z: newZ });
+          current.z = newZ;
+          sorted.sort((a, b) => (a.z > b.z ? 1 : a.z < b.z ? -1 : 0));
+        }
+      }
+    }, LOCAL_ORIGIN);
+  }
+
+  sendBackward(ids: readonly string[]): void {
+    if (ids.length === 0) return;
+    const selectedSet = new Set(ids);
+    const sorted = this.getAllElements();
+    const elementsMap = this.getElementsMap();
+
+    this.doc.transact(() => {
+      for (let i = 0; i < sorted.length; i++) {
+        const current = sorted[i];
+        if (!selectedSet.has(current.id)) continue;
+
+        let prevUnselectedIdx = -1;
+        for (let j = i - 1; j >= 0; j--) {
+          if (!selectedSet.has(sorted[j].id)) {
+            prevUnselectedIdx = j;
+            break;
+          }
+        }
+        if (prevUnselectedIdx === -1) continue;
+
+        const belowEl = sorted[prevUnselectedIdx];
+        const beforeBelowEl = sorted[prevUnselectedIdx - 1];
+        const newZ = generateKeyBetween(beforeBelowEl ? beforeBelowEl.z : null, belowEl.z);
+        const map = elementsMap.get(current.id);
+        if (map) {
+          YjsElementAdapter.updateYMap(map, { z: newZ });
+          current.z = newZ;
+          sorted.sort((a, b) => (a.z > b.z ? 1 : a.z < b.z ? -1 : 0));
+        }
+      }
     }, LOCAL_ORIGIN);
   }
 
@@ -447,10 +554,10 @@ export class YjsElementRepository {
     }
   }
 
-  alignElements(ids: readonly string[], alignment: AlignmentType): void {
-    if (ids.length < 2) return;
-    const elements = this.getManyByIds(ids);
-    const updates = calculateAlignedPositions(elements, alignment);
+  private applyPositionUpdates(
+    ids: readonly string[],
+    updates: Map<string, { x?: number; y?: number }>,
+  ): void {
     if (updates.size === 0) return;
 
     const elementsMap = this.getElementsMap();
@@ -470,27 +577,16 @@ export class YjsElementRepository {
     this.syncConnectedArrows(ids);
   }
 
+  alignElements(ids: readonly string[], alignment: AlignmentType): void {
+    if (ids.length < 2) return;
+    const elements = this.getManyByIds(ids);
+    this.applyPositionUpdates(ids, calculateAlignedPositions(elements, alignment));
+  }
+
   distributeElements(ids: readonly string[], direction: DistributionType): void {
     if (ids.length < 3) return;
     const elements = this.getManyByIds(ids);
-    const updates = calculateDistributedPositions(elements, direction);
-    if (updates.size === 0) return;
-
-    const elementsMap = this.getElementsMap();
-    this.doc.transact(() => {
-      updates.forEach((pos, id) => {
-        const map = elementsMap.get(id);
-        if (!map) return;
-        YjsElementAdapter.updateYMap(map, pos);
-        const data = YjsElementAdapter.toElementData(map);
-        if (data) {
-          this.spatialIndex.remove(id);
-          this.spatialIndex.insert(id, data.x, data.y, data.w, data.h);
-        }
-      });
-    }, LOCAL_ORIGIN);
-
-    this.syncConnectedArrows(ids);
+    this.applyPositionUpdates(ids, calculateDistributedPositions(elements, direction));
   }
 
   standardizeSpacing(
@@ -500,28 +596,10 @@ export class YjsElementRepository {
   ): void {
     if (ids.length < 2) return;
     const elements = this.getManyByIds(ids);
-    const updates = calculateStandardizedSpacingPositions(
-      elements,
-      direction,
-      customGap,
+    this.applyPositionUpdates(
+      ids,
+      calculateStandardizedSpacingPositions(elements, direction, customGap),
     );
-    if (updates.size === 0) return;
-
-    const elementsMap = this.getElementsMap();
-    this.doc.transact(() => {
-      updates.forEach((pos, id) => {
-        const map = elementsMap.get(id);
-        if (!map) return;
-        YjsElementAdapter.updateYMap(map, pos);
-        const data = YjsElementAdapter.toElementData(map);
-        if (data) {
-          this.spatialIndex.remove(id);
-          this.spatialIndex.insert(id, data.x, data.y, data.w, data.h);
-        }
-      });
-    }, LOCAL_ORIGIN);
-
-    this.syncConnectedArrows(ids);
   }
 
   syncConnectedArrows(movedIds: readonly string[]): void {
@@ -574,12 +652,7 @@ export class YjsElementRepository {
   }
 
   getAllElements(): ElementData[] {
-    const elementsMap = this.getElementsMap();
-    const result: ElementData[] = [];
-    elementsMap.forEach((map) => {
-      const data = YjsElementAdapter.toElementData(map);
-      if (data) result.push(data);
-    });
+    const result = this.getManyByIds(this.getAllElementIds());
     return result.sort((a, b) => (a.z > b.z ? 1 : a.z < b.z ? -1 : 0));
   }
 

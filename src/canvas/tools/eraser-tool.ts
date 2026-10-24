@@ -32,11 +32,15 @@ export class EraserTool implements CanvasTool {
     const hitId = this.host.hitTest(worldPt);
     if (!hitId) return;
 
-    const roots = getDocRoots(this.host.doc);
-    this.host.doc.transact(() => {
-      roots.elements.delete(hitId);
-      this.host.spatialIndex.remove(hitId);
-    }, LOCAL_ORIGIN);
+    if (this.host.deleteElements) {
+      this.host.deleteElements([hitId]);
+    } else {
+      const roots = getDocRoots(this.host.doc);
+      this.host.doc.transact(() => {
+        roots.elements.delete(hitId);
+        this.host.spatialIndex.remove(hitId);
+      }, LOCAL_ORIGIN);
+    }
 
     const store = useCanvasStore.getState();
     if (store.selectedIds.includes(hitId)) {

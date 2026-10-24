@@ -5,6 +5,7 @@ import { LOCAL_ORIGIN } from "@/collab/undo-manager";
 import {
   Bounds,
   calculateResizedBounds,
+  calculateRotationAngle,
   getHandleAt,
   ResizeHandleType,
   scaleFreehandPoints,
@@ -241,6 +242,11 @@ export class SelectTool implements CanvasTool {
     const map = roots.elements.get(this.resizeInfo.elementId);
     if (!map) return;
 
+    if (this.resizeInfo.handle === ResizeHandleType.ROTATE) {
+      this.handleRotationMove(map, ctx);
+      return;
+    }
+
     if (
       this.resizeInfo.handle === ResizeHandleType.START ||
       this.resizeInfo.handle === ResizeHandleType.END
@@ -250,6 +256,23 @@ export class SelectTool implements CanvasTool {
     }
 
     this.handleBoundsResize(map, ctx);
+  }
+
+  private handleRotationMove(map: Y.Map<unknown>, ctx: ToolContext): void {
+    if (!this.resizeInfo) return;
+    const { x, y, w, h } = this.resizeInfo.initialBounds;
+    const center = { x: x + w / 2, y: y + h / 2 };
+    const rotation = calculateRotationAngle(
+      center,
+      ctx.worldPt,
+      ctx.event.shiftKey,
+    );
+
+    this.host.doc.transact(() => {
+      YjsElementAdapter.updateYMap(map, { rotation });
+    }, LOCAL_ORIGIN);
+
+    this.host.setDirty();
   }
 
   private handleConnectorResize(map: Y.Map<unknown>, ctx: ToolContext): void {
@@ -291,14 +314,14 @@ export class SelectTool implements CanvasTool {
       this.resizeInfo.handle === ResizeHandleType.START
         ? match
           ? { elementId: match.elementId, anchor: match.anchor }
-          : undefined
+          : null
         : currentStartBinding;
 
     const updatedEndBinding =
       this.resizeInfo.handle === ResizeHandleType.END
         ? match
           ? { elementId: match.elementId, anchor: match.anchor }
-          : undefined
+          : null
         : currentEndBinding;
 
     this.host.doc.transact(() => {
@@ -470,8 +493,16 @@ export class SelectTool implements CanvasTool {
 
         YjsElementAdapter.updateYMap(map, {
           ...translated,
-          startBinding: keepStartBinding ? initial.startBinding : undefined,
-          endBinding: keepEndBinding ? initial.endBinding : undefined,
+          startBinding: initial.startBinding
+            ? keepStartBinding
+              ? initial.startBinding
+              : null
+            : undefined,
+          endBinding: initial.endBinding
+            ? keepEndBinding
+              ? initial.endBinding
+              : null
+            : undefined,
         });
       });
     }, LOCAL_ORIGIN);
