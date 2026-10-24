@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Mail } from "lucide-react";
 import { useI18n } from "@/i18n";
 import { getApiErrorMessage } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
@@ -64,20 +65,7 @@ export function LoginForm() {
           placeholder="seu@email.com"
           autoComplete="email"
           error={errors.email?.message}
-          leftIcon={
-            <svg
-              className="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-              <polyline points="22,6 12,13 2,6" />
-            </svg>
-          }
+          leftIcon={<Mail className="h-4 w-4" />}
           {...register("email")}
         />
 

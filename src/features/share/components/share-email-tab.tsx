@@ -12,6 +12,7 @@ import {
   type InviteEmailFormValues,
 } from "@/features/share/schemas/share.schema";
 import { useI18n } from "@/i18n/context";
+import { getApiErrorMessage } from "@/lib/api/client";
 import { Role } from "@/shared";
 
 interface ShareEmailTabProps {
@@ -48,16 +49,16 @@ export function ShareEmailTab({ boardId }: ShareEmailTabProps) {
           reset({ email: "", role: values.role });
         },
         onError: (err: unknown) => {
-          let errorMessage = t("shareModal.emailTab.feedback.inviteFailed");
-          if (axios.isAxiosError(err)) {
-            const msg = err.response?.data?.message as string | undefined;
-            if (err.response?.status === 404) {
-              errorMessage = t("shareModal.emailTab.feedback.userNotFound");
-            } else if (msg) {
-              errorMessage = msg;
-            }
+          if (axios.isAxiosError(err) && err.response?.status === 404) {
+            toast.error(t("shareModal.emailTab.feedback.userNotFound"));
+            return;
           }
-          toast.error(errorMessage);
+          toast.error(
+            getApiErrorMessage(
+              err,
+              t("shareModal.emailTab.feedback.inviteFailed"),
+            ),
+          );
         },
       }
     );
