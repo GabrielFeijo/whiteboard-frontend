@@ -1,29 +1,14 @@
 "use client";
 
-import type React from "react";
-import { Copy, Pencil, Square, Trash2 } from "lucide-react";
+import { Square } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { getRoleBadgeVariant } from "@/features/boards/components/board-grid-card";
+import {
+  BoardCardActions,
+  getRoleBadgeVariant,
+  getRoleLabelKey,
+  type BoardActionProps,
+} from "@/features/boards/components/board-card-actions";
 import { useI18n } from "@/i18n/context";
-import type { TranslationKey } from "@/i18n/types";
-import { Role } from "@/shared";
-import type { BoardItem } from "../types";
-
-interface BoardListRowProps {
-  board: BoardItem;
-  onOpen: (boardId: string) => void;
-  onShare: (board: BoardItem) => void;
-  onDuplicate: (boardId: string, e: React.MouseEvent) => void;
-  onDelete: (boardId: string, e: React.MouseEvent) => void;
-  onRename?: (board: BoardItem, e: React.MouseEvent) => void;
-}
-
-const ROLE_LABEL_KEYS: Record<Role, TranslationKey> = {
-  [Role.OWNER]: "dashboard.roles.OWNER",
-  [Role.EDITOR]: "dashboard.roles.EDITOR",
-  [Role.VIEWER]: "dashboard.roles.VIEWER",
-};
 
 export function BoardListRow({
   board,
@@ -32,14 +17,11 @@ export function BoardListRow({
   onDuplicate,
   onDelete,
   onRename,
-}: BoardListRowProps) {
+}: BoardActionProps) {
   const { t } = useI18n();
-
-  const roleLabelKey = ROLE_LABEL_KEYS[board.role] ?? ROLE_LABEL_KEYS[Role.VIEWER];
-  const roleLabel = t(roleLabelKey);
-
+  const roleLabel = t(getRoleLabelKey(board.role));
   const formattedDate = new Date(board.updatedAt).toLocaleDateString(
-    t("common.app.dateLocale")
+    t("common.app.dateLocale"),
   );
 
   return (
@@ -64,48 +46,14 @@ export function BoardListRow({
       <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
         <Badge variant={getRoleBadgeVariant(board.role)}>{roleLabel}</Badge>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onShare(board)}
-          className="text-xs"
-        >
-          {t("dashboard.card.share")}
-        </Button>
-
-        {onRename && (board.role === Role.OWNER || board.role === Role.EDITOR) && (
-          <button
-            type="button"
-            onClick={(e) => onRename(board, e)}
-            title={t("dashboard.card.rename")}
-            aria-label={t("dashboard.card.rename")}
-            className="rounded-md p-1.5 text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
-        )}
-
-        <button
-          type="button"
-          onClick={(e) => onDuplicate(board.id, e)}
-          title={t("common.actions.duplicate")}
-          aria-label={t("common.actions.duplicate")}
-          className="rounded-md p-1.5 text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"
-        >
-          <Copy className="h-3.5 w-3.5" />
-        </button>
-
-        {board.role === Role.OWNER && (
-          <button
-            type="button"
-            onClick={(e) => onDelete(board.id, e)}
-            title={t("common.actions.delete")}
-            aria-label={t("common.actions.delete")}
-            className="rounded-md p-1.5 text-text-muted hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        )}
+        <BoardCardActions
+          board={board}
+          variant="text-share"
+          onShare={onShare}
+          onDuplicate={onDuplicate}
+          onDelete={onDelete}
+          onRename={onRename}
+        />
       </div>
     </div>
   );

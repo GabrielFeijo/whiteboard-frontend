@@ -22,13 +22,6 @@ export function RenameBoardModal({
 }: RenameBoardModalProps) {
   const { t } = useI18n();
   const [title, setTitle] = useState(board?.title ?? "");
-  const [prevBoardId, setPrevBoardId] = useState(board?.id);
-
-  if (board && board.id !== prevBoardId) {
-    setPrevBoardId(board.id);
-    setTitle(board.title);
-  }
-
   const updateMutation = useUpdateBoardMutation(board?.id ?? "");
 
   if (!isOpen || !board) return null;

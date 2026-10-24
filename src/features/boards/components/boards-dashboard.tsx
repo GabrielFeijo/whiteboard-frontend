@@ -36,6 +36,13 @@ interface BoardsDashboardProps {
   initialBoards: BoardsListResponse | null;
 }
 
+type DashboardDialogState =
+  | { type: "create" }
+  | { type: "share"; board: BoardItem }
+  | { type: "rename"; board: BoardItem }
+  | { type: "delete"; boardId: string }
+  | null;
+
 export function BoardsDashboard({ user, initialBoards }: BoardsDashboardProps) {
   const { t } = useI18n();
   const router = useRouter();
@@ -43,10 +50,7 @@ export function BoardsDashboard({ user, initialBoards }: BoardsDashboardProps) {
 
   const { viewMode, filterRole } = useDashboardPrefsStore();
   const [searchQuery, setSearchQuery] = useState("");
-  const [isCreating, setIsCreating] = useState(false);
-  const [sharingBoard, setSharingBoard] = useState<BoardItem | null>(null);
-  const [renamingBoard, setRenamingBoard] = useState<BoardItem | null>(null);
-  const [deletingBoardId, setDeletingBoardId] = useState<string | null>(null);
+  const [activeDialog, setActiveDialog] = useState<DashboardDialogState>(null);
 
   const { data, isLoading } = useBoardsQuery(initialBoards);
   const duplicateMutation = useDuplicateBoardMutation();
@@ -89,20 +93,27 @@ export function BoardsDashboard({ user, initialBoards }: BoardsDashboardProps) {
 
   const handleDeleteRequest = (boardId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setDeletingBoardId(boardId);
+    setActiveDialog({ type: "delete", boardId });
+  };
+
+  const handleRenameRequest = (board: BoardItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveDialog({ type: "rename", board });
   };
 
   const handleConfirmDelete = async () => {
-    if (!deletingBoardId) return;
+    if (activeDialog?.type !== "delete") return;
     try {
-      await deleteMutation.mutateAsync(deletingBoardId);
+      await deleteMutation.mutateAsync(activeDialog.boardId);
       toast.success(t("common.toasts.boardDeleted"));
     } catch {
       toast.error(t("common.toasts.boardDeleteError"));
     } finally {
-      setDeletingBoardId(null);
+      setActiveDialog(null);
     }
   };
+
+  const CardComponent = viewMode === "grid" ? BoardGridCard : BoardListRow;
 
   return (
     <div className="min-h-screen flex flex-col bg-canvas text-text-primary selection:bg-accent-primary/20 selection:text-accent-primary">
@@ -120,7 +131,7 @@ export function BoardsDashboard({ user, initialBoards }: BoardsDashboardProps) {
           <Button
             variant="primary"
             size="md"
-            onClick={() => setIsCreating(true)}
+            onClick={() => setActiveDialog({ type: "create" })}
             className="self-start sm:self-auto gap-2 shadow-sm font-medium"
           >
             <Plus className="h-4 w-4" />
@@ -142,22 +153,19 @@ export function BoardsDashboard({ user, initialBoards }: BoardsDashboardProps) {
         ) : filteredBoards.length === 0 ? (
           <BoardsEmptyState
             hasSearchQuery={Boolean(searchQuery.trim())}
-            onCreateClick={() => setIsCreating(true)}
+            onCreateClick={() => setActiveDialog({ type: "create" })}
           />
         ) : viewMode === "grid" ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filteredBoards.map((board) => (
-              <BoardGridCard
+              <CardComponent
                 key={board.id}
                 board={board}
                 onOpen={handleOpenBoard}
-                onShare={setSharingBoard}
+                onShare={(b) => setActiveDialog({ type: "share", board: b })}
                 onDuplicate={handleDuplicate}
                 onDelete={handleDeleteRequest}
-                onRename={(b, e) => {
-                  e.stopPropagation();
-                  setRenamingBoard(b);
-                }}
+                onRename={handleRenameRequest}
               />
             ))}
           </div>
@@ -165,46 +173,47 @@ export function BoardsDashboard({ user, initialBoards }: BoardsDashboardProps) {
           <div className="overflow-hidden rounded-xl border border-border-subtle bg-surface shadow-xs">
             <div className="divide-y divide-border-subtle">
               {filteredBoards.map((board) => (
-                <BoardListRow
+                <CardComponent
                   key={board.id}
                   board={board}
                   onOpen={handleOpenBoard}
-                  onShare={setSharingBoard}
+                  onShare={(b) => setActiveDialog({ type: "share", board: b })}
                   onDuplicate={handleDuplicate}
                   onDelete={handleDeleteRequest}
-                  onRename={(b, e) => {
-                    e.stopPropagation();
-                    setRenamingBoard(b);
-                  }}
+                  onRename={handleRenameRequest}
                 />
               ))}
             </div>
           </div>
         )}
 
-        <CreateBoardModal isOpen={isCreating} onClose={() => setIsCreating(false)} />
+        <CreateBoardModal
+          isOpen={activeDialog?.type === "create"}
+          onClose={() => setActiveDialog(null)}
+        />
 
-        {renamingBoard && (
+        {activeDialog?.type === "rename" && (
           <RenameBoardModal
-            isOpen={Boolean(renamingBoard)}
-            board={renamingBoard}
-            onClose={() => setRenamingBoard(null)}
+            key={activeDialog.board.id}
+            isOpen
+            board={activeDialog.board}
+            onClose={() => setActiveDialog(null)}
           />
         )}
 
-        {sharingBoard && (
+        {activeDialog?.type === "share" && (
           <ShareModal
-            isOpen={Boolean(sharingBoard)}
-            boardId={sharingBoard.id}
-            boardTitle={sharingBoard.title}
-            onClose={() => setSharingBoard(null)}
+            isOpen
+            boardId={activeDialog.board.id}
+            boardTitle={activeDialog.board.title}
+            onClose={() => setActiveDialog(null)}
           />
         )}
 
         <ConfirmDialog
-          open={Boolean(deletingBoardId)}
+          open={activeDialog?.type === "delete"}
           onOpenChange={(open) => {
-            if (!open) setDeletingBoardId(null);
+            if (!open) setActiveDialog(null);
           }}
           title={t("dashboard.deleteDialog.title")}
           description={t("dashboard.deleteDialog.description")}
