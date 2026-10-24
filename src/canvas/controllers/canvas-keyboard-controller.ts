@@ -138,7 +138,7 @@ function tryHandleModifierZoom(ctx: ShortcutContext): boolean {
   return false;
 }
 
-function tryHandleUnmodifiedExtras(ctx: ShortcutContext): boolean {
+function tryHandleShiftExtras(ctx: ShortcutContext): boolean {
   const { event, store, target } = ctx;
   const key = event.key;
 
@@ -162,41 +162,50 @@ function tryHandleUnmodifiedExtras(ctx: ShortcutContext): boolean {
     return true;
   }
 
-  if (!event.shiftKey && (key === "=" || key === "+")) {
+  return false;
+}
+
+function tryHandlePlainExtras(ctx: ShortcutContext): boolean {
+  const { event, store, target } = ctx;
+  const key = event.key;
+
+  if (event.shiftKey) return false;
+
+  if (key === "=" || key === "+") {
     event.preventDefault();
     target.zoomIn?.();
     return true;
   }
 
-  if (!event.shiftKey && key === "-") {
+  if (key === "-") {
     event.preventDefault();
     target.zoomOut?.();
     return true;
   }
 
-  if (!event.shiftKey && key === "0") {
+  if (key === "0") {
     event.preventDefault();
     target.resetViewport?.();
     return true;
   }
 
-  if (key === "[") {
+  if (key === "[" || key === "]") {
     if (store.selectedIds.length > 0 && target.role !== Role.VIEWER) {
       event.preventDefault();
-      target.sendSelectedToBack?.();
-    }
-    return true;
-  }
-
-  if (key === "]") {
-    if (store.selectedIds.length > 0 && target.role !== Role.VIEWER) {
-      event.preventDefault();
-      target.bringSelectedToFront?.();
+      if (key === "[") {
+        target.sendSelectedToBack?.();
+      } else {
+        target.bringSelectedToFront?.();
+      }
     }
     return true;
   }
 
   return false;
+}
+
+function tryHandleUnmodifiedExtras(ctx: ShortcutContext): boolean {
+  return tryHandleShiftExtras(ctx) || tryHandlePlainExtras(ctx);
 }
 
 type ModifierAction = (ctx: ShortcutContext) => void;
@@ -281,6 +290,80 @@ function extractImageFromClipboard(clipboardData: DataTransfer | null): File | n
   return findImageInFiles(clipboardData.files) ?? findImageInItems(clipboardData.items);
 }
 
+function tryHandleModifierShortcut(
+  ctx: ShortcutContext,
+  target: KeyboardControllerTarget,
+  normalizedKey: string,
+  onPasteSuccess: () => void,
+): boolean {
+  const { event } = ctx;
+  const isModifier = event.ctrlKey || event.metaKey;
+  if (!isModifier || event.altKey) return false;
+
+  if (tryHandleModifierZoom(ctx)) return true;
+
+  if (normalizedKey === "v" && !event.shiftKey) {
+    if (target.role !== Role.VIEWER && target.pasteCopiedElements?.()) {
+      onPasteSuccess();
+    }
+    return true;
+  }
+
+  const parts = event.shiftKey ? ["ctrl", "shift", normalizedKey] : ["ctrl", normalizedKey];
+  const action = MODIFIER_ACTIONS[parts.join("+")];
+  if (action) {
+    event.preventDefault();
+    action(ctx);
+    return true;
+  }
+  return false;
+}
+
+function tryHandleAltShortcut(
+  ctx: ShortcutContext,
+  target: KeyboardControllerTarget,
+  normalizedKey: string,
+): boolean {
+  const { event, store } = ctx;
+  if (!event.altKey || event.ctrlKey || event.metaKey) return false;
+  if (store.selectedIds.length === 0) return false;
+
+  const isD = normalizedKey === "d";
+  const isBracketOpen = event.key === "[";
+  const isBracketClose = event.key === "]";
+
+  if (!isD && !isBracketOpen && !isBracketClose) return false;
+
+  event.preventDefault();
+  if (target.role === Role.VIEWER) return true;
+
+  if (isD) {
+    target.duplicateSelected();
+  } else if (isBracketOpen) {
+    target.sendSelectedBackward?.();
+  } else if (isBracketClose) {
+    target.bringSelectedForward?.();
+  }
+  return true;
+}
+
+function tryHandlePlainShortcut(ctx: ShortcutContext, normalizedKey: string): boolean {
+  const { event, store } = ctx;
+  const isModifier = event.ctrlKey || event.metaKey;
+  if (isModifier || event.altKey) return false;
+
+  if (tryHandleUnmodifiedExtras(ctx)) return true;
+  if (event.shiftKey) return false;
+
+  const tool = SHORTCUT_TOOL_MAP[normalizedKey];
+  if (tool) {
+    event.preventDefault();
+    store.setActiveTool(tool);
+    return true;
+  }
+  return false;
+}
+
 export class CanvasKeyboardController {
   private lastInternalPasteMs = 0;
 
@@ -303,67 +386,18 @@ export class CanvasKeyboardController {
     if (tryHandleNudge(ctx)) return;
     if (tryHandleDelete(ctx)) return;
 
-    const isModifier = e.ctrlKey || e.metaKey;
     const normalizedKey = normalizeLetterKey(e);
 
-    if (isModifier && !e.altKey) {
-      if (tryHandleModifierZoom(ctx)) return;
-
-      if (normalizedKey === "v" && !e.shiftKey) {
-        if (this.target.role !== Role.VIEWER && this.target.pasteCopiedElements?.()) {
-          this.lastInternalPasteMs = Date.now();
-        }
-        return;
-      }
-
-      const parts: string[] = ["ctrl"];
-      if (e.shiftKey) parts.push("shift");
-      parts.push(normalizedKey);
-      const action = MODIFIER_ACTIONS[parts.join("+")];
-      if (action) {
-        e.preventDefault();
-        action(ctx);
-        return;
-      }
+    if (
+      tryHandleModifierShortcut(ctx, this.target, normalizedKey, () => {
+        this.lastInternalPasteMs = Date.now();
+      })
+    ) {
       return;
     }
 
-    if (e.altKey && !isModifier) {
-      if (normalizedKey === "d" && ctx.store.selectedIds.length > 0) {
-        e.preventDefault();
-        if (this.target.role !== Role.VIEWER) {
-          this.target.duplicateSelected();
-        }
-        return;
-      }
-      if (e.key === "[" && ctx.store.selectedIds.length > 0) {
-        e.preventDefault();
-        if (this.target.role !== Role.VIEWER) {
-          this.target.sendSelectedBackward?.();
-        }
-        return;
-      }
-      if (e.key === "]" && ctx.store.selectedIds.length > 0) {
-        e.preventDefault();
-        if (this.target.role !== Role.VIEWER) {
-          this.target.bringSelectedForward?.();
-        }
-        return;
-      }
-      return;
-    }
-
-    if (!isModifier && !e.altKey) {
-      if (tryHandleUnmodifiedExtras(ctx)) return;
-
-      if (!e.shiftKey) {
-        const tool = SHORTCUT_TOOL_MAP[normalizedKey];
-        if (tool) {
-          e.preventDefault();
-          ctx.store.setActiveTool(tool);
-        }
-      }
-    }
+    if (tryHandleAltShortcut(ctx, this.target, normalizedKey)) return;
+    tryHandlePlainShortcut(ctx, normalizedKey);
   };
 
   private onPaste = (e: ClipboardEvent): void => {
