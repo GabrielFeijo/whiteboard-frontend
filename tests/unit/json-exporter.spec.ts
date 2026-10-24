@@ -109,4 +109,42 @@ describe("JSON Exporter & Importer Service", () => {
     expect(result2.success).toBe(false);
     expect(result2.count).toBe(0);
   });
+
+  it("drops elements that fail ElementDataSchema validation during JSON import", () => {
+    const doc = new Y.Doc();
+    const payload = JSON.stringify({
+      version: 1,
+      elements: [
+        {
+          id: "invalid-el",
+          type: "not-a-valid-type",
+          x: 0,
+          y: 0,
+        },
+        {
+          id: "valid-el",
+          type: "rect",
+          x: 10,
+          y: 20,
+          w: 100,
+          h: 80,
+          rotation: 0,
+          z: "a0",
+          style: {
+            fill: "#ffffff",
+            stroke: "#000000",
+            strokeWidth: 2,
+            opacity: 1,
+          },
+        },
+      ],
+    });
+
+    const result = importBoardFromJson(doc, payload, "u1");
+    expect(result.success).toBe(true);
+    expect(result.count).toBe(1);
+    const roots = getDocRoots(doc);
+    expect(roots.elements.has("invalid-el")).toBe(false);
+    expect(roots.elements.has("valid-el")).toBe(true);
+  });
 });

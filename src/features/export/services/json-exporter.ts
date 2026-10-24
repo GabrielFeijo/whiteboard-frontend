@@ -1,5 +1,5 @@
 import * as Y from "yjs";
-import { type ElementData, getDocRoots } from "@/shared";
+import { ElementDataSchema, getDocRoots } from "@/shared";
 import { LOCAL_ORIGIN } from "@/collab/undo-manager";
 import { YjsElementAdapter } from "@/canvas/yjs-element-adapter";
 import {
@@ -50,14 +50,20 @@ export function importBoardFromJson(
     let insertedCount = 0;
 
     doc.transact(() => {
-      for (const el of parsed.elements!) {
-        if (!el || !el.id || !el.type) continue;
-        const validElement: ElementData = {
-          ...el,
-          createdBy: el.createdBy || userId,
+      for (const rawEl of parsed.elements!) {
+        if (!rawEl || typeof rawEl !== "object") continue;
+        const candidate = {
+          ...rawEl,
+          createdBy:
+            typeof rawEl.createdBy === "string" && rawEl.createdBy.length > 0
+              ? rawEl.createdBy
+              : userId,
         };
-        const ymap = YjsElementAdapter.createYMap(validElement);
-        roots.elements.set(validElement.id, ymap);
+        const validated = ElementDataSchema.safeParse(candidate);
+        if (!validated.success) continue;
+
+        const ymap = YjsElementAdapter.createYMap(validated.data);
+        roots.elements.set(validated.data.id, ymap);
         insertedCount++;
       }
     }, LOCAL_ORIGIN);

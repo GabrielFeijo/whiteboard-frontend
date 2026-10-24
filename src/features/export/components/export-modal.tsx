@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { useRef, useState } from "react";
 import * as Y from "yjs";
 
@@ -14,6 +15,7 @@ import {
   importBoardFromJson,
 } from "@/features/export/services/json-exporter";
 import { useI18n } from "@/i18n/context";
+import type { TranslationKey } from "@/i18n/types";
 import { useTheme } from "@/providers/theme-provider";
 
 interface ExportModalProps {
@@ -21,6 +23,34 @@ interface ExportModalProps {
   boardTitle: string;
   onClose: () => void;
 }
+
+type ExportFormatId = "png" | "svg" | "json";
+
+const EXPORT_FORMATS: ReadonlyArray<{
+  id: ExportFormatId;
+  extension: string;
+  titleKey: TranslationKey;
+  descriptionKey: TranslationKey;
+}> = [
+  {
+    id: "png",
+    extension: ".png",
+    titleKey: "exportModal.formats.png.title",
+    descriptionKey: "exportModal.formats.png.description",
+  },
+  {
+    id: "svg",
+    extension: ".svg",
+    titleKey: "exportModal.formats.svg.title",
+    descriptionKey: "exportModal.formats.svg.description",
+  },
+  {
+    id: "json",
+    extension: ".json",
+    titleKey: "exportModal.formats.json.title",
+    descriptionKey: "exportModal.formats.json.description",
+  },
+];
 
 export function ExportModal({ doc, boardTitle, onClose }: ExportModalProps) {
   const { t } = useI18n();
@@ -30,30 +60,16 @@ export function ExportModal({ doc, boardTitle, onClose }: ExportModalProps) {
 
   const isDarkTheme = theme === "dark";
 
-  const handleExportPNG = async () => {
+  const handleExport = async (format: ExportFormatId) => {
     setIsExporting(true);
     try {
-      await exportBoardAsPng(doc, boardTitle, isDarkTheme);
-      onClose();
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handleExportSVG = () => {
-    setIsExporting(true);
-    try {
-      exportBoardAsSvg(doc, boardTitle, isDarkTheme);
-      onClose();
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handleExportJSON = () => {
-    setIsExporting(true);
-    try {
-      exportBoardAsJson(doc, boardTitle);
+      if (format === "png") {
+        await exportBoardAsPng(doc, boardTitle, isDarkTheme);
+      } else if (format === "svg") {
+        exportBoardAsSvg(doc, boardTitle, isDarkTheme);
+      } else {
+        exportBoardAsJson(doc, boardTitle);
+      }
       onClose();
     } finally {
       setIsExporting(false);
@@ -111,56 +127,23 @@ export function ExportModal({ doc, boardTitle, onClose }: ExportModalProps) {
         </div>
 
         <div className="mt-4 flex flex-col gap-2.5">
-          <button
-            type="button"
-            onClick={handleExportPNG}
-            disabled={isExporting}
-            className="flex items-center justify-between rounded-xl border border-border-subtle p-3.5 text-left transition-all hover:border-accent-primary hover:bg-surface-hover active:scale-[0.99] shadow-2xs"
-          >
-            <div>
-              <p className="text-sm font-semibold text-text-primary">
-                {t("exportModal.formats.png.title")}
-              </p>
-              <p className="text-xs text-text-muted">
-                {t("exportModal.formats.png.description")}
-              </p>
-            </div>
-            <Badge variant="default">.png</Badge>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExportSVG}
-            disabled={isExporting}
-            className="flex items-center justify-between rounded-xl border border-border-subtle p-3.5 text-left transition-all hover:border-accent-primary hover:bg-surface-hover active:scale-[0.99] shadow-2xs"
-          >
-            <div>
-              <p className="text-sm font-semibold text-text-primary">
-                {t("exportModal.formats.svg.title")}
-              </p>
-              <p className="text-xs text-text-muted">
-                {t("exportModal.formats.svg.description")}
-              </p>
-            </div>
-            <Badge variant="default">.svg</Badge>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExportJSON}
-            disabled={isExporting}
-            className="flex items-center justify-between rounded-xl border border-border-subtle p-3.5 text-left transition-all hover:border-accent-primary hover:bg-surface-hover active:scale-[0.99] shadow-2xs"
-          >
-            <div>
-              <p className="text-sm font-semibold text-text-primary">
-                {t("exportModal.formats.json.title")}
-              </p>
-              <p className="text-xs text-text-muted">
-                {t("exportModal.formats.json.description")}
-              </p>
-            </div>
-            <Badge variant="default">.json</Badge>
-          </button>
+          {EXPORT_FORMATS.map(({ id, extension, titleKey, descriptionKey }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => void handleExport(id)}
+              disabled={isExporting}
+              className="flex items-center justify-between rounded-xl border border-border-subtle p-3.5 text-left transition-all hover:border-accent-primary hover:bg-surface-hover active:scale-[0.99] shadow-2xs"
+            >
+              <div>
+                <p className="text-sm font-semibold text-text-primary">
+                  {t(titleKey)}
+                </p>
+                <p className="text-xs text-text-muted">{t(descriptionKey)}</p>
+              </div>
+              <Badge variant="default">{extension}</Badge>
+            </button>
+          ))}
         </div>
 
         <input
