@@ -7,7 +7,6 @@ import { renderBackgroundGrid } from "@/canvas/renderers/background-grid-rendere
 import { renderSelectionAndDraftsOverlay } from "@/canvas/renderers/selection-overlay-renderer";
 import { renderRemoteCursorsOverlay } from "@/canvas/renderers/remote-cursors-renderer";
 import { CanvasToolType, Tool, useCanvasStore } from "@/store/canvas-store";
-import { api } from "@/lib/api/client";
 import { LocalUndoManager } from "@/collab/undo-manager";
 import { SyncProvider } from "@/collab/sync-provider";
 import {
@@ -26,7 +25,6 @@ import {
   StickyTool,
   TextTool,
 } from "@/canvas/tools";
-import { YjsElementAdapter } from "@/canvas/yjs-element-adapter";
 import { YjsElementRepository } from "@/canvas/repositories/yjs-element-repository";
 import {
   CanvasInputController,
@@ -38,15 +36,12 @@ import {
 } from "@/canvas/controllers/canvas-keyboard-controller";
 import {
   AlignmentType,
+  computeElementsBounds,
   DistributionType,
   SpacingGuide,
 } from "@/canvas/alignment-helper";
-import {
-  calculateImagePlacement,
-  fileToDataUrl,
-  loadImageDimensions,
-} from "@/canvas/image-helper";
-import { nanoid } from "nanoid";
+import { CanvasAssetService } from "@/canvas/services/canvas-asset.service";
+import { CanvasClipboardService } from "@/canvas/services/canvas-clipboard.service";
 
 export type ElementStyle = ElementData["style"];
 
@@ -58,6 +53,7 @@ export class CanvasEngine
   readonly undoManager: LocalUndoManager;
   readonly events = new CanvasEventEmitter();
   private readonly repository: YjsElementRepository;
+  private readonly clipboard = new CanvasClipboardService();
 
   private bgCtx: CanvasRenderingContext2D;
   private contentCtx: CanvasRenderingContext2D;
@@ -65,6 +61,7 @@ export class CanvasEngine
 
   private isContentDirty = true;
   private isBackgroundDirty = true;
+  private isOverlayDirty = true;
   private animFrameId: number | null = null;
   private isDestroyed = false;
 
@@ -143,6 +140,7 @@ export class CanvasEngine
 
   setDirty(): void {
     this.isContentDirty = true;
+    this.isOverlayDirty = true;
   }
 
   setBackgroundDirty(): void {
@@ -151,6 +149,7 @@ export class CanvasEngine
 
   setSelectBox(box: { x: number; y: number; w: number; h: number } | null): void {
     this.selectBox = box;
+    this.isOverlayDirty = true;
   }
 
   getSelectBox(): { x: number; y: number; w: number; h: number } | null {
@@ -159,6 +158,7 @@ export class CanvasEngine
 
   setFreehandDraft(draft: number[]): void {
     this.freehandDraft = draft;
+    this.isOverlayDirty = true;
   }
 
   getFreehandDraft(): number[] {
@@ -175,6 +175,7 @@ export class CanvasEngine
     } | null,
   ): void {
     this.shapeDraft = draft;
+    this.isOverlayDirty = true;
   }
 
   getShapeDraft(): {
@@ -203,6 +204,28 @@ export class CanvasEngine
     this.broadcastViewport();
     this.isBackgroundDirty = true;
     this.isContentDirty = true;
+    this.isOverlayDirty = true;
+  }
+
+  private selectAndSync(ids: string[]): void {
+    useCanvasStore.getState().setSelectedIds(ids);
+    this.syncStoreWithSelection(ids);
+    this.setDirty();
+  }
+
+  private mutateSelected(fn: (selectedIds: string[]) => void): void {
+    if (this.role === Role.VIEWER) return;
+    const { selectedIds } = useCanvasStore.getState();
+    if (selectedIds.length === 0) return;
+    fn(selectedIds);
+    this.setDirty();
+  }
+
+  private syncViewportStore(): void {
+    const store = useCanvasStore.getState();
+    store.setZoom(this.viewport.zoom);
+    store.setPan({ ...this.viewport.pan });
+    this.onViewportMutated();
   }
 
   onDoubleClickAtWorld(worldPt: Point): void {
@@ -211,9 +234,17 @@ export class CanvasEngine
     if (!hitId) return;
 
     const el = this.repository.getById(hitId);
-    if (el?.type === ElementType.STICKY || el?.type === ElementType.TEXT) {
-      useCanvasStore.getState().setSelectedIds([hitId]);
-      this.syncStoreWithSelection([hitId]);
+    if (!el || el.locked) return;
+
+    const canEditText =
+      el.type === ElementType.STICKY ||
+      el.type === ElementType.TEXT ||
+      el.type === ElementType.RECT ||
+      el.type === ElementType.ELLIPSE ||
+      el.type === ElementType.DIAMOND;
+
+    if (canEditText) {
+      this.selectAndSync([hitId]);
       this.events.emit("focusTextInput", { elementId: hitId });
     }
   }
@@ -226,9 +257,14 @@ export class CanvasEngine
     void this.insertImage(file);
   }
 
+  private handleAwarenessChange = (): void => {
+    this.isOverlayDirty = true;
+  };
+
   private setupListeners(): void {
     this.repoUnsub = this.repository.observeChanges(() => {
       this.isContentDirty = true;
+      this.isOverlayDirty = true;
     });
 
     this.providerUnsub = this.provider.onStatusChange((status) => {
@@ -236,8 +272,11 @@ export class CanvasEngine
         this.repository.indexAllElements();
         this.isBackgroundDirty = true;
         this.isContentDirty = true;
+        this.isOverlayDirty = true;
       }
     });
+
+    this.provider.awareness.on("change", this.handleAwarenessChange);
 
     window.addEventListener("resize", this.handleResize);
 
@@ -248,6 +287,7 @@ export class CanvasEngine
       ) {
         this.inputController.refreshHoverCursor();
         this.isContentDirty = true;
+        this.isOverlayDirty = true;
       }
     });
   }
@@ -256,6 +296,7 @@ export class CanvasEngine
     this.resizeCanvases();
     this.isBackgroundDirty = true;
     this.isContentDirty = true;
+    this.isOverlayDirty = true;
   };
 
   private resizeCanvases(): void {
@@ -292,9 +333,13 @@ export class CanvasEngine
       if (this.isContentDirty) {
         this.renderContent();
         this.isContentDirty = false;
+        this.isOverlayDirty = true;
       }
 
-      this.renderOverlay();
+      if (this.isOverlayDirty) {
+        this.renderOverlay();
+        this.isOverlayDirty = false;
+      }
 
       this.animFrameId = requestAnimationFrame(render);
     };
@@ -401,48 +446,44 @@ export class CanvasEngine
   }
 
   public resetViewport(): void {
-    this.viewport.zoom = 1;
-    this.viewport.pan = { x: 0, y: 0 };
-    useCanvasStore.getState().setZoom(1);
-    useCanvasStore.getState().setPan({ x: 0, y: 0 });
-    this.broadcastViewport();
-    this.isContentDirty = true;
+    this.viewport.reset();
+    this.syncViewportStore();
   }
 
   public zoomTo(targetZoom: number): void {
     const w = this.container.clientWidth || 800;
     const h = this.container.clientHeight || 600;
-    const cx = w / 2;
-    const cy = h / 2;
-    const newZoom = Math.min(Math.max(targetZoom, 0.1), 5.0);
-    this.viewport.pan.x =
-      cx - (cx - this.viewport.pan.x) * (newZoom / this.viewport.zoom);
-    this.viewport.pan.y =
-      cy - (cy - this.viewport.pan.y) * (newZoom / this.viewport.zoom);
-    this.viewport.zoom = newZoom;
-    useCanvasStore.getState().setZoom(newZoom);
-    useCanvasStore.getState().setPan({ ...this.viewport.pan });
-    this.broadcastViewport();
-    this.isContentDirty = true;
+    this.viewport.zoomToPoint(targetZoom, { x: w / 2, y: h / 2 });
+    this.syncViewportStore();
+  }
+
+  public fitToContent(): void {
+    const elements = this.repository.getAllElements();
+    if (elements.length === 0) {
+      this.resetViewport();
+      return;
+    }
+    const bounds = computeElementsBounds(elements);
+    const w = this.container.clientWidth || 800;
+    const h = this.container.clientHeight || 600;
+    this.viewport.fitToBounds(bounds, w, h, 80);
+    this.syncViewportStore();
   }
 
   public setViewport(pan: { x: number; y: number }, zoom: number): void {
     this.viewport.pan = { ...pan };
     this.viewport.zoom = zoom;
-    useCanvasStore.getState().setZoom(zoom);
-    useCanvasStore.getState().setPan({ ...pan });
-    this.broadcastViewport();
-    this.isContentDirty = true;
+    this.syncViewportStore();
   }
 
   public undo(): void {
     this.undoManager.undo();
-    this.isContentDirty = true;
+    this.setDirty();
   }
 
   public redo(): void {
     this.undoManager.redo();
-    this.isContentDirty = true;
+    this.setDirty();
   }
 
   public canUndo(): boolean {
@@ -467,109 +508,158 @@ export class CanvasEngine
   }
 
   public updateSelectedStyle(styleUpdates: Partial<ElementStyle>): void {
-    if (this.role === Role.VIEWER) return;
-    const { selectedIds } = useCanvasStore.getState();
-    this.repository.updateStyleForIds(selectedIds, styleUpdates);
-    this.isContentDirty = true;
+    this.mutateSelected((ids) =>
+      this.repository.updateStyleForIds(ids, styleUpdates),
+    );
   }
 
   public updateSelectedText(text: string): void {
-    if (this.role === Role.VIEWER) return;
-    const { selectedIds } = useCanvasStore.getState();
-    this.repository.updateTextForIds(selectedIds, text);
-    this.isContentDirty = true;
+    this.mutateSelected((ids) => this.repository.updateTextForIds(ids, text));
   }
 
   public selectAll(): void {
     const allIds = this.repository.getAllElementIds();
     const expanded = this.repository.expandSelectionGroups(allIds);
-    useCanvasStore.getState().setSelectedIds(expanded);
-    this.syncStoreWithSelection(expanded);
-    this.isContentDirty = true;
+    this.selectAndSync(expanded);
   }
 
   public nudgeSelected(dx: number, dy: number): void {
-    if (this.role === Role.VIEWER) return;
-    const { selectedIds } = useCanvasStore.getState();
-    this.repository.nudgeElements(selectedIds, dx, dy);
-    this.isContentDirty = true;
+    this.mutateSelected((ids) => this.repository.nudgeElements(ids, dx, dy));
   }
 
   public getAllElements(): ElementData[] {
     return this.repository.getAllElements();
   }
 
-  public deleteSelected(): void {
+  public deleteElements(ids: readonly string[]): void {
     if (this.role === Role.VIEWER) return;
-    const store = useCanvasStore.getState();
-    this.repository.deleteByIds(store.selectedIds);
-    store.setSelectedIds([]);
-    this.isContentDirty = true;
+    this.repository.deleteByIds(ids);
+    this.setDirty();
+  }
+
+  public deleteSelected(): void {
+    this.mutateSelected((ids) => {
+      this.repository.deleteByIds(ids);
+      useCanvasStore.getState().setSelectedIds([]);
+    });
   }
 
   public duplicateSelected(): void {
-    if (this.role === Role.VIEWER) return;
-    const store = useCanvasStore.getState();
-    const newSelectedIds = this.repository.duplicateByIds(
-      store.selectedIds,
-      this.userId,
-    );
-    if (newSelectedIds.length > 0) {
-      store.setSelectedIds(newSelectedIds);
-      this.syncStoreWithSelection(newSelectedIds);
-    }
-    this.isContentDirty = true;
+    this.mutateSelected((ids) => {
+      const newSelectedIds = this.repository.duplicateByIds(ids, this.userId);
+      if (newSelectedIds.length > 0) {
+        this.selectAndSync(newSelectedIds);
+      }
+    });
   }
 
   public bringSelectedToFront(): void {
-    if (this.role === Role.VIEWER) return;
-    const { selectedIds } = useCanvasStore.getState();
-    this.repository.bringToFront(selectedIds);
-    this.isContentDirty = true;
+    this.mutateSelected((ids) => this.repository.bringToFront(ids));
   }
 
   public sendSelectedToBack(): void {
+    this.mutateSelected((ids) => this.repository.sendToBack(ids));
+  }
+
+  public bringSelectedForward(): void {
+    this.mutateSelected((ids) => this.repository.bringForward(ids));
+  }
+
+  public sendSelectedBackward(): void {
+    this.mutateSelected((ids) => this.repository.sendBackward(ids));
+  }
+
+  public updateSelectedRotation(rotation: number): void {
+    this.mutateSelected((ids) =>
+      this.repository.updateRotationForIds(ids, rotation),
+    );
+  }
+
+  public copySelected(): void {
+    const selected = this.getSelectedElements();
+    this.clipboard.copy(selected);
+  }
+
+  public cutSelected(): void {
     if (this.role === Role.VIEWER) return;
-    const { selectedIds } = useCanvasStore.getState();
-    this.repository.sendToBack(selectedIds);
-    this.isContentDirty = true;
+    const selected = this.getSelectedElements();
+    if (selected.length === 0) return;
+    this.clipboard.copy(selected);
+    this.deleteSelected();
+  }
+
+  public hasCopiedElements(): boolean {
+    return this.clipboard.hasCopiedElements();
+  }
+
+  public pasteCopiedElements(targetWorldPt?: Point): boolean {
+    if (this.role === Role.VIEWER || !this.clipboard.hasCopiedElements()) {
+      return false;
+    }
+    const newIds = this.clipboard.pasteIntoRepository(
+      this.repository,
+      this.userId,
+      targetWorldPt,
+    );
+    if (newIds.length > 0) {
+      this.selectAndSync(newIds);
+      return true;
+    }
+    return false;
+  }
+
+  public pasteText(text: string, targetWorldPt?: Point): void {
+    if (this.role === Role.VIEWER || !text.trim()) return;
+    const center =
+      targetWorldPt ??
+      this.viewport.screenToWorld({
+        x: this.container.clientWidth / 2,
+        y: this.container.clientHeight / 2,
+      });
+    const sticky = CanvasClipboardService.createStickyFromText(
+      text,
+      center,
+      this.getNextZIndex(),
+      this.userId,
+    );
+    this.commitElement(sticky);
+    this.selectAndSync([sticky.id]);
+  }
+
+  public openShortcutsHelp(): void {
+    this.events.emit("openShortcutsHelp", {});
+  }
+
+  public reindexElements(): void {
+    this.repository.indexAllElements();
+    this.isBackgroundDirty = true;
+    this.setDirty();
+  }
+
+  public observeChanges(onDirty: () => void): () => void {
+    return this.repository.observeChanges(onDirty);
   }
 
   public groupSelected(): void {
-    if (this.role === Role.VIEWER) return;
-    const { selectedIds } = useCanvasStore.getState();
-    const groupId = this.repository.groupElements(selectedIds);
-    if (groupId) {
-      this.isContentDirty = true;
-    }
+    this.mutateSelected((ids) => {
+      this.repository.groupElements(ids);
+    });
   }
 
   public ungroupSelected(): void {
-    if (this.role === Role.VIEWER) return;
-    const { selectedIds } = useCanvasStore.getState();
-    this.repository.ungroupElements(selectedIds);
-    this.isContentDirty = true;
+    this.mutateSelected((ids) => this.repository.ungroupElements(ids));
   }
 
   public lockSelected(): void {
-    if (this.role === Role.VIEWER) return;
-    const { selectedIds } = useCanvasStore.getState();
-    this.repository.lockElements(selectedIds);
-    this.isContentDirty = true;
+    this.mutateSelected((ids) => this.repository.lockElements(ids));
   }
 
   public unlockSelected(): void {
-    if (this.role === Role.VIEWER) return;
-    const { selectedIds } = useCanvasStore.getState();
-    this.repository.unlockElements(selectedIds);
-    this.isContentDirty = true;
+    this.mutateSelected((ids) => this.repository.unlockElements(ids));
   }
 
   public toggleLockSelected(): void {
-    if (this.role === Role.VIEWER) return;
-    const { selectedIds } = useCanvasStore.getState();
-    this.repository.toggleLockElements(selectedIds);
-    this.isContentDirty = true;
+    this.mutateSelected((ids) => this.repository.toggleLockElements(ids));
   }
 
   public expandSelectionGroups(ids: readonly string[]): string[] {
@@ -585,6 +675,7 @@ export class CanvasEngine
   ): void {
     this.guides = guides;
     this.isContentDirty = true;
+    this.isOverlayDirty = true;
   }
 
   getGuides(): {
@@ -597,6 +688,7 @@ export class CanvasEngine
 
   setSnapIndicator(indicator: { active: Point | null; candidates: Point[] } | null): void {
     this.snapIndicator = indicator;
+    this.isOverlayDirty = true;
   }
 
   getSnapIndicator(): { active: Point | null; candidates: Point[] } | null {
@@ -609,43 +701,33 @@ export class CanvasEngine
 
   getOtherElements(excludeIds: readonly string[]): ElementData[] {
     const excludeSet = new Set(excludeIds);
-    const elementsMap = this.repository.getElementsMap();
-    const result: ElementData[] = [];
-    elementsMap.forEach((map, id) => {
-      if (excludeSet.has(id)) return;
-      const el = YjsElementAdapter.toElementData(map);
-      if (el) result.push(el);
-    });
-    return result;
+    return this.repository
+      .getAllElements()
+      .filter((el) => !excludeSet.has(el.id));
   }
 
   public alignSelected(alignment: AlignmentType): void {
-    if (this.role === Role.VIEWER) return;
-    const { selectedIds } = useCanvasStore.getState();
-    this.repository.alignElements(selectedIds, alignment);
-    this.isContentDirty = true;
+    this.mutateSelected((ids) => this.repository.alignElements(ids, alignment));
   }
 
   public distributeSelected(direction: DistributionType): void {
-    if (this.role === Role.VIEWER) return;
-    const { selectedIds } = useCanvasStore.getState();
-    this.repository.distributeElements(selectedIds, direction);
-    this.isContentDirty = true;
+    this.mutateSelected((ids) =>
+      this.repository.distributeElements(ids, direction),
+    );
   }
 
   public standardizeSpacingSelected(
     direction: "horizontal" | "vertical",
     customGap?: number,
   ): void {
-    if (this.role === Role.VIEWER) return;
-    const { selectedIds } = useCanvasStore.getState();
-    this.repository.standardizeSpacing(selectedIds, direction, customGap);
-    this.isContentDirty = true;
+    this.mutateSelected((ids) =>
+      this.repository.standardizeSpacing(ids, direction, customGap),
+    );
   }
 
   syncConnectedArrows(movedIds: readonly string[]): void {
     this.repository.syncConnectedArrows(movedIds);
-    this.isContentDirty = true;
+    this.setDirty();
   }
 
   public async insertImage(
@@ -653,94 +735,34 @@ export class CanvasEngine
     targetWorldPt?: Point,
   ): Promise<string | null> {
     if (this.role === Role.VIEWER) return null;
-    if (!file.type.startsWith("image/") && !file.name.endsWith(".svg")) {
-      return null;
-    }
 
-    try {
-      const dataUrl = await fileToDataUrl(file);
-      const dimensions = await loadImageDimensions(dataUrl);
+    const targetCenter =
+      targetWorldPt ??
+      this.viewport.screenToWorld({
+        x: this.container.clientWidth / 2,
+        y: this.container.clientHeight / 2,
+      });
 
-      const center =
-        targetWorldPt ??
-        this.viewport.screenToWorld({
-          x: this.container.clientWidth / 2,
-          y: this.container.clientHeight / 2,
-        });
+    const element = await CanvasAssetService.prepareImageElement({
+      file,
+      boardId: this.provider.boardId,
+      userId: this.userId,
+      targetCenter,
+      z: this.getNextZIndex(),
+    });
 
-      const placement = calculateImagePlacement(dimensions, center);
-      const id = nanoid(10);
-      const z = this.getNextZIndex();
+    if (!element) return null;
 
-      let imageSrc = dataUrl;
-      let assetId: string | undefined;
-
-      try {
-        const presignRes = await api.post<{
-          uploadUrl: string;
-          assetUrl: string;
-          readUrl?: string;
-          key: string;
-        }>(`/boards/${this.provider.boardId}/assets/presign`, {
-          filename: file.name,
-          contentType: file.type,
-          size: file.size,
-        });
-
-        const uploadRes = await fetch(presignRes.data.uploadUrl, {
-          method: "PUT",
-          headers: {
-            "Content-Type": file.type,
-          },
-          body: file,
-        });
-
-        if (uploadRes.ok) {
-          imageSrc =
-            presignRes.data.readUrl ||
-            `/api/v1/boards/${this.provider.boardId}/assets/${encodeURIComponent(presignRes.data.key)}/view`;
-          assetId = presignRes.data.key;
-        }
-      } catch {
-        if (dataUrl.length > 500_000) {
-          return null;
-        }
-      }
-
-      const element: ElementData = {
-        id,
-        type: ElementType.IMAGE,
-        x: placement.x,
-        y: placement.y,
-        w: placement.w,
-        h: placement.h,
-        rotation: 0,
-        z,
-        style: {
-          fill: "transparent",
-          stroke: "transparent",
-          strokeWidth: 0,
-          opacity: 1,
-        },
-        src: imageSrc,
-        assetId,
-        createdBy: this.userId,
-      };
-
-      this.commitElement(element);
-      useCanvasStore.getState().setSelectedIds([id]);
-      this.syncStoreWithSelection([id]);
-      this.isContentDirty = true;
-      return id;
-    } catch {
-      return null;
-    }
+    this.commitElement(element);
+    this.selectAndSync([element.id]);
+    return element.id;
   }
 
   destroy(): void {
     this.isDestroyed = true;
     if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
     window.removeEventListener("resize", this.handleResize);
+    this.provider.awareness.off("change", this.handleAwarenessChange);
     this.inputController.destroy();
     this.keyboardController.destroy();
     if (this.storeUnsub) {

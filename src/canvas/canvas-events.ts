@@ -2,6 +2,7 @@ export type CanvasEventMap = {
   focusTextInput: { elementId: string };
   selectionChange: { selectedIds: string[] };
   viewportChange: { pan: { x: number; y: number }; zoom: number };
+  openShortcutsHelp: Record<string, never>;
 };
 
 type Listener<T> = (data: T) => void;
@@ -15,6 +16,7 @@ export class CanvasEventEmitter {
     focusTextInput: new Set(),
     selectionChange: new Set(),
     viewportChange: new Set(),
+    openShortcutsHelp: new Set(),
   };
 
   on<K extends keyof CanvasEventMap>(
@@ -52,5 +54,6 @@ export class CanvasEventEmitter {
     this.listeners.focusTextInput.clear();
     this.listeners.selectionChange.clear();
     this.listeners.viewportChange.clear();
+    this.listeners.openShortcutsHelp.clear();
   }
 }

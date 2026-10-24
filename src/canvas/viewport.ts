@@ -40,4 +40,41 @@ export class Viewport {
       maxY: bottomRight.y,
     };
   }
+
+  zoomToPoint(targetZoom: number, focalScreen: Point): void {
+    const newZoom = Math.min(Math.max(targetZoom, 0.1), 5.0);
+    const ratio = newZoom / this.zoom;
+    this.pan = {
+      x: focalScreen.x - (focalScreen.x - this.pan.x) * ratio,
+      y: focalScreen.y - (focalScreen.y - this.pan.y) * ratio,
+    };
+    this.zoom = newZoom;
+  }
+
+  reset(): void {
+    this.zoom = 1;
+    this.pan = { x: 0, y: 0 };
+  }
+
+  fitToBounds(
+    bounds: Rect,
+    screenWidth: number,
+    screenHeight: number,
+    padding = 64,
+  ): void {
+    const contentW = Math.max(1, bounds.maxX - bounds.minX);
+    const contentH = Math.max(1, bounds.maxY - bounds.minY);
+    const availW = Math.max(100, screenWidth - padding * 2);
+    const availH = Math.max(100, screenHeight - padding * 2);
+
+    const scale = Math.min(availW / contentW, availH / contentH, 2.0);
+    this.zoom = Math.min(Math.max(scale, 0.1), 5.0);
+
+    const centerX = (bounds.minX + bounds.maxX) / 2;
+    const centerY = (bounds.minY + bounds.maxY) / 2;
+    this.pan = {
+      x: Math.round(screenWidth / 2 - centerX * this.zoom),
+      y: Math.round(screenHeight / 2 - centerY * this.zoom),
+    };
+  }
 }

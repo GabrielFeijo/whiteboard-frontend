@@ -47,4 +47,26 @@ describe("Viewport Coordinate Transformation", () => {
     expect(bounds.maxX).toBe(450);
     expect(bounds.maxY).toBe(275);
   });
+
+  it("zooms around a focal screen point preserving its world coordinate", () => {
+    const vp = new Viewport({ x: 100, y: 50 }, 1);
+    const focalScreen = { x: 400, y: 300 };
+    const worldBefore = vp.screenToWorld(focalScreen);
+
+    vp.zoomToPoint(2, focalScreen);
+    const worldAfter = vp.screenToWorld(focalScreen);
+
+    expect(vp.zoom).toBe(2);
+    expect(worldAfter.x).toBeCloseTo(worldBefore.x, 5);
+    expect(worldAfter.y).toBeCloseTo(worldBefore.y, 5);
+  });
+
+  it("fits viewport pan and zoom to encompass content bounds with padding", () => {
+    const vp = new Viewport();
+    vp.fitToBounds({ minX: 100, minY: 100, maxX: 500, maxY: 300 }, 1000, 800, 100);
+
+    expect(vp.zoom).toBe(2);
+    const centerScreen = vp.worldToScreen({ x: 300, y: 200 });
+    expect(centerScreen).toEqual({ x: 500, y: 400 });
+  });
 });
