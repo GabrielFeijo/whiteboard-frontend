@@ -47,5 +47,6 @@ export type SnapshotReason = (typeof SnapshotReason)[keyof typeof SnapshotReason
 
 export const redisChannels = {
   updates: (boardId: string) => `board:${boardId}:updates`,
+  restore: (boardId: string) => `board:${boardId}:restore`,
   acl: (boardId: string) => `board:${boardId}:acl`,
-};
+} as const;
