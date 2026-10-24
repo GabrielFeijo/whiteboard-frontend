@@ -10,7 +10,7 @@ export const shareLinkFormSchema = z.object({
 export type ShareLinkFormData = z.infer<typeof shareLinkFormSchema>;
 
 export const inviteMemberEmailSchema = z.object({
-  email: z.string().trim().email(),
+  email: z.string().trim().pipe(z.email()),
   role: z.enum([Role.VIEWER, Role.EDITOR]),
 });
 
