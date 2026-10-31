@@ -39,14 +39,7 @@ export class CanvasEventEmitter {
     data: CanvasEventMap[K],
   ): void {
     this.listeners[event].forEach((fn) => {
-      try {
-        fn(data);
-      } catch (err) {
-        console.error(
-          `Error in CanvasEventEmitter listener for event "${String(event)}":`,
-          err,
-        );
-      }
+      fn(data);
     });
   }
 

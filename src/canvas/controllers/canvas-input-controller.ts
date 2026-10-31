@@ -4,6 +4,7 @@ import {
   isEditableDomElement,
   isModalDialogOpen,
 } from "@/canvas/controllers/canvas-keyboard-controller";
+import { CanvasAssetService } from "@/canvas/services/canvas-asset.service";
 import { useCanvasStore } from "@/store/canvas-store";
 
 export interface InputControllerHost {
@@ -78,7 +79,7 @@ export class CanvasInputController {
     }
   };
 
-  private getScreenAndWorldPoint(e: PointerEvent): {
+  private getScreenAndWorldPoint(e: MouseEvent): {
     screenPt: Point;
     worldPt: Point;
   } {
@@ -209,10 +210,7 @@ export class CanvasInputController {
   };
 
   private onDoubleClick = (e: MouseEvent): void => {
-    const worldPt = this.host.viewport.screenToWorld({
-      x: e.offsetX,
-      y: e.offsetY,
-    });
+    const { worldPt } = this.getScreenAndWorldPoint(e);
     this.host.onDoubleClickAtWorld(worldPt);
   };
 
@@ -230,10 +228,8 @@ export class CanvasInputController {
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      if (file.type.startsWith("image/") || file.name.endsWith(".svg")) {
-        const rect = this.host.overlayCanvas.getBoundingClientRect();
-        const screenPt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-        const worldPt = this.host.viewport.screenToWorld(screenPt);
+      if (CanvasAssetService.isSupportedImageFile(file)) {
+        const { worldPt } = this.getScreenAndWorldPoint(e);
         this.host.onDropFile?.(file, worldPt);
         break;
       }

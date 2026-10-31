@@ -1,4 +1,5 @@
 import { Role } from "@/shared";
+import { CanvasAssetService } from "@/canvas/services/canvas-asset.service";
 import { CanvasToolType, type Tool, useCanvasStore } from "@/store/canvas-store";
 
 export interface KeyboardControllerTarget {
@@ -262,7 +263,7 @@ const MODIFIER_ACTIONS: Record<string, ModifierAction> = {
 };
 
 function isImageFile(file: File): boolean {
-  return file.type.startsWith("image/") || file.name.endsWith(".svg");
+  return CanvasAssetService.isSupportedImageFile(file);
 }
 
 function findImageInFiles(files: FileList | null | undefined): File | null {

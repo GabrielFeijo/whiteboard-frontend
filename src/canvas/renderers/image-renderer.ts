@@ -61,6 +61,21 @@ function pruneImageCache(): void {
   imageCache.delete(oldest);
 }
 
+function recordRetryAttempt(src: string): number {
+  if (imageRetryCounts.size >= MAX_CACHE_ENTRIES && !imageRetryCounts.has(src)) {
+    const oldest = imageRetryCounts.keys().next().value;
+    if (oldest) imageRetryCounts.delete(oldest);
+  }
+  const attempts = (imageRetryCounts.get(src) ?? 0) + 1;
+  imageRetryCounts.set(src, attempts);
+  return attempts;
+}
+
+export function clearImageRendererCache(): void {
+  imageCache.clear();
+  imageRetryCounts.clear();
+}
+
 function getOrLoadImage(src: string, onImageLoaded?: () => void): HTMLImageElement {
   const existing = imageCache.get(src);
   if (existing) return existing;
@@ -75,8 +90,7 @@ function getOrLoadImage(src: string, onImageLoaded?: () => void): HTMLImageEleme
   };
   img.onerror = () => {
     imageCache.delete(src);
-    const attempts = (imageRetryCounts.get(src) ?? 0) + 1;
-    imageRetryCounts.set(src, attempts);
+    const attempts = recordRetryAttempt(src);
     if (attempts <= MAX_RETRY_ATTEMPTS && onImageLoaded) {
       setTimeout(() => {
         onImageLoaded();

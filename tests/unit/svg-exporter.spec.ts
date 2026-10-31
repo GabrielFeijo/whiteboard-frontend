@@ -96,7 +96,7 @@ describe("SVG Exporter Service and Markup Security", () => {
     const arrowMarkup = renderElementToSvgMarkup(boundArrow, (id) =>
       id === "shape-a" ? shapeA : null,
     );
-    expect(arrowMarkup).toContain("M 100 50 C");
+    expect(arrowMarkup).toContain("M 85 85 C");
     expect(arrowMarkup).toContain(", 300 100");
   });
 });

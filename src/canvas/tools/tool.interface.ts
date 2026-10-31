@@ -66,6 +66,7 @@ export interface CanvasTool {
   onPointerUp(ctx: ToolContext): void;
   onPointerHover?(ctx: ToolContext): void;
   getCursor(ctx: ToolContext): string;
+  onActivate?(): void;
   onDeactivate?(): void;
 }
 

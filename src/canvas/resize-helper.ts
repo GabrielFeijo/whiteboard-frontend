@@ -1,6 +1,6 @@
 import { Point, Viewport } from "./viewport";
 import { ElementData, ElementType } from "../shared";
-import { resolveArrowEndpoints } from "./connector-helper";
+import { computeConnectorCurve, resolveArrowEndpoints } from "./connector-helper";
 
 export const ResizeHandleType = {
   NW: "nw",
@@ -303,24 +303,75 @@ function testRectHit(p: Point, el: ElementData): boolean {
   return p.x >= el.x && p.x <= el.x + el.w && p.y >= el.y && p.y <= el.y + el.h;
 }
 
+function isPointNearSegment(
+  p: Point,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  tolerance: number,
+): boolean {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) {
+    return Math.hypot(p.x - x1, p.y - y1) <= tolerance;
+  }
+  const t = Math.max(0, Math.min(1, ((p.x - x1) * dx + (p.y - y1) * dy) / lenSq));
+  const projX = x1 + t * dx;
+  const projY = y1 + t * dy;
+  return Math.hypot(p.x - projX, p.y - projY) <= tolerance;
+}
+
+function evaluateCubicBezier(
+  t: number,
+  p0: Point,
+  cp1: Point,
+  cp2: Point,
+  p3: Point,
+): Point {
+  const mt = 1 - t;
+  const mt2 = mt * mt;
+  const t2 = t * t;
+  const a = mt2 * mt;
+  const b = 3 * mt2 * t;
+  const c = 3 * mt * t2;
+  const d = t2 * t;
+  return {
+    x: a * p0.x + b * cp1.x + c * cp2.x + d * p3.x,
+    y: a * p0.y + b * cp1.y + c * cp2.y + d * p3.y,
+  };
+}
+
 function testLineHit(p: Point, el: ElementData): boolean {
   const x1 = el.points && el.points.length >= 4 ? el.points[0] : el.x;
   const y1 = el.points && el.points.length >= 4 ? el.points[1] : el.y;
   const x2 = el.points && el.points.length >= 4 ? el.points[2] : el.x + el.w;
   const y2 = el.points && el.points.length >= 4 ? el.points[3] : el.y + el.h;
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const lenSq = dx * dx + dy * dy;
   const tolerance = Math.max((el.style?.strokeWidth || 2) + 8, 12);
 
-  if (lenSq === 0) {
-    return Math.hypot(p.x - x1, p.y - y1) <= tolerance;
+  if (el.startBinding || el.endBinding) {
+    const from = { x: x1, y: y1 };
+    const to = { x: x2, y: y2 };
+    const { cp1, cp2 } = computeConnectorCurve(
+      from,
+      to,
+      el.startBinding?.anchor,
+      el.endBinding?.anchor,
+    );
+    const steps = 16;
+    let prev = from;
+    for (let i = 1; i <= steps; i++) {
+      const curr = evaluateCubicBezier(i / steps, from, cp1, cp2, to);
+      if (isPointNearSegment(p, prev.x, prev.y, curr.x, curr.y, tolerance)) {
+        return true;
+      }
+      prev = curr;
+    }
+    return false;
   }
 
-  const t = Math.max(0, Math.min(1, ((p.x - x1) * dx + (p.y - y1) * dy) / lenSq));
-  const projX = x1 + t * dx;
-  const projY = y1 + t * dy;
-  return Math.hypot(p.x - projX, p.y - projY) <= tolerance;
+  return isPointNearSegment(p, x1, y1, x2, y2, tolerance);
 }
 
 type ShapeHitTester = (p: Point, el: ElementData, cx: number, cy: number) => boolean;

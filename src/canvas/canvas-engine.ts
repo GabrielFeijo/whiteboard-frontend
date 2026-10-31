@@ -66,6 +66,7 @@ export class CanvasEngine
   private isDestroyed = false;
 
   private readonly tools: Map<Tool, CanvasTool>;
+  private activeToolInstance: CanvasTool;
   private readonly inputController: CanvasInputController;
   private readonly keyboardController: CanvasKeyboardController;
 
@@ -125,6 +126,8 @@ export class CanvasEngine
       [CanvasToolType.TEXT, new TextTool(this)],
       [CanvasToolType.ERASER, new EraserTool(this)],
     ]);
+    this.activeToolInstance = this.getActiveTool();
+    this.activeToolInstance.onActivate?.();
 
     this.resizeCanvases();
     this.inputController = new CanvasInputController(this);
@@ -280,6 +283,11 @@ export class CanvasEngine
     window.addEventListener("resize", this.handleResize);
 
     this.storeUnsub = useCanvasStore.subscribe((state, prevState) => {
+      if (state.activeTool !== prevState.activeTool) {
+        this.activeToolInstance.onDeactivate?.();
+        this.activeToolInstance = this.getActiveTool();
+        this.activeToolInstance.onActivate?.();
+      }
       if (
         state.activeTool !== prevState.activeTool ||
         state.selectedIds !== prevState.selectedIds

@@ -27,12 +27,16 @@ function makeShape(id: string, x: number, y: number, w: number, h: number): Elem
 }
 
 describe("Smart Connectors and Magnetic Arrows", () => {
-  it("calculates anchor points correctly", () => {
+  it("calculates anchor points correctly including rotated shapes", () => {
     const shape = makeShape("s1", 100, 200, 100, 80);
     expect(getAnchorPoint(shape, "top")).toEqual({ x: 150, y: 200 });
     expect(getAnchorPoint(shape, "bottom")).toEqual({ x: 150, y: 280 });
     expect(getAnchorPoint(shape, "left")).toEqual({ x: 100, y: 240 });
     expect(getAnchorPoint(shape, "right")).toEqual({ x: 200, y: 240 });
+
+    const rotatedSquare = { ...makeShape("s2", 0, 0, 100, 100), rotation: 90 };
+    expect(getAnchorPoint(rotatedSquare, "top")).toEqual({ x: 100, y: 50 });
+    expect(getAnchorPoint(rotatedSquare, "right")).toEqual({ x: 50, y: 100 });
   });
 
   it("finds the nearest anchor point within threshold", () => {

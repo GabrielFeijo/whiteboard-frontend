@@ -16,11 +16,16 @@ export interface PrepareImageOptions {
   z: string;
 }
 
-const MAX_INLINE_DATA_URL_LENGTH = 500_000;
+export const ALLOWED_IMAGE_MIME_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+] as const;
 
 export class CanvasAssetService {
   static isSupportedImageFile(file: File): boolean {
-    return file.type.startsWith("image/") || file.name.endsWith(".svg");
+    return (ALLOWED_IMAGE_MIME_TYPES as readonly string[]).includes(file.type);
   }
 
   static async prepareImageElement(
@@ -37,40 +42,33 @@ export class CanvasAssetService {
       const placement = calculateImagePlacement(dimensions, targetCenter);
       const id = nanoid(10);
 
-      let imageSrc = dataUrl;
-      let assetId: string | undefined;
+      const presignRes = await api.post<{
+        uploadUrl: string;
+        assetUrl: string;
+        readUrl?: string;
+        key: string;
+      }>(`/boards/${boardId}/assets/presign`, {
+        filename: file.name,
+        contentType: file.type,
+        size: file.size,
+      });
 
-      try {
-        const presignRes = await api.post<{
-          uploadUrl: string;
-          assetUrl: string;
-          readUrl?: string;
-          key: string;
-        }>(`/boards/${boardId}/assets/presign`, {
-          filename: file.name,
-          contentType: file.type,
-          size: file.size,
-        });
+      const uploadRes = await fetch(presignRes.data.uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type,
+        },
+        body: file,
+      });
 
-        const uploadRes = await fetch(presignRes.data.uploadUrl, {
-          method: "PUT",
-          headers: {
-            "Content-Type": file.type,
-          },
-          body: file,
-        });
-
-        if (uploadRes.ok) {
-          const assetFilename =
-            presignRes.data.key.split("/").pop() || presignRes.data.key;
-          imageSrc = `/api/v1/boards/${boardId}/assets/${encodeURIComponent(assetFilename)}/view`;
-          assetId = presignRes.data.key;
-        }
-      } catch {
-        if (dataUrl.length > MAX_INLINE_DATA_URL_LENGTH) {
-          return null;
-        }
+      if (!uploadRes.ok) {
+        return null;
       }
+
+      const assetFilename =
+        presignRes.data.key.split("/").pop() || presignRes.data.key;
+      const imageSrc = `/api/v1/boards/${boardId}/assets/${encodeURIComponent(assetFilename)}/view`;
+      const assetId = presignRes.data.key;
 
       return {
         id,

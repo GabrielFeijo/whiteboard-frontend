@@ -9,7 +9,21 @@ const ANCHOR_CALCULATORS: Record<AnchorPoint, (el: ElementData) => Point> = {
 };
 
 export function getAnchorPoint(el: ElementData, anchor: AnchorPoint): Point {
-  return ANCHOR_CALCULATORS[anchor](el);
+  const basePt = ANCHOR_CALCULATORS[anchor](el);
+  if (!el.rotation || el.rotation % 360 === 0) {
+    return basePt;
+  }
+  const cx = el.x + el.w / 2;
+  const cy = el.y + el.h / 2;
+  const rad = (el.rotation * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const dx = basePt.x - cx;
+  const dy = basePt.y - cy;
+  return {
+    x: Math.round(cx + dx * cos - dy * sin),
+    y: Math.round(cy + dx * sin + dy * cos),
+  };
 }
 
 export function getAllAnchorPoints(
@@ -281,12 +295,47 @@ export function getElementBoundingBox(data: ElementData): {
     data.points &&
     data.points.length >= 4
   ) {
-    const minX = Math.min(data.points[0], data.points[2]);
-    const minY = Math.min(data.points[1], data.points[3]);
-    const w = Math.max(1, Math.abs(data.points[2] - data.points[0]));
-    const h = Math.max(1, Math.abs(data.points[3] - data.points[1]));
+    const from: Point = { x: data.points[0], y: data.points[1] };
+    const to: Point = { x: data.points[2], y: data.points[3] };
+    let minX = Math.min(from.x, to.x);
+    let minY = Math.min(from.y, to.y);
+    let maxX = Math.max(from.x, to.x);
+    let maxY = Math.max(from.y, to.y);
+
+    if (data.startBinding || data.endBinding) {
+      const { cp1, cp2 } = computeConnectorCurve(
+        from,
+        to,
+        data.startBinding?.anchor,
+        data.endBinding?.anchor,
+      );
+      minX = Math.min(minX, cp1.x, cp2.x);
+      minY = Math.min(minY, cp1.y, cp2.y);
+      maxX = Math.max(maxX, cp1.x, cp2.x);
+      maxY = Math.max(maxY, cp1.y, cp2.y);
+    }
+
+    const w = Math.max(1, maxX - minX);
+    const h = Math.max(1, maxY - minY);
     return { x: minX, y: minY, w, h };
   }
+
+  if (data.rotation && data.rotation % 360 !== 0) {
+    const rad = (data.rotation * Math.PI) / 180;
+    const absCos = Math.abs(Math.cos(rad));
+    const absSin = Math.abs(Math.sin(rad));
+    const rotatedW = data.w * absCos + data.h * absSin;
+    const rotatedH = data.w * absSin + data.h * absCos;
+    const cx = data.x + data.w / 2;
+    const cy = data.y + data.h / 2;
+    return {
+      x: cx - rotatedW / 2,
+      y: cy - rotatedH / 2,
+      w: Math.max(1, rotatedW),
+      h: Math.max(1, rotatedH),
+    };
+  }
+
   return { x: data.x, y: data.y, w: data.w, h: data.h };
 }
 

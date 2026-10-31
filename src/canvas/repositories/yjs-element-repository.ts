@@ -20,7 +20,18 @@ import { translateGeometry } from "@/canvas/geometry-helper";
 
 export type ElementStylePatch = Partial<ElementData["style"]>;
 
+const MAX_ORDER_KEY_CACHE_SIZE = 2000;
 const orderKeyValidityCache = new Map<string, boolean>();
+
+function cacheOrderKeyValidity(key: string, isValid: boolean): void {
+  if (orderKeyValidityCache.size >= MAX_ORDER_KEY_CACHE_SIZE) {
+    const oldest = orderKeyValidityCache.keys().next().value;
+    if (oldest !== undefined) {
+      orderKeyValidityCache.delete(oldest);
+    }
+  }
+  orderKeyValidityCache.set(key, isValid);
+}
 
 export function isValidOrderKey(key: string | null | undefined): key is string {
   if (!key) return false;
@@ -28,10 +39,10 @@ export function isValidOrderKey(key: string | null | undefined): key is string {
   if (cached !== undefined) return cached;
   try {
     generateKeyBetween(key, null);
-    orderKeyValidityCache.set(key, true);
+    cacheOrderKeyValidity(key, true);
     return true;
   } catch {
-    orderKeyValidityCache.set(key, false);
+    cacheOrderKeyValidity(key, false);
     return false;
   }
 }
@@ -280,8 +291,10 @@ export class YjsElementRepository {
         const map = elementsMap.get(id);
         if (map && map.get("locked") !== true) {
           YjsElementAdapter.updateYMap(map, { rotation: Math.round(normalized) });
+          this.syncCacheAndSpatialIndex(map, id);
         }
       });
+      this.syncConnectedArrows(ids);
     }, LOCAL_ORIGIN);
   }
 
@@ -605,13 +618,17 @@ export class YjsElementRepository {
     this.doc.transact(() => {
       updates.forEach((pos, id) => {
         const map = elementsMap.get(id);
-        if (!map) return;
-        YjsElementAdapter.updateYMap(map, pos);
-        const data = YjsElementAdapter.toElementData(map);
-        if (data) {
-          this.spatialIndex.remove(id);
-          this.spatialIndex.insert(id, data.x, data.y, data.w, data.h);
+        if (!map || map.get("locked") === true) return;
+        const el = YjsElementAdapter.toElementData(map);
+        if (el) {
+          const dx = (pos.x ?? el.x) - el.x;
+          const dy = (pos.y ?? el.y) - el.y;
+          const geom = translateGeometry(el, dx, dy);
+          YjsElementAdapter.updateYMap(map, geom);
+        } else {
+          YjsElementAdapter.updateYMap(map, pos);
         }
+        this.syncCacheAndSpatialIndex(map, id);
       });
     }, LOCAL_ORIGIN);
 
@@ -682,8 +699,7 @@ export class YjsElementRepository {
           h: height,
           points,
         });
-        this.spatialIndex.remove(id);
-        this.spatialIndex.insert(id, minX, minY, width, height);
+        this.syncCacheAndSpatialIndex(map, id);
       });
     }, LOCAL_ORIGIN);
   }
@@ -715,8 +731,7 @@ export class YjsElementRepository {
 
         const geom = translateGeometry(el, dx, dy);
         YjsElementAdapter.updateYMap(map, geom);
-        this.spatialIndex.remove(id);
-        this.spatialIndex.insert(id, geom.x, geom.y, geom.w, geom.h);
+        this.syncCacheAndSpatialIndex(map, id);
       });
       this.syncConnectedArrows(ids);
     }, LOCAL_ORIGIN);

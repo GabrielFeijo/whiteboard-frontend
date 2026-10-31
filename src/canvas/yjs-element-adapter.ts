@@ -144,8 +144,18 @@ export class YjsElementAdapter {
 
     if (patch.style) {
       const rawStyle = map.get("style");
-      const styleMap = isYMap(rawStyle) ? rawStyle : new Y.Map<unknown>();
-      if (!isYMap(rawStyle)) map.set("style", styleMap);
+      let styleMap: Y.Map<unknown>;
+      if (isYMap(rawStyle)) {
+        styleMap = rawStyle;
+      } else {
+        styleMap = new Y.Map<unknown>();
+        if (rawStyle && typeof rawStyle === "object" && !Array.isArray(rawStyle)) {
+          for (const [k, v] of Object.entries(rawStyle)) {
+            setIfDefined(styleMap, k, v);
+          }
+        }
+        map.set("style", styleMap);
+      }
       YjsElementAdapter.updateStyle(styleMap, patch.style);
     }
   }

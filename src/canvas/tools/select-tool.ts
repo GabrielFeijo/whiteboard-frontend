@@ -272,6 +272,7 @@ export class SelectTool implements CanvasTool {
       YjsElementAdapter.updateYMap(map, { rotation });
     }, LOCAL_ORIGIN);
 
+    this.host.syncConnectedArrows([this.resizeInfo.elementId]);
     this.host.setDirty();
   }
 
