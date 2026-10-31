@@ -12,15 +12,15 @@ export function AuthHeader() {
 
   return (
     <header className="sticky top-0 z-30 w-full border-b border-border-subtle/80 bg-surface/80 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-3 sm:px-6">
         <Link
           href="/"
-          className="group flex items-center transition-opacity hover:opacity-90"
+          className="group flex shrink-0 items-center transition-opacity hover:opacity-90"
         >
-          <AppLogo size="md" />
+          <AppLogo size="md" textClassName="hidden sm:inline" />
         </Link>
 
-        <div className="flex items-center gap-2 sm:gap-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           <LanguageSwitcher />
           <ThemeToggle />
           <div className="hidden sm:block h-4 w-px bg-border-subtle mx-0.5" />
@@ -28,10 +28,10 @@ export function AuthHeader() {
             <Button
               variant="ghost"
               size="sm"
-              className="gap-1.5 text-xs text-text-muted hover:text-text-primary font-medium"
+              className="gap-1.5 text-xs text-text-muted hover:text-text-primary font-medium whitespace-nowrap px-2 sm:px-3"
             >
               <svg
-                className="h-3.5 w-3.5"
+                className="h-3.5 w-3.5 shrink-0"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"

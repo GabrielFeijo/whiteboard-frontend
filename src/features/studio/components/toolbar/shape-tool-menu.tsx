@@ -97,7 +97,7 @@ export function ShapeToolMenu({ readOnly }: ShapeToolMenuProps) {
           type="button"
           disabled={readOnly}
           onClick={() => setActiveTool(currentShape.id)}
-          className={`flex h-8 w-8 items-center justify-center rounded-l-lg transition-all duration-150 ${
+          className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-l-lg transition-all duration-150 ${
             isAnyShapeActive
               ? "bg-accent-primary text-white shadow-xs"
               : "text-text-secondary hover:text-text-primary hover:bg-surface-hover"
@@ -112,7 +112,7 @@ export function ShapeToolMenu({ readOnly }: ShapeToolMenuProps) {
         type="button"
         disabled={readOnly}
         onClick={() => setIsShapeMenuOpen(!isShapeMenuOpen)}
-        className={`flex h-8 w-4 items-center justify-center rounded-r-lg border-l border-border-subtle transition-all duration-150 ${
+        className={`flex h-7 w-3.5 sm:h-8 sm:w-4 shrink-0 items-center justify-center rounded-r-lg border-l border-border-subtle transition-all duration-150 ${
           isAnyShapeActive
             ? "bg-accent-primary text-white border-accent-hover"
             : "text-text-muted hover:text-text-primary hover:bg-surface-hover"

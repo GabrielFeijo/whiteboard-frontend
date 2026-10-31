@@ -253,7 +253,7 @@ export function BoardStudio({
         </div>
       )}
 
-      <div className="absolute right-3 bottom-4 z-20 pointer-events-auto flex flex-col items-end gap-2">
+      <div className="absolute right-3 bottom-16 lg:bottom-4 z-20 pointer-events-auto flex flex-col items-end gap-2">
         <Minimap engine={engine} />
         <ZoomControls
           onZoomIn={() => engine?.zoomIn()}

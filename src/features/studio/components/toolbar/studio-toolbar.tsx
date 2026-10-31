@@ -55,7 +55,7 @@ function ToolbarIconButton({
         disabled={disabled}
         onClick={onClick}
         aria-label={label}
-        className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-150 ${
+        className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg transition-all duration-150 ${
           active
             ? "bg-accent-primary text-white shadow-xs"
             : "text-text-secondary hover:text-text-primary hover:bg-surface-hover"
@@ -144,7 +144,7 @@ export function StudioToolbar({
   return (
     <nav
       aria-label={t("studio.toolbar.ariaLabel")}
-      className="flex items-center gap-1 rounded-xl border border-border-strong bg-surface-raised/95 px-1.5 py-1 shadow-lg backdrop-blur-md select-none transition-all duration-150"
+      className="flex max-w-[calc(100vw-16px)] items-center gap-0.5 sm:gap-1 rounded-xl border border-border-strong bg-surface-raised/95 px-1 sm:px-1.5 py-1 shadow-lg backdrop-blur-md select-none transition-all duration-150"
     >
       {NAVIGATION_TOOLS.map(({ tool, labelKey, shortcut, icon }) => (
         <ToolbarIconButton

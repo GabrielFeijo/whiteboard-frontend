@@ -78,22 +78,22 @@ export function StudioHeader({
   const canEditTitle = !isReadOnly && Boolean(onRenameBoard);
 
   return (
-    <header className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between pointer-events-none">
-      <div className="flex items-center gap-2 pointer-events-auto rounded-xl border border-border-strong bg-surface-raised/95 px-2.5 py-1.5 shadow-md backdrop-blur-md">
+    <header className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between gap-2 pointer-events-none min-w-0">
+      <div className="flex items-center gap-1.5 sm:gap-2 pointer-events-auto rounded-xl border border-border-strong bg-surface-raised/95 px-2 sm:px-2.5 py-1.5 shadow-md backdrop-blur-md min-w-0 shrink">
         <button
           type="button"
           onClick={() => router.push("/boards")}
           title={t("studio.header.backToBoards")}
           aria-label={t("studio.header.backToBoards")}
-          className="rounded-lg p-1 text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"
+          className="rounded-lg p-1 text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors shrink-0"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
 
-        <div className="h-3.5 w-px bg-border-subtle" />
+        <div className="h-3.5 w-px bg-border-subtle shrink-0" />
 
         {isEditing ? (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 min-w-0">
             <input
               ref={inputRef}
               type="text"
@@ -103,13 +103,13 @@ export function StudioHeader({
                 if (e.key === "Enter") void handleSave();
                 if (e.key === "Escape") handleCancel();
               }}
-              className="h-6 w-36 sm:w-48 rounded border border-accent-primary bg-surface px-1.5 text-xs font-semibold text-text-primary outline-hidden"
+              className="h-6 w-28 sm:w-48 rounded border border-accent-primary bg-surface px-1.5 text-xs font-semibold text-text-primary outline-hidden"
               maxLength={64}
             />
             <button
               type="button"
               onClick={() => void handleSave()}
-              className="rounded p-0.5 text-emerald-500 hover:bg-surface-hover"
+              className="rounded p-0.5 text-emerald-500 hover:bg-surface-hover shrink-0"
               title={t("common.actions.save")}
             >
               <Check className="h-3.5 w-3.5" />
@@ -117,7 +117,7 @@ export function StudioHeader({
             <button
               type="button"
               onClick={handleCancel}
-              className="rounded p-0.5 text-text-muted hover:bg-surface-hover"
+              className="rounded p-0.5 text-text-muted hover:bg-surface-hover shrink-0"
               title={t("common.actions.cancel")}
             >
               <X className="h-3.5 w-3.5" />
@@ -125,23 +125,23 @@ export function StudioHeader({
           </div>
         ) : (
           <div
-            className={`group flex items-center gap-1.5 ${
+            className={`group flex items-center gap-1.5 min-w-0 ${
               canEditTitle ? "cursor-pointer" : ""
             }`}
             onClick={() => canEditTitle && setEditingTitle(boardTitle)}
             title={canEditTitle ? t("studio.header.rename") : undefined}
           >
-            <h1 className="text-xs font-semibold text-text-primary max-w-36 sm:max-w-64 truncate">
+            <h1 className="text-xs font-semibold text-text-primary max-w-28 sm:max-w-64 truncate">
               {boardTitle}
             </h1>
             {canEditTitle && (
-              <Pencil className="h-3 w-3 text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
+              <Pencil className="h-3 w-3 text-text-muted opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
             )}
           </div>
         )}
 
         {isReadOnly ? (
-          <Badge variant="warning" className="text-[10px] py-0">
+          <Badge variant="warning" className="text-[10px] py-0 shrink-0">
             {t("studio.header.readOnly")}
           </Badge>
         ) : (
@@ -149,14 +149,14 @@ export function StudioHeader({
         )}
       </div>
 
-      <div className="flex items-center gap-2 pointer-events-auto">
+      <div className="flex items-center gap-1.5 sm:gap-2 pointer-events-auto shrink-0">
         <CollaboratorsList
           provider={provider}
           followingClientId={followingClientId}
           onFollowUser={onFollowUser}
         />
 
-        <div className="hidden sm:flex items-center gap-1.5">
+        <div className="hidden md:flex items-center gap-1.5">
           <LanguageSwitcher />
           <ThemeToggle />
         </div>
@@ -187,10 +187,12 @@ export function StudioHeader({
               variant="primary"
               size="sm"
               onClick={onOpenShare}
-              className="gap-1.5 text-xs font-semibold"
+              title={t("studio.header.share")}
+              aria-label={t("studio.header.share")}
+              className="gap-1.5 text-xs font-semibold px-2 sm:px-3"
             >
-              <Share2 className="h-3.5 w-3.5" />
-              <span>{t("studio.header.share")}</span>
+              <Share2 className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline">{t("studio.header.share")}</span>
             </Button>
           )}
         </div>

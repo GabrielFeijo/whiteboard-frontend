@@ -27,24 +27,39 @@ export function BoardListRow({
   return (
     <div
       onClick={() => onOpen(board.id)}
-      className="group flex cursor-pointer items-center justify-between p-3.5 hover:bg-surface-hover transition-colors"
+      className="group flex cursor-pointer items-center justify-between gap-2 sm:gap-3 p-3 sm:p-3.5 hover:bg-surface-hover transition-colors"
     >
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-strong bg-canvas text-text-muted">
+      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border-strong bg-canvas text-text-muted">
           <Square className="h-4 w-4" />
         </div>
-        <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-text-primary group-hover:text-accent-primary transition-colors truncate">
-            {board.title}
-          </h3>
-          <p className="text-[11px] text-text-muted">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <h3 className="text-sm font-semibold text-text-primary group-hover:text-accent-primary transition-colors truncate">
+              {board.title}
+            </h3>
+            <span className="sm:hidden shrink-0 inline-flex">
+              <Badge
+                variant={getRoleBadgeVariant(board.role)}
+                className="text-[9px] px-1.5 py-0"
+              >
+                {roleLabel}
+              </Badge>
+            </span>
+          </div>
+          <p className="text-[11px] text-text-muted truncate">
             {t("dashboard.card.updatedAt", { date: formattedDate })}
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-        <Badge variant={getRoleBadgeVariant(board.role)}>{roleLabel}</Badge>
+      <div
+        className="flex items-center gap-1.5 sm:gap-3 shrink-0"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <span className="hidden sm:inline-flex">
+          <Badge variant={getRoleBadgeVariant(board.role)}>{roleLabel}</Badge>
+        </span>
 
         <BoardCardActions
           board={board}

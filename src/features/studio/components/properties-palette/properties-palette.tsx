@@ -76,7 +76,7 @@ export function PropertiesPalette({ engine, onClose }: PropertiesPaletteProps) {
   };
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border-strong bg-surface-raised/95 p-3.5 shadow-xl backdrop-blur-md w-64 select-none animate-in fade-in zoom-in-95 duration-100">
+    <div className="flex flex-col gap-3 rounded-xl border border-border-strong bg-surface-raised/95 p-3.5 shadow-xl backdrop-blur-md w-64 max-w-[calc(100vw-24px)] max-h-[calc(100vh-9rem)] overflow-y-auto select-none animate-in fade-in zoom-in-95 duration-100">
       <div className="flex items-center justify-between border-b border-border-subtle pb-2">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">

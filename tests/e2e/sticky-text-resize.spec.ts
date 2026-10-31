@@ -32,7 +32,7 @@ test.describe('Sticky Note Text Wrapping and Resize E2E', () => {
 
     await page.mouse.click(500, 300);
 
-    const textarea = page.locator('textarea');
+    const textarea = page.locator('textarea').first();
     await expect(textarea).toBeVisible();
     const testText = 'Lorem Ipsum is simply dummy text of the printing and typesetting industry.';
     await textarea.fill(testText);

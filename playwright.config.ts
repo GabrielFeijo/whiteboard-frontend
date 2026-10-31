@@ -1,4 +1,8 @@
+import fs from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
+
+const useSystemChrome =
+  !process.env.CI && fs.existsSync('/usr/bin/google-chrome');
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -14,7 +18,10 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        ...(useSystemChrome ? { channel: 'chrome' } : {}),
+      },
     },
   ],
 });
