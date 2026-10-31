@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -23,7 +24,7 @@ function files(dir) {
 let drift = false;
 for (const [src, dest] of pairs) {
   if (!existsSync(src)) {
-    console.error(`Fonte não encontrada: ${src} (defina BACKEND_DIR)`);
+    process.stderr.write(`Source directory not found: ${src} (set BACKEND_DIR)\n`);
     process.exit(2);
   }
   if (check) {
@@ -35,7 +36,7 @@ for (const [src, dest] of pairs) {
         !existsSync(join(dest, f)) ||
         readFileSync(join(src, f), "utf8") !== readFileSync(join(dest, f), "utf8")
       ) {
-        console.error(`DRIFT: ${join(dest, f)} difere do backend`);
+        process.stderr.write(`DRIFT: ${join(dest, f)} differs from backend\n`);
         drift = true;
       }
     }
@@ -43,10 +44,10 @@ for (const [src, dest] of pairs) {
     rmSync(dest, { recursive: true, force: true });
     mkdirSync(dest, { recursive: true });
     cpSync(src, dest, { recursive: true });
-    console.log(`sync: ${src} -> ${dest}`);
+    process.stdout.write(`sync: ${src} -> ${dest}\n`);
   }
 }
 if (check) {
-  console.log(drift ? "shared DIVERGENTE do backend" : "shared em sincronia com o backend");
+  process.stdout.write(drift ? "shared DIVERGED from backend\n" : "shared in sync with backend\n");
   process.exit(drift ? 1 : 0);
 }
