@@ -1,45 +1,28 @@
-import { z } from "zod";
 import type * as awarenessProtocol from "y-protocols/awareness";
-import { ROLES, Role } from "@/shared";
+import {
+  AwarenessCursor,
+  AwarenessCursorSchema,
+  AwarenessUser,
+  AwarenessUserSchema,
+  AwarenessViewport,
+  AwarenessViewportSchema,
+  PresenceState,
+  PresenceStateSchema,
+  Role,
+} from "@/shared";
 
-const finiteNumber = z.number().finite();
-
-export const AwarenessUserSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  email: z.string().optional(),
-  color: z.string(),
-  role: z.enum(ROLES).default(Role.VIEWER),
-});
-
-export type AwarenessUser = z.infer<typeof AwarenessUserSchema>;
-
-export const AwarenessCursorSchema = z.object({
-  x: finiteNumber,
-  y: finiteNumber,
-});
-
-export type AwarenessCursor = z.infer<typeof AwarenessCursorSchema>;
-
-export const AwarenessViewportSchema = z.object({
-  pan: z.object({
-    x: finiteNumber,
-    y: finiteNumber,
-  }),
-  zoom: finiteNumber,
-});
-
-export type AwarenessViewport = z.infer<typeof AwarenessViewportSchema>;
-
-export const CollaboratorAwarenessStateSchema = z.object({
-  user: AwarenessUserSchema.optional(),
-  cursor: AwarenessCursorSchema.nullable().optional(),
-  viewport: AwarenessViewportSchema.optional(),
-});
-
-export type CollaboratorAwarenessState = z.infer<
-  typeof CollaboratorAwarenessStateSchema
->;
+export {
+  AwarenessCursorSchema,
+  AwarenessUserSchema,
+  AwarenessViewportSchema,
+  PresenceStateSchema as CollaboratorAwarenessStateSchema,
+};
+export type {
+  AwarenessCursor,
+  AwarenessUser,
+  AwarenessViewport,
+  PresenceState as CollaboratorAwarenessState,
+};
 
 export interface ParsedCollaborator {
   clientId: number;
@@ -61,7 +44,7 @@ export function parseAwarenessStates(
   const collaborators: ParsedCollaborator[] = [];
 
   states.forEach((rawState, clientId) => {
-    const parsed = CollaboratorAwarenessStateSchema.safeParse(rawState);
+    const parsed = PresenceStateSchema.safeParse(rawState);
     if (!parsed.success || !parsed.data.user) {
       return;
     }
@@ -80,10 +63,10 @@ export function parseAwarenessStates(
 export function getCollaboratorStateByClientId(
   awareness: awarenessProtocol.Awareness,
   clientId: number,
-): CollaboratorAwarenessState | null {
+): PresenceState | null {
   const rawState = awareness.getStates().get(clientId);
   if (!rawState) return null;
-  const parsed = CollaboratorAwarenessStateSchema.safeParse(rawState);
+  const parsed = PresenceStateSchema.safeParse(rawState);
   return parsed.success ? parsed.data : null;
 }
 

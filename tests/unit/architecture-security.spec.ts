@@ -81,6 +81,21 @@ describe("Architecture, Security, and Strict Typing Modules", () => {
     expect(parsed?.id).toBe("el-1");
     expect(parsed?.type).toBe("rect");
     expect(parsed?.w).toBe(100);
+
+    validMap.set("style", {
+      fill: "#112233",
+      stroke: "#445566",
+      strokeWidth: 4,
+      opacity: 0.8,
+    });
+    YjsElementAdapter.updateYMap(validMap, { style: { fill: "#abcdef" } });
+    const migrated = YjsElementAdapter.toElementData(validMap);
+    expect(migrated?.style).toEqual({
+      fill: "#abcdef",
+      stroke: "#445566",
+      strokeWidth: 4,
+      opacity: 0.8,
+    });
   });
 
   it("computes export bounding boxes and sanitizes filenames", () => {

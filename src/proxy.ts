@@ -69,6 +69,12 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname, searchParams } = request.nextUrl;
   const hostHeader = request.headers.get("host");
 
+  if (isAuthRoute(pathname) && searchParams.get("expired") === "1") {
+    const nextRes = NextResponse.next();
+    clearAuthCookiesFromResponse(nextRes, hostHeader);
+    return nextRes;
+  }
+
   const accessToken = request.cookies.get(COOKIE_NAMES.ACCESS_TOKEN)?.value ?? null;
   const refreshToken = request.cookies.get(COOKIE_NAMES.REFRESH_TOKEN)?.value ?? null;
 

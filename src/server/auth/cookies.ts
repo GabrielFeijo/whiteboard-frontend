@@ -9,11 +9,38 @@ const REFRESH_TOKEN_MAX_AGE = 60 * 60 * 24 * 7;
 
 function isSecureEnvironment(hostHeader?: string | null): boolean {
   if (env.NODE_ENV !== "production") return false;
-  const host = hostHeader ?? "";
-  if (host.includes("localhost") || host.includes("127.0.0.1")) {
+  const rawHost = (hostHeader ?? "").split(",")[0]?.trim() ?? "";
+  const hostname = rawHost.split(":")[0]?.toLowerCase() ?? "";
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
     return false;
   }
   return true;
+}
+
+export function extractClientForwardHeaders(
+  request: NextRequest,
+): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  const realIp = request.headers.get("x-real-ip");
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  const host = request.headers.get("host");
+
+  if (forwardedFor) {
+    headers["X-Forwarded-For"] = forwardedFor;
+  } else if (realIp) {
+    headers["X-Forwarded-For"] = realIp;
+  }
+  if (realIp) {
+    headers["X-Real-IP"] = realIp;
+  }
+  if (forwardedProto) {
+    headers["X-Forwarded-Proto"] = forwardedProto;
+  }
+  if (host) {
+    headers["X-Forwarded-Host"] = host;
+  }
+  return headers;
 }
 
 export interface AuthTokenPair {
@@ -112,6 +139,7 @@ export async function proxyAuthMutation(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...extractClientForwardHeaders(request),
       },
       body: JSON.stringify(body),
       cache: "no-store",

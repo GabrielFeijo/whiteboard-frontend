@@ -7,18 +7,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const refreshToken = request.cookies.get(COOKIE_NAMES.REFRESH_TOKEN)?.value ?? null;
 
   if (refreshToken) {
-    try {
-      await fetch(`${BACKEND_API_V1_URL}/auth/logout`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ refreshToken }),
-        cache: "no-store",
-      });
-    } catch {
-      void 0;
-    }
+    await fetch(`${BACKEND_API_V1_URL}/auth/logout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ refreshToken }),
+      cache: "no-store",
+    }).catch(() => null);
   }
 
   const response = NextResponse.json({ success: true }, { status: 200 });

@@ -17,9 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Whiteboard — Colaboração Visual em Tempo Real",
+  title: "Whiteboard — Real-Time Collaborative Infinite Canvas",
   description:
-    "Quadro branco colaborativo infinito em tempo real com CRDT e sincronização ultra rápida",
+    "Real-time collaborative infinite whiteboard powered by CRDT and low-latency WebSocket synchronization",
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },
@@ -29,23 +29,24 @@ export const metadata: Metadata = {
 
 const themeCookieBootstrapScript = `
 (function() {
-  try {
-    var match = document.cookie.match(/(?:^|;\\s*)wb_theme=([^;]*)/);
-    var theme = match ? decodeURIComponent(match[1]) : 'system';
-    var isDark = theme === 'dark' || (theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    var locMatch = document.cookie.match(/(?:^|;\\s*)wb_locale=([^;]*)/);
-    var locale = locMatch ? decodeURIComponent(locMatch[1]) : '';
-    if (locale === 'en') {
-      document.documentElement.lang = 'en-US';
-    } else if (locale === 'pt') {
-      document.documentElement.lang = 'pt-BR';
-    }
-  } catch (e) {}
+  if (typeof document === 'undefined') return;
+  var cookieStr = document.cookie || '';
+  var match = cookieStr.match(/(?:^|;\\s*)wb_theme=([^;]*)/);
+  var theme = match ? match[1] : 'system';
+  var prefersDark = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  var isDark = theme === 'dark' || (theme !== 'light' && prefersDark);
+  if (isDark) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+  var locMatch = cookieStr.match(/(?:^|;\\s*)wb_locale=([^;]*)/);
+  var locale = locMatch ? locMatch[1] : '';
+  if (locale === 'en') {
+    document.documentElement.lang = 'en-US';
+  } else if (locale === 'pt') {
+    document.documentElement.lang = 'pt-BR';
+  }
 })();
 `;
 

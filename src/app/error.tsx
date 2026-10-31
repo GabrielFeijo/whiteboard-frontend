@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 import { AlertTriangle, LayoutDashboard, RotateCcw } from "lucide-react";
 import { AppLogo } from "@/components/brand/app-logo";
@@ -14,10 +13,6 @@ interface ErrorProps {
 
 export default function ErrorPage({ error, reset }: ErrorProps) {
   const { t } = useI18n();
-
-  useEffect(() => {
-    console.error("Whiteboard runtime error:", error);
-  }, [error]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-canvas p-4 text-text-primary selection:bg-accent-primary/20 selection:text-accent-primary">

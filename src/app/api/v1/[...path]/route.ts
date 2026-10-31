@@ -4,6 +4,7 @@ import { BACKEND_API_V1_URL } from "@/lib/env";
 import {
   applyAuthCookiesToResponse,
   clearAuthCookiesFromResponse,
+  extractClientForwardHeaders,
   AuthTokenPair,
 } from "@/server/auth/cookies";
 import { refreshTokensWithBackend } from "@/server/http/backend-client";
@@ -12,12 +13,35 @@ interface RouteContext {
   params: Promise<{ path: string[] }>;
 }
 
+function isSafeProxyPath(segments: string[]): boolean {
+  if (segments.length === 0) return false;
+  for (const segment of segments) {
+    try {
+      const decoded = decodeURIComponent(segment);
+      if (
+        decoded === "." ||
+        decoded === ".." ||
+        decoded.includes("..") ||
+        decoded.includes("\\")
+      ) {
+        return false;
+      }
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
 function buildForwardHeaders(
+  request: NextRequest,
   contentType: string | null,
   hasBody: boolean,
   token: string | null,
 ): Record<string, string> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {
+    ...extractClientForwardHeaders(request),
+  };
   if (contentType) {
     headers["Content-Type"] = contentType;
   } else if (hasBody) {
@@ -90,6 +114,12 @@ async function handleProxyRequest(
   context: RouteContext,
 ): Promise<NextResponse> {
   const { path } = await context.params;
+  if (!isSafeProxyPath(path)) {
+    return NextResponse.json(
+      { message: "Invalid API path" },
+      { status: 400 },
+    );
+  }
   const subPath = path.join("/");
   const search = request.nextUrl.search;
   const targetUrl = `${BACKEND_API_V1_URL}/${subPath}${search}`;
@@ -104,6 +134,7 @@ async function handleProxyRequest(
 
   const forwardToBackend = async (token: string | null) => {
     const headers = buildForwardHeaders(
+      request,
       request.headers.get("content-type"),
       hasBody,
       token,
@@ -137,11 +168,10 @@ async function handleProxyRequest(
     }
 
     return await buildProxyResponse(upstreamRes, rotatedTokens, refreshToken, hostHeader);
-  } catch (err) {
+  } catch {
     return NextResponse.json(
       {
-        message:
-          err instanceof Error ? err.message : "Failed to communicate with upstream API",
+        message: "Failed to communicate with upstream API",
       },
       { status: 502 },
     );

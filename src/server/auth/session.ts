@@ -30,7 +30,7 @@ export async function getCurrentUser(): Promise<User | null> {
 export async function requireAuth(): Promise<User> {
   const user = await getCurrentUser();
   if (!user) {
-    redirect("/login");
+    redirect("/login?expired=1");
   }
   return user;
 }

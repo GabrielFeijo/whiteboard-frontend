@@ -19,29 +19,43 @@ export const AuthBackendResponseSchema = z.object({
 
 export type AuthBackendResponse = z.infer<typeof AuthBackendResponseSchema>;
 
+const inFlightRefreshRequests = new Map<string, Promise<AuthBackendResponse | null>>();
+
 export async function refreshTokensWithBackend(
   refreshToken: string,
 ): Promise<AuthBackendResponse | null> {
-  try {
-    const response = await fetch(`${BACKEND_API_V1_URL}/auth/refresh`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ refreshToken }),
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const raw: unknown = await response.json();
-    const parsed = AuthBackendResponseSchema.safeParse(raw);
-    return parsed.success ? parsed.data : null;
-  } catch {
-    return null;
+  const existing = inFlightRefreshRequests.get(refreshToken);
+  if (existing) {
+    return existing;
   }
+
+  const refreshPromise = (async (): Promise<AuthBackendResponse | null> => {
+    try {
+      const response = await fetch(`${BACKEND_API_V1_URL}/auth/refresh`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refreshToken }),
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const raw: unknown = await response.json();
+      const parsed = AuthBackendResponseSchema.safeParse(raw);
+      return parsed.success ? parsed.data : null;
+    } catch {
+      return null;
+    } finally {
+      inFlightRefreshRequests.delete(refreshToken);
+    }
+  })();
+
+  inFlightRefreshRequests.set(refreshToken, refreshPromise);
+  return refreshPromise;
 }
 
 export interface ServerFetchOptions extends Omit<RequestInit, "headers"> {
@@ -85,13 +99,13 @@ export async function serverBackendFetch<T>(
           errorMsg = Array.isArray(msg) ? msg.join(", ") : String(msg);
         }
       } catch {
-        void 0;
+        errorMsg = response.statusText || errorMsg;
       }
       return { ok: false, status: response.status, error: errorMsg };
     }
 
     if (response.status === 204) {
-      return { ok: true, status: 204, data: undefined as T };
+      return { ok: true, status: 204, data: null as T };
     }
 
     const json: unknown = await response.json();

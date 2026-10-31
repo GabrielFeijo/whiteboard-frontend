@@ -53,10 +53,8 @@ function DraggablePin({
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDragging) return;
     setIsDragging(false);
-    try {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {
-      void 0;
     }
   };
 

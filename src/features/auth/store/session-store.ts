@@ -72,9 +72,7 @@ export const useSessionStore = create<SessionState>()((set, get) => ({
   logout: async () => {
     set({ isLoading: true });
     try {
-      await api.post<{ success: boolean }>("/auth/logout");
-    } catch {
-      void 0;
+      await api.post<{ success: boolean }>("/auth/logout").catch(() => null);
     } finally {
       set({
         user: null,
