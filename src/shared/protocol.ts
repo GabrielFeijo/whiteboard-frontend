@@ -35,6 +35,7 @@ export const ROLES = [Role.OWNER, Role.EDITOR, Role.VIEWER] as const;
 export const RedisAclEventType = {
   REVOKE_LINK: 'REVOKE_LINK',
   REMOVE_MEMBER: 'REMOVE_MEMBER',
+  REVOKE_USER: 'REVOKE_USER',
 } as const;
 export type RedisAclEventType = (typeof RedisAclEventType)[keyof typeof RedisAclEventType];
 
@@ -48,6 +49,7 @@ export type SnapshotReason = (typeof SnapshotReason)[keyof typeof SnapshotReason
 
 export const redisChannels = {
   updates: (boardId: string) => `board:${boardId}:updates`,
+  awareness: (boardId: string) => `board:${boardId}:awareness`,
   restore: (boardId: string) => `board:${boardId}:restore`,
   acl: (boardId: string) => `board:${boardId}:acl`,
 } as const;
