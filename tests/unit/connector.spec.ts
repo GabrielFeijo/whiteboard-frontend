@@ -197,4 +197,47 @@ describe("Smart Connectors and Magnetic Arrows", () => {
     expect(updatedArrow?.startBinding).toBeUndefined();
     expect(updatedArrow?.endBinding).toEqual({ elementId: "b", anchor: "left" });
   });
+
+  it("does not emit untagged Y.Doc mutations during indexAllElements and cleans up observer on destroy", () => {
+    const doc = new Y.Doc();
+    const spatialIndex = new SpatialIndex();
+    const repo = new YjsElementRepository(doc, spatialIndex);
+
+    const arrow: ElementData = {
+      id: "arr-readonly",
+      type: "arrow",
+      x: 0,
+      y: 0,
+      w: 10,
+      h: 10,
+      points: [25, 30, 125, 180],
+      rotation: 0,
+      z: "a1",
+      style: { fill: "transparent", stroke: "#000", strokeWidth: 2, opacity: 1 },
+      createdBy: "user-1",
+    };
+
+    repo.commitElement(arrow);
+
+    let updateCount = 0;
+    doc.on("update", () => {
+      updateCount += 1;
+    });
+
+    repo.indexAllElements();
+    expect(updateCount).toBe(0);
+    expect(spatialIndex.search({ minX: 20, minY: 20, maxX: 130, maxY: 190 })).toContain(
+      "arr-readonly",
+    );
+
+    let dirtyNotifications = 0;
+    repo.observeChanges(() => {
+      dirtyNotifications += 1;
+    });
+    repo.destroy();
+
+    const map = repo.getElementsMap().get("arr-readonly");
+    map?.set("x", 99);
+    expect(dirtyNotifications).toBe(0);
+  });
 });

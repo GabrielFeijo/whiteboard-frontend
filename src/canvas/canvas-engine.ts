@@ -772,6 +772,7 @@ export class CanvasEngine
       this.repoUnsub();
       this.repoUnsub = null;
     }
+    this.repository.destroy();
     if (this.providerUnsub) {
       this.providerUnsub();
       this.providerUnsub = null;

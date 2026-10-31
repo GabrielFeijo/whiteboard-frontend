@@ -60,14 +60,20 @@ async function buildProxyResponse(
     return emptyResponse;
   }
 
-  const responseText = await upstreamRes.text();
+  const responseBuffer = await upstreamRes.arrayBuffer();
   const contentType = upstreamRes.headers.get("content-type") ?? "application/json";
+  const cacheControl = upstreamRes.headers.get("cache-control");
 
-  const nextRes = new NextResponse(responseText, {
+  const headers: Record<string, string> = {
+    "Content-Type": contentType,
+  };
+  if (cacheControl) {
+    headers["Cache-Control"] = cacheControl;
+  }
+
+  const nextRes = new NextResponse(responseBuffer, {
     status: upstreamRes.status,
-    headers: {
-      "Content-Type": contentType,
-    },
+    headers,
   });
 
   if (rotatedTokens) {

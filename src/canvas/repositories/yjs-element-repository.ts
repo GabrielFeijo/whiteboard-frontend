@@ -20,6 +20,47 @@ import { translateGeometry } from "@/canvas/geometry-helper";
 
 export type ElementStylePatch = Partial<ElementData["style"]>;
 
+const orderKeyValidityCache = new Map<string, boolean>();
+
+export function isValidOrderKey(key: string | null | undefined): key is string {
+  if (!key) return false;
+  const cached = orderKeyValidityCache.get(key);
+  if (cached !== undefined) return cached;
+  try {
+    generateKeyBetween(key, null);
+    orderKeyValidityCache.set(key, true);
+    return true;
+  } catch {
+    orderKeyValidityCache.set(key, false);
+    return false;
+  }
+}
+
+export function compareZIndex(aZ = "", bZ = ""): number {
+  const aLegacy = aZ.charCodeAt(1) === 95;
+  const bLegacy = bZ.charCodeAt(1) === 95;
+  if (aLegacy !== bLegacy) {
+    return aLegacy ? -1 : 1;
+  }
+  return aZ > bZ ? 1 : aZ < bZ ? -1 : 0;
+}
+
+export function safeGenerateKeyBetween(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): string {
+  const validA = isValidOrderKey(a) ? a : null;
+  const validB = isValidOrderKey(b) ? b : null;
+  try {
+    if (validA && validB && validA >= validB) {
+      return generateKeyBetween(validA, null);
+    }
+    return generateKeyBetween(validA, validB);
+  } catch {
+    return generateKeyBetween("a0", null);
+  }
+}
+
 function offsetPoints(
   points: number[] | undefined,
   type: ElementData["type"],
@@ -34,6 +75,7 @@ function offsetPoints(
 
 export class YjsElementRepository {
   private readonly elementCache = new Map<string, ElementData>();
+  private sortedAllCache: ElementData[] | null = null;
   private readonly dirtyListeners = new Set<() => void>();
   private readonly observer: Parameters<Y.Map<unknown>["observeDeep"]>[0];
 
@@ -48,6 +90,7 @@ export class YjsElementRepository {
           event.keys.forEach((change, key) => {
             if (change.action === "delete") {
               this.elementCache.delete(key);
+              this.sortedAllCache = null;
               this.spatialIndex.remove(key);
               return;
             }
@@ -78,6 +121,7 @@ export class YjsElementRepository {
     this.getElementsMap().unobserveDeep(this.observer);
     this.dirtyListeners.clear();
     this.elementCache.clear();
+    this.sortedAllCache = null;
   }
 
   getElementsMap(): Y.Map<Y.Map<unknown>> {
@@ -90,6 +134,7 @@ export class YjsElementRepository {
   ): ElementData | null {
     const data = YjsElementAdapter.toElementData(map);
     const elementId = data?.id || fallbackId;
+    this.sortedAllCache = null;
     if (data && elementId) {
       this.elementCache.set(elementId, data);
       const box = getElementBoundingBox(data);
@@ -106,27 +151,10 @@ export class YjsElementRepository {
   indexAllElements(): void {
     this.spatialIndex.clear();
     this.elementCache.clear();
+    this.sortedAllCache = null;
     const elementsMap = this.getElementsMap();
     elementsMap.forEach((map, id) => {
-      const data = this.syncCacheAndSpatialIndex(map, id);
-      if (!data) return;
-
-      const box = getElementBoundingBox(data);
-      const isConnector = data.type === ElementType.LINE || data.type === ElementType.ARROW;
-      const boundsDiffer =
-        data.x !== box.x ||
-        data.y !== box.y ||
-        data.w !== box.w ||
-        data.h !== box.h;
-
-      if (isConnector && boundsDiffer) {
-        YjsElementAdapter.updateYMap(map, {
-          x: box.x,
-          y: box.y,
-          w: box.w,
-          h: box.h,
-        });
-      }
+      this.syncCacheAndSpatialIndex(map, id);
     });
   }
 
@@ -170,9 +198,16 @@ export class YjsElementRepository {
     maxX: number;
     maxY: number;
   }): ElementData[] {
-    const visibleIds = new Set(this.spatialIndex.search(bounds));
-    const elements = this.getManyByIds(Array.from(visibleIds));
-    return elements.sort((a, b) => (a.z > b.z ? 1 : a.z < b.z ? -1 : 0));
+    const visibleIds = this.spatialIndex.search(bounds);
+    if (visibleIds.length === 0) return [];
+    if (
+      visibleIds.length === this.elementCache.size &&
+      this.elementCache.size > 0
+    ) {
+      return this.getAllElements();
+    }
+    const elements = this.getManyByIds(visibleIds);
+    return elements.sort((a, b) => compareZIndex(a.z, b.z));
   }
 
   hitTest(worldPt: { x: number; y: number }): string | null {
@@ -188,9 +223,7 @@ export class YjsElementRepository {
     const candidateElements = this.getManyByIds(hits);
     if (candidateElements.length === 0) return null;
 
-    candidateElements.sort((a, b) =>
-      (b.z || "") > (a.z || "") ? 1 : (b.z || "") < (a.z || "") ? -1 : 0,
-    );
+    candidateElements.sort((a, b) => compareZIndex(b.z, a.z));
 
     for (const el of candidateElements) {
       if (isPointInElement(worldPt, el)) {
@@ -206,9 +239,9 @@ export class YjsElementRepository {
     let highest = "a0";
     elementsMap.forEach((map) => {
       const z = YjsElementAdapter.getZIndex(map);
-      if (z > highest) highest = z;
+      if (isValidOrderKey(z) && z > highest) highest = z;
     });
-    return generateKeyBetween(highest, null);
+    return safeGenerateKeyBetween(highest, null);
   }
 
   commitElement(data: ElementData): void {
@@ -220,6 +253,7 @@ export class YjsElementRepository {
     }, LOCAL_ORIGIN);
 
     this.elementCache.set(data.id, data);
+    this.sortedAllCache = null;
     const box = getElementBoundingBox(data);
     this.spatialIndex.insert(data.id, box.x, box.y, box.w, box.h);
   }
@@ -353,14 +387,14 @@ export class YjsElementRepository {
     let highest = "a0";
     elementsMap.forEach((map) => {
       const z = YjsElementAdapter.getZIndex(map);
-      if (z > highest) highest = z;
+      if (isValidOrderKey(z) && z > highest) highest = z;
     });
 
     this.doc.transact(() => {
       ids.forEach((id) => {
         const map = elementsMap.get(id);
         if (map) {
-          highest = generateKeyBetween(highest, null);
+          highest = safeGenerateKeyBetween(highest, null);
           YjsElementAdapter.updateYMap(map, { z: highest });
         }
       });
@@ -373,14 +407,14 @@ export class YjsElementRepository {
     let lowest = "a0";
     elementsMap.forEach((map) => {
       const z = YjsElementAdapter.getZIndex(map);
-      if (!lowest || z < lowest) lowest = z;
+      if (isValidOrderKey(z) && (!lowest || z < lowest)) lowest = z;
     });
 
     this.doc.transact(() => {
       ids.forEach((id) => {
         const map = elementsMap.get(id);
         if (map) {
-          lowest = generateKeyBetween(null, lowest);
+          lowest = safeGenerateKeyBetween(null, lowest);
           YjsElementAdapter.updateYMap(map, { z: lowest });
         }
       });
@@ -409,12 +443,15 @@ export class YjsElementRepository {
 
         const aboveEl = sorted[nextUnselectedIdx];
         const afterAboveEl = sorted[nextUnselectedIdx + 1];
-        const newZ = generateKeyBetween(aboveEl.z, afterAboveEl ? afterAboveEl.z : null);
+        const newZ = safeGenerateKeyBetween(
+          aboveEl.z,
+          afterAboveEl ? afterAboveEl.z : null,
+        );
         const map = elementsMap.get(current.id);
         if (map) {
           YjsElementAdapter.updateYMap(map, { z: newZ });
           current.z = newZ;
-          sorted.sort((a, b) => (a.z > b.z ? 1 : a.z < b.z ? -1 : 0));
+          sorted.sort((a, b) => compareZIndex(a.z, b.z));
         }
       }
     }, LOCAL_ORIGIN);
@@ -442,12 +479,15 @@ export class YjsElementRepository {
 
         const belowEl = sorted[prevUnselectedIdx];
         const beforeBelowEl = sorted[prevUnselectedIdx - 1];
-        const newZ = generateKeyBetween(beforeBelowEl ? beforeBelowEl.z : null, belowEl.z);
+        const newZ = safeGenerateKeyBetween(
+          beforeBelowEl ? beforeBelowEl.z : null,
+          belowEl.z,
+        );
         const map = elementsMap.get(current.id);
         if (map) {
           YjsElementAdapter.updateYMap(map, { z: newZ });
           current.z = newZ;
-          sorted.sort((a, b) => (a.z > b.z ? 1 : a.z < b.z ? -1 : 0));
+          sorted.sort((a, b) => compareZIndex(a.z, b.z));
         }
       }
     }, LOCAL_ORIGIN);
@@ -654,8 +694,13 @@ export class YjsElementRepository {
   }
 
   getAllElements(): ElementData[] {
+    if (this.sortedAllCache && this.sortedAllCache.length === this.elementCache.size && this.elementCache.size > 0) {
+      return this.sortedAllCache.slice();
+    }
     const result = this.getManyByIds(this.getAllElementIds());
-    return result.sort((a, b) => (a.z > b.z ? 1 : a.z < b.z ? -1 : 0));
+    result.sort((a, b) => compareZIndex(a.z, b.z));
+    this.sortedAllCache = result;
+    return result.slice();
   }
 
   nudgeElements(ids: readonly string[], dx: number, dy: number): void {

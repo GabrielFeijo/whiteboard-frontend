@@ -61,9 +61,9 @@ export class CanvasAssetService {
         });
 
         if (uploadRes.ok) {
-          imageSrc =
-            presignRes.data.readUrl ||
-            `/api/v1/boards/${boardId}/assets/${encodeURIComponent(presignRes.data.key)}/view`;
+          const assetFilename =
+            presignRes.data.key.split("/").pop() || presignRes.data.key;
+          imageSrc = `/api/v1/boards/${boardId}/assets/${encodeURIComponent(assetFilename)}/view`;
           assetId = presignRes.data.key;
         }
       } catch {

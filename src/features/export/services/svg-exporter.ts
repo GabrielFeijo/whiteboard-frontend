@@ -4,6 +4,7 @@ import {
   computeConnectorCurve,
   resolveArrowEndpoints,
 } from "@/canvas/connector-helper";
+import { resolveRenderableImageSrc } from "@/canvas/renderers/image-renderer";
 import type { ElementData } from "@/shared";
 import {
   computeExportBoundingBox,
@@ -179,8 +180,9 @@ export function renderElementToSvgMarkup(
       break;
     }
     case "image": {
-      if (!el.src) return "";
-      const safeSrc = escapeXml(el.src);
+      const resolvedSrc = resolveRenderableImageSrc(el);
+      if (!resolvedSrc) return "";
+      const safeSrc = escapeXml(resolvedSrc);
       markup = `<image href="${safeSrc}" x="${el.x}" y="${el.y}" width="${el.w}" height="${el.h}" preserveAspectRatio="none" opacity="${opacity}" />\n`;
       break;
     }

@@ -42,6 +42,7 @@ export const SnapshotReason = {
   AUTO: 'AUTO',
   MANUAL: 'MANUAL',
   INITIAL_SEED: 'INITIAL_SEED',
+  PRE_RESTORE: 'PRE_RESTORE',
 } as const;
 export type SnapshotReason = (typeof SnapshotReason)[keyof typeof SnapshotReason] | string;
 

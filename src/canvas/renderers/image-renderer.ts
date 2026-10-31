@@ -1,7 +1,58 @@
 import { ElementData } from "@/shared";
 
 const MAX_CACHE_ENTRIES = 100;
+const MAX_RETRY_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 1500;
 const imageCache = new Map<string, HTMLImageElement>();
+const imageRetryCounts = new Map<string, number>();
+
+function extractBoardAssetRef(
+  assetId?: string,
+  rawSrc?: string,
+): { boardId: string; filename: string } | null {
+  if (assetId) {
+    const match = assetId.match(/^boards\/([^/]+)\/([^/?#]+)$/);
+    if (match) {
+      return { boardId: match[1], filename: match[2] };
+    }
+  }
+
+  if (!rawSrc || rawSrc.startsWith("data:") || rawSrc.startsWith("blob:")) {
+    return null;
+  }
+
+  const apiViewMatch = rawSrc.match(/\/boards\/([^/]+)\/assets\/([^/?#]+)\/view/);
+  if (apiViewMatch) {
+    const decodedKey = decodeURIComponent(apiViewMatch[2]);
+    const filename = decodedKey.split("/").pop();
+    if (filename) {
+      return { boardId: apiViewMatch[1], filename };
+    }
+  }
+
+  const s3PathMatch = rawSrc.match(/\/boards\/([^/]+)\/([^/?#]+)(?:\?|$)/);
+  if (s3PathMatch) {
+    return { boardId: s3PathMatch[1], filename: s3PathMatch[2] };
+  }
+
+  return null;
+}
+
+export function resolveRenderableImageSrc(el: ElementData): string | null {
+  const ref = extractBoardAssetRef(el.assetId, el.src);
+  if (ref) {
+    let url = `/api/v1/boards/${ref.boardId}/assets/${encodeURIComponent(ref.filename)}/view`;
+    if (typeof window !== "undefined") {
+      const token = new URLSearchParams(window.location.search).get("token");
+      if (token) {
+        url += `?token=${encodeURIComponent(token)}`;
+      }
+    }
+    return url;
+  }
+
+  return el.src ?? null;
+}
 
 function pruneImageCache(): void {
   if (imageCache.size < MAX_CACHE_ENTRIES) return;
@@ -19,10 +70,18 @@ function getOrLoadImage(src: string, onImageLoaded?: () => void): HTMLImageEleme
   const img = new Image();
   img.crossOrigin = "anonymous";
   img.onload = () => {
+    imageRetryCounts.delete(src);
     onImageLoaded?.();
   };
   img.onerror = () => {
     imageCache.delete(src);
+    const attempts = (imageRetryCounts.get(src) ?? 0) + 1;
+    imageRetryCounts.set(src, attempts);
+    if (attempts <= MAX_RETRY_ATTEMPTS && onImageLoaded) {
+      setTimeout(() => {
+        onImageLoaded();
+      }, RETRY_DELAY_MS * attempts);
+    }
   };
   img.src = src;
   imageCache.set(src, img);
@@ -34,13 +93,14 @@ function tryRenderLoadedImage(
   el: ElementData,
   onImageLoaded?: () => void,
 ): boolean {
-  if (!el.src) return false;
+  const resolvedSrc = resolveRenderableImageSrc(el);
+  if (!resolvedSrc) return false;
 
-  const img = getOrLoadImage(el.src, onImageLoaded);
+  const img = getOrLoadImage(resolvedSrc, onImageLoaded);
   if (!img.complete || img.naturalWidth <= 0) return false;
 
-  imageCache.delete(el.src);
-  imageCache.set(el.src, img);
+  imageCache.delete(resolvedSrc);
+  imageCache.set(resolvedSrc, img);
   ctx.drawImage(img, el.x, el.y, el.w, el.h);
   return true;
 }
