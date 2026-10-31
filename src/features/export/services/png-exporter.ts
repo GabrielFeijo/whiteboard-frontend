@@ -33,8 +33,11 @@ export function exportBoardAsPng(
       ctx.scale(dpr, dpr);
       ctx.translate(-bbox.minX, -bbox.minY);
 
+      const elementById = new Map(elements.map((el) => [el.id, el]));
+      const getElementById = (id: string) => elementById.get(id) ?? null;
+
       for (const el of elements) {
-        renderElement(ctx, el);
+        renderElement(ctx, el, getElementById);
       }
 
       offscreen.toBlob((blob) => {

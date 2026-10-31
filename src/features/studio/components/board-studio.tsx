@@ -283,6 +283,7 @@ export function BoardStudio({
           doc={provider.doc}
           boardTitle={board.title}
           onClose={() => setActiveModal(null)}
+          onImported={() => engine?.reindexElements()}
         />
       )}
 

@@ -70,39 +70,40 @@ export function BoardCardActions({
       }
       onClick={(e) => e.stopPropagation()}
     >
-      {variant === "text-share" ? (
-        <>
-          <span className="hidden sm:inline-flex">
-            <Button
-              variant="ghost"
-              size="sm"
+      {board.role === Role.OWNER &&
+        (variant === "text-share" ? (
+          <>
+            <span className="hidden sm:inline-flex">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onShare(board)}
+                className="text-xs"
+              >
+                {t("dashboard.card.share")}
+              </Button>
+            </span>
+            <button
+              type="button"
               onClick={() => onShare(board)}
-              className="text-xs"
+              title={t("dashboard.card.share")}
+              aria-label={t("dashboard.card.share")}
+              className="sm:hidden rounded-md p-1.5 text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"
             >
-              {t("dashboard.card.share")}
-            </Button>
-          </span>
+              <Share2 className="h-3.5 w-3.5" />
+            </button>
+          </>
+        ) : (
           <button
             type="button"
             onClick={() => onShare(board)}
             title={t("dashboard.card.share")}
             aria-label={t("dashboard.card.share")}
-            className="sm:hidden rounded-md p-1.5 text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"
+            className="rounded-md p-1.5 text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"
           >
             <Share2 className="h-3.5 w-3.5" />
           </button>
-        </>
-      ) : (
-        <button
-          type="button"
-          onClick={() => onShare(board)}
-          title={t("dashboard.card.share")}
-          aria-label={t("dashboard.card.share")}
-          className="rounded-md p-1.5 text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"
-        >
-          <Share2 className="h-3.5 w-3.5" />
-        </button>
-      )}
+        ))}
 
       {canRename && onRename && (
         <button

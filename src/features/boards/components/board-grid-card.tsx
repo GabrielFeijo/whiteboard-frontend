@@ -47,11 +47,11 @@ export function BoardGridCard({
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="font-semibold text-sm text-text-primary truncate group-hover:text-accent-primary transition-colors">
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <h3 className="font-semibold text-sm text-text-primary truncate min-w-0 flex-1 group-hover:text-accent-primary transition-colors">
             {board.title}
           </h3>
-          <Badge variant={getRoleBadgeVariant(board.role)}>{roleLabel}</Badge>
+          <Badge variant={getRoleBadgeVariant(board.role)} className="shrink-0">{roleLabel}</Badge>
         </div>
 
         <p className="mt-1 text-xs text-text-muted">

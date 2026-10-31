@@ -66,13 +66,13 @@ export function BoardMembersList({ boardId }: BoardMembersListProps) {
           </p>
         ) : (
           members.map((member) => (
-            <div key={member.userId} className="flex items-center justify-between py-2 text-xs">
-              <div>
+            <div key={member.userId} className="flex items-center justify-between py-2 text-xs gap-2">
+              <div className="min-w-0 flex-1 truncate">
                 <span className="font-medium text-text-primary">{member.user.name}</span>
-                <span className="ml-1 text-[11px] text-text-muted">({member.user.email})</span>
+                <span className="ml-1 text-[11px] text-text-muted truncate">({member.user.email})</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant={ROLE_BADGE_VARIANTS[member.role] ?? "neutral"}>
+              <div className="flex items-center gap-2 shrink-0">
+                <Badge variant={ROLE_BADGE_VARIANTS[member.role] ?? "neutral"} className="shrink-0">
                   {t(ROLE_TRANSLATION_MAP[member.role])}
                 </Badge>
                 {member.role !== Role.OWNER && (
@@ -81,7 +81,7 @@ export function BoardMembersList({ boardId }: BoardMembersListProps) {
                     size="xs"
                     onClick={() => setRemovingMemberId(member.userId)}
                     disabled={removeMemberMutation.isPending}
-                    className="text-red-500 hover:text-red-600"
+                    className="text-red-500 hover:text-red-600 shrink-0"
                   >
                     {t("shareModal.members.remove")}
                   </Button>

@@ -176,7 +176,7 @@ export function StudioToolbar({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*,.svg"
+        accept="image/png,image/jpeg,image/webp,image/gif"
         className="hidden"
         onChange={handleFileChange}
       />

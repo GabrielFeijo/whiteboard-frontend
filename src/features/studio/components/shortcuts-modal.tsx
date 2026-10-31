@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Keyboard, X } from "lucide-react";
 import { useI18n } from "@/i18n/context";
 
@@ -15,6 +16,17 @@ interface ShortcutRow {
 
 export function ShortcutsModal({ isOpen, onClose }: ShortcutsModalProps) {
   const { t } = useI18n();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -84,16 +96,16 @@ export function ShortcutsModal({ isOpen, onClose }: ShortcutsModalProps) {
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-2xl rounded-2xl border border-border-strong bg-surface-raised p-6 shadow-2xl"
       >
-        <div className="flex items-start justify-between border-b border-border-subtle pb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-primary/10 text-accent-primary">
+        <div className="flex items-start justify-between border-b border-border-subtle pb-4 gap-3">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-primary/10 text-accent-primary">
               <Keyboard className="h-5 w-5" />
             </div>
-            <div>
-              <h2 className="text-base font-bold text-text-primary">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base font-bold text-text-primary leading-tight">
                 {t("studio.shortcutsModal.title")}
               </h2>
-              <p className="text-xs text-text-muted">
+              <p className="text-xs text-text-muted truncate">
                 {t("studio.shortcutsModal.subtitle")}
               </p>
             </div>
@@ -101,7 +113,7 @@ export function ShortcutsModal({ isOpen, onClose }: ShortcutsModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-text-muted hover:bg-surface-hover hover:text-text-primary transition-colors"
+            className="rounded-lg p-1.5 text-text-muted hover:bg-surface-hover hover:text-text-primary transition-colors shrink-0"
             aria-label={t("common.actions.close")}
           >
             <X className="h-4 w-4" />

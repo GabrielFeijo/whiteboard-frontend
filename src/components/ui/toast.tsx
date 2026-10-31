@@ -4,6 +4,7 @@ import * as React from "react";
 import * as ToastPrimitive from "@radix-ui/react-toast";
 import { AlertCircle, AlertTriangle, Check, Info, X } from "lucide-react";
 import { nanoid } from "nanoid";
+import { useI18n } from "@/i18n/context";
 
 export type ToastVariant = "default" | "success" | "error" | "warning" | "info";
 
@@ -216,6 +217,7 @@ export function Toast({
 
 export function Toaster() {
   const { toasts, dismiss } = useToast();
+  const { t } = useI18n();
 
   return (
     <ToastProvider swipeDirection="right">
@@ -246,14 +248,14 @@ export function Toaster() {
           </div>
 
           {item.action && (
-            <ToastAction asChild altText="Ação do Toast">
+            <ToastAction asChild altText={t("common.actions.confirm")}>
               {item.action}
             </ToastAction>
           )}
 
           <ToastClose
             className="rounded-lg p-1 text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors shrink-0 -mr-1 -mt-1"
-            aria-label="Fechar notificação"
+            aria-label={t("common.actions.close")}
           >
             <X className="h-3.5 w-3.5" />
           </ToastClose>

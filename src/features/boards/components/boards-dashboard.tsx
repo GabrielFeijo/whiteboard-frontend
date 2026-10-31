@@ -24,6 +24,7 @@ import { RenameBoardModal } from "@/features/boards/components/rename-board-moda
 import {
   useDashboardPrefsStore,
   DashboardRoleFilter,
+  DashboardSortBy,
 } from "@/features/boards/store/dashboard-prefs-store";
 import { ShareModal } from "@/features/share/components/share-modal";
 import { useI18n } from "@/i18n/context";
@@ -48,11 +49,15 @@ export function BoardsDashboard({ user, initialBoards }: BoardsDashboardProps) {
   const router = useRouter();
   const hydrateUser = useSessionStore((s) => s.hydrateUser);
 
-  const { viewMode, filterRole } = useDashboardPrefsStore();
+  const { viewMode, filterRole, sortBy } = useDashboardPrefsStore();
   const [searchQuery, setSearchQuery] = useState("");
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [activeDialog, setActiveDialog] = useState<DashboardDialogState>(null);
 
-  const { data, isLoading } = useBoardsQuery(initialBoards);
+  const { data, isLoading } = useBoardsQuery(
+    cursor ? undefined : initialBoards,
+    cursor,
+  );
   const duplicateMutation = useDuplicateBoardMutation();
   const deleteMutation = useDeleteBoardMutation();
 
@@ -63,7 +68,7 @@ export function BoardsDashboard({ user, initialBoards }: BoardsDashboardProps) {
   const filteredBoards = useMemo(() => {
     const allBoards = data?.items ?? [];
     const normalizedQuery = searchQuery.toLowerCase().trim();
-    return allBoards.filter((board) => {
+    const filtered = allBoards.filter((board) => {
       if (normalizedQuery && !board.title.toLowerCase().includes(normalizedQuery)) {
         return false;
       }
@@ -75,7 +80,14 @@ export function BoardsDashboard({ user, initialBoards }: BoardsDashboardProps) {
       }
       return true;
     });
-  }, [data?.items, searchQuery, filterRole]);
+
+    return [...filtered].sort((a, b) => {
+      if (sortBy === DashboardSortBy.TITLE) {
+        return a.title.localeCompare(b.title);
+      }
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+  }, [data?.items, searchQuery, filterRole, sortBy]);
 
   const handleOpenBoard = (boardId: string) => {
     router.push(`/board/${boardId}`);
@@ -184,6 +196,29 @@ export function BoardsDashboard({ user, initialBoards }: BoardsDashboardProps) {
                 />
               ))}
             </div>
+          </div>
+        )}
+
+        {(cursor || data?.nextCursor) && (
+          <div className="mt-6 flex items-center justify-center gap-3">
+            {cursor && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCursor(undefined)}
+              >
+                ← First Page
+              </Button>
+            )}
+            {data?.nextCursor && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCursor(data.nextCursor ?? undefined)}
+              >
+                Next Page →
+              </Button>
+            )}
           </div>
         )}
 

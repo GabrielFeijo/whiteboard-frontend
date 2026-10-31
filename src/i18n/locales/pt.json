@@ -184,6 +184,10 @@
       "viewMode": {
         "grid": "Visualização em Grade",
         "list": "Visualização em Lista"
+      },
+      "sortBy": {
+        "recent": "Recente",
+        "alphabetical": "A–Z"
       }
     },
     "emptyState": {

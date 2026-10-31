@@ -136,6 +136,8 @@ export function ShapeToolMenu({ readOnly }: ShapeToolMenuProps) {
                 <button
                   type="button"
                   onClick={() => selectShape(shape.id)}
+                  title={shape.label}
+                  aria-label={shape.label}
                   className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-150 ${
                     isSelected
                       ? "bg-accent-primary text-white shadow-xs"

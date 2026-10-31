@@ -1,9 +1,10 @@
 "use client";
 
-import { LayoutGrid, List, Search } from "lucide-react";
+import { ArrowUpDown, LayoutGrid, List, Search } from "lucide-react";
 import {
   useDashboardPrefsStore,
   DashboardRoleFilter,
+  DashboardSortBy,
   DashboardViewMode,
 } from "@/features/boards/store/dashboard-prefs-store";
 import { useI18n } from "@/i18n/context";
@@ -20,7 +21,8 @@ export function BoardsFilterBar({
   totalCount,
 }: BoardsFilterBarProps) {
   const { t } = useI18n();
-  const { viewMode, filterRole, setViewMode, setFilterRole } = useDashboardPrefsStore();
+  const { viewMode, filterRole, sortBy, setViewMode, setFilterRole, setSortBy } =
+    useDashboardPrefsStore();
 
   const filterButtons: { role: DashboardRoleFilter; label: string }[] = [
     { role: DashboardRoleFilter.ALL, label: t("dashboard.filters.tabs.all") },
@@ -67,6 +69,25 @@ export function BoardsFilterBar({
             ? t("dashboard.filters.counter.singular")
             : t("dashboard.filters.counter.plural")}
         </span>
+
+        <button
+          type="button"
+          onClick={() =>
+            setSortBy(
+              sortBy === DashboardSortBy.UPDATED_AT
+                ? DashboardSortBy.TITLE
+                : DashboardSortBy.UPDATED_AT,
+            )
+          }
+          className="inline-flex items-center gap-1 rounded-lg border border-border-subtle bg-surface px-2.5 py-1 text-xs font-medium text-text-muted hover:text-text-primary shadow-2xs transition-colors shrink-0 whitespace-nowrap"
+        >
+          <ArrowUpDown className="h-3 w-3" />
+          <span>
+            {sortBy === DashboardSortBy.TITLE
+              ? t("dashboard.filters.sortBy.alphabetical")
+              : t("dashboard.filters.sortBy.recent")}
+          </span>
+        </button>
 
         <div className="flex items-center rounded-lg border border-border-subtle bg-surface p-0.5 shadow-2xs">
           <button

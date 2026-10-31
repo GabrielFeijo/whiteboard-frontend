@@ -38,6 +38,7 @@ export function ColorSwatchPicker({
               }`}
               style={{ backgroundColor: isTransparent ? "transparent" : color }}
               title={isTransparent ? t("studio.inspector.fields.transparent") : color}
+              aria-label={isTransparent ? t("studio.inspector.fields.transparent") : color}
             >
               {isTransparent && (
                 <div className="h-4 w-0.5 rotate-45 bg-red-500 rounded-full" />

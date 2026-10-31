@@ -22,7 +22,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref,
   ) => {
     const baseStyles =
-      "inline-flex items-center justify-center font-medium rounded-lg transition-all duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40 focus-visible:ring-offset-1 select-none disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]";
+      "inline-flex items-center justify-center font-medium rounded-lg transition-all duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40 focus-visible:ring-offset-1 select-none disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98] whitespace-nowrap";
 
     const variantStyles = {
       primary:
@@ -38,10 +38,10 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     }[variant];
 
     const sizeStyles = {
-      xs: "text-xs px-2 py-0.5 h-6 gap-1.5",
-      sm: "text-xs px-2.5 py-1 h-7 gap-1.5",
-      md: "text-sm px-3.5 py-1.5 h-9 gap-2",
-      lg: "text-base px-5 py-2.5 h-11 gap-2.5",
+      xs: "text-xs px-2.5 py-1 min-h-7 gap-1.5",
+      sm: "text-xs px-3 py-1.5 min-h-8 gap-1.5",
+      md: "text-sm px-3.5 py-1.5 min-h-9 gap-2",
+      lg: "text-base px-5 py-2.5 min-h-11 gap-2.5",
       icon: "h-9 w-9 p-0",
       "icon-sm": "h-7 w-7 p-0",
     }[size];

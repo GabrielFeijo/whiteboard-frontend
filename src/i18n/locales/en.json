@@ -184,6 +184,10 @@
       "viewMode": {
         "grid": "Grid View",
         "list": "List View"
+      },
+      "sortBy": {
+        "recent": "Recent",
+        "alphabetical": "A–Z"
       }
     },
     "emptyState": {
