@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 
 import { CanvasEngine } from "@/canvas/canvas-engine";
-import { SlidersHorizontal } from "lucide-react";
+import { AlertCircle, FileQuestion, ShieldAlert, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { useSessionStore } from "@/features/auth/store/session-store";
@@ -27,10 +28,12 @@ import { useBoardCollab } from "@/features/studio/hooks/use-board-collab";
 import { useFollowCollaborator } from "@/features/studio/hooks/use-follow-collaborator";
 import { VersionHistoryModal } from "@/features/version-history/components/version-history-modal";
 import { useI18n } from "@/i18n/context";
+import { getApiErrorMessage } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { SessionUser } from "@/features/auth/types";
 import type { BoardDetail } from "@/features/boards/types";
 import { Role } from "@/shared";
+import { SyncStatus } from "@/collab/sync-provider";
 import { useCanvasStore } from "@/store/canvas-store";
 
 interface BoardStudioProps {
@@ -159,18 +162,92 @@ export function BoardStudio({
   }
 
   if (boardError || !board) {
-    const errorMessage =
-      boardError instanceof Error ? boardError.message : t("studio.header.loading");
+    const is403 =
+      (axios.isAxiosError(boardError) && boardError.response?.status === 403) ||
+      (boardError instanceof Error && boardError.message.includes("403"));
+    const is404 =
+      (axios.isAxiosError(boardError) && boardError.response?.status === 404) ||
+      (boardError instanceof Error && boardError.message.includes("404"));
+
+    if (is403) {
+      return (
+        <div className="flex h-screen w-screen items-center justify-center bg-canvas p-4 select-none">
+          <div className="max-w-md w-full rounded-2xl border border-border-strong bg-surface p-8 text-center shadow-2xl flex flex-col items-center animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 mb-4 ring-8 ring-amber-500/5">
+              <ShieldAlert className="h-7 w-7" />
+            </div>
+            <h2 className="text-lg font-bold text-text-primary tracking-tight">
+              {t("studio.accessDenied.title")}
+            </h2>
+            <p className="mt-2 text-xs leading-relaxed text-text-muted">
+              {t("studio.accessDenied.description")}
+            </p>
+            <div className="mt-6 flex flex-col sm:flex-row w-full gap-2.5">
+              <Button
+                onClick={() => router.push("/boards")}
+                variant="outline"
+                size="md"
+                className="flex-1"
+              >
+                {t("studio.accessDenied.backToBoards")}
+              </Button>
+              <Button
+                onClick={() => router.push("/login")}
+                variant="primary"
+                size="md"
+                className="flex-1"
+              >
+                {t("studio.accessDenied.switchAccount")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (is404) {
+      return (
+        <div className="flex h-screen w-screen items-center justify-center bg-canvas p-4 select-none">
+          <div className="max-w-md w-full rounded-2xl border border-border-strong bg-surface p-8 text-center shadow-2xl flex flex-col items-center animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-primary/10 text-accent-primary mb-4 ring-8 ring-accent-primary/5">
+              <FileQuestion className="h-7 w-7" />
+            </div>
+            <h2 className="text-lg font-bold text-text-primary tracking-tight">
+              {t("studio.notFound.title")}
+            </h2>
+            <p className="mt-2 text-xs leading-relaxed text-text-muted">
+              {t("studio.notFound.description")}
+            </p>
+            <div className="mt-6 w-full">
+              <Button
+                onClick={() => router.push("/boards")}
+                variant="primary"
+                size="md"
+                className="w-full"
+              >
+                {t("studio.notFound.backToBoards")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-canvas p-4">
-        <div className="max-w-md rounded-2xl border border-red-500/20 bg-surface p-6 text-center shadow-xl">
+      <div className="flex h-screen w-screen items-center justify-center bg-canvas p-4 select-none">
+        <div className="max-w-md w-full rounded-2xl border border-red-500/20 bg-surface p-8 text-center shadow-2xl flex flex-col items-center animate-in fade-in duration-200">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 text-red-500 mb-4 ring-8 ring-red-500/5">
+            <AlertCircle className="h-7 w-7" />
+          </div>
           <h2 className="text-base font-bold text-red-500">{t("common.status.error")}</h2>
-          <p className="mt-2 text-xs text-text-muted">{errorMessage}</p>
+          <p className="mt-2 text-xs leading-relaxed text-text-muted">
+            {getApiErrorMessage(boardError, t("studio.errors.generic"))}
+          </p>
           <Button
             onClick={() => router.push("/boards")}
             variant="primary"
-            size="sm"
-            className="mt-4"
+            size="md"
+            className="mt-6 w-full"
           >
             {t("studio.header.backToBoards")}
           </Button>
@@ -185,8 +262,8 @@ export function BoardStudio({
     try {
       await updateBoardMutation.mutateAsync({ title: newTitle });
       toast.success(t("common.toasts.boardRenamed"));
-    } catch {
-      toast.error(t("common.toasts.boardRenameError"));
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, t("common.toasts.boardRenameError")));
       throw new Error("Rename failed");
     }
   };
@@ -218,6 +295,23 @@ export function BoardStudio({
         onOpenShare={() => setActiveModal("share")}
         onRenameBoard={handleRenameBoard}
       />
+
+      {syncStatus === SyncStatus.FORBIDDEN && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 rounded-xl border border-red-500/30 bg-surface/95 backdrop-blur-md shadow-2xl text-red-500 animate-in slide-in-from-top-4 duration-200">
+          <ShieldAlert className="h-4 w-4 shrink-0" />
+          <span className="text-xs font-semibold text-text-primary">
+            {t("studio.errors.accessRevoked")}
+          </span>
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={() => router.push("/boards")}
+            className="ml-2 h-7 text-xs border-red-500/30 hover:bg-red-500/10 text-red-600 dark:text-red-400"
+          >
+            {t("studio.header.backToBoards")}
+          </Button>
+        </div>
+      )}
 
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
         <StudioToolbar

@@ -17,6 +17,7 @@ import {
   shareLinkFormSchema,
   type ShareLinkFormData,
 } from "@/features/share/schemas/share.schema";
+import { getApiErrorMessage } from "@/lib/api/client";
 import { Role } from "@/shared";
 
 export interface ShareLinkTabProps {
@@ -49,8 +50,8 @@ export function ShareLinkTab({ boardId }: ShareLinkTabProps) {
         expiresInHours: hours,
       });
       setCreatedToken(res.token);
-    } catch {
-      toast.error(t("common.status.error"));
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, t("common.status.error")));
     }
   };
 
@@ -169,7 +170,13 @@ export function ShareLinkTab({ boardId }: ShareLinkTabProps) {
                 <Button
                   variant="ghost"
                   size="xs"
-                  onClick={() => revokeMutation.mutate(link.id)}
+                  onClick={() =>
+                    revokeMutation.mutate(link.id, {
+                      onError: (err) => {
+                        toast.error(getApiErrorMessage(err, t("common.status.error")));
+                      },
+                    })
+                  }
                   disabled={revokeMutation.isPending}
                   className="text-red-500 hover:text-red-600"
                 >

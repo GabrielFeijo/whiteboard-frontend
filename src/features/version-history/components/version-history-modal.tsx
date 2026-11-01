@@ -41,8 +41,8 @@ export function VersionHistoryModal({
     try {
       await createSnapshotMutation.mutateAsync();
       toast.success(t("common.toasts.snapshotCreated"));
-    } catch {
-      toast.error(t("common.toasts.snapshotCreateError"));
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, t("common.toasts.snapshotCreateError")));
     }
   };
 
@@ -57,8 +57,8 @@ export function VersionHistoryModal({
       } else {
         onClose();
       }
-    } catch {
-      toast.error(t("common.toasts.versionRestoreError"));
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, t("common.toasts.versionRestoreError")));
     }
   };
 

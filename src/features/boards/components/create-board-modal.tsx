@@ -16,6 +16,7 @@ import {
   type CreateBoardFormValues,
 } from "@/features/boards/schemas/board.schema";
 import { useI18n } from "@/i18n/context";
+import { getApiErrorMessage } from "@/lib/api/client";
 
 interface CreateBoardModalProps {
   isOpen: boolean;
@@ -53,8 +54,8 @@ export function CreateBoardModal({ isOpen, onClose }: CreateBoardModalProps) {
       reset();
       onClose();
       router.push(`/board/${created.id}`);
-    } catch {
-      toast.error(t("common.toasts.boardCreateError"));
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, t("common.toasts.boardCreateError")));
     }
   };
 

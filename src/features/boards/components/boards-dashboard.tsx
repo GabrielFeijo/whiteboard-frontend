@@ -28,6 +28,7 @@ import {
 } from "@/features/boards/store/dashboard-prefs-store";
 import { ShareModal } from "@/features/share/components/share-modal";
 import { useI18n } from "@/i18n/context";
+import { getApiErrorMessage } from "@/lib/api/client";
 import { Role } from "@/shared";
 import type { SessionUser } from "@/features/auth/types";
 import type { BoardItem, BoardsListResponse } from "../types";
@@ -98,8 +99,8 @@ export function BoardsDashboard({ user, initialBoards }: BoardsDashboardProps) {
     try {
       await duplicateMutation.mutateAsync(boardId);
       toast.success(t("common.toasts.boardDuplicated"));
-    } catch {
-      toast.error(t("common.toasts.boardDuplicateError"));
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, t("common.toasts.boardDuplicateError")));
     }
   };
 
@@ -118,8 +119,8 @@ export function BoardsDashboard({ user, initialBoards }: BoardsDashboardProps) {
     try {
       await deleteMutation.mutateAsync(activeDialog.boardId);
       toast.success(t("common.toasts.boardDeleted"));
-    } catch {
-      toast.error(t("common.toasts.boardDeleteError"));
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, t("common.toasts.boardDeleteError")));
     } finally {
       setActiveDialog(null);
     }

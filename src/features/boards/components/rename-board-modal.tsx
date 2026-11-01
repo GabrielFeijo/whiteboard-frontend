@@ -8,6 +8,7 @@ import { ModalOverlay } from "@/components/ui/modal-overlay";
 import { toast } from "@/components/ui/toast";
 import { useUpdateBoardMutation } from "@/features/boards/api/boards.queries";
 import { useI18n } from "@/i18n/context";
+import { getApiErrorMessage } from "@/lib/api/client";
 import type { BoardItem } from "../types";
 
 interface RenameBoardModalProps {
@@ -41,8 +42,8 @@ export function RenameBoardModal({
       await updateMutation.mutateAsync({ title: trimmed });
       toast.success(t("common.toasts.boardRenamed"));
       onClose();
-    } catch {
-      toast.error(t("common.toasts.boardRenameError"));
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, t("common.toasts.boardRenameError")));
     }
   };
 

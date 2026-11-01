@@ -374,6 +374,22 @@
     "minimap": {
       "toggle": "Alternar Minimapa",
       "title": "Visão Geral do Minimapa"
+    },
+    "accessDenied": {
+      "title": "Acesso Restrito ao Quadro",
+      "description": "Você não possui permissão para visualizar este quadro. Verifique se está conectado com a conta autorizada ou solicite acesso ao proprietário.",
+      "switchAccount": "Entrar com Outra Conta",
+      "backToBoards": "Voltar aos Meus Quadros"
+    },
+    "notFound": {
+      "title": "Quadro Não Encontrado",
+      "description": "O quadro solicitado não foi encontrado ou o link de compartilhamento expirou.",
+      "backToBoards": "Voltar aos Meus Quadros"
+    },
+    "errors": {
+      "accessRevoked": "Sua permissão para acessar este quadro foi revogada ou expirou.",
+      "connectionFailed": "Não foi possível sincronizar com o quadro. Verifique sua conexão.",
+      "generic": "Ocorreu um problema ao carregar o quadro. Tente novamente em instantes."
     }
   },
   "shareModal": {

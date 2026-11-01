@@ -12,6 +12,7 @@ import {
 } from "@/features/boards/api/boards.queries";
 import { useI18n } from "@/i18n/context";
 import type { TranslationKey } from "@/i18n/translator";
+import { getApiErrorMessage } from "@/lib/api/client";
 import { Role } from "@/shared";
 
 const ROLE_TRANSLATION_MAP: Record<Role, TranslationKey> = {
@@ -43,8 +44,8 @@ export function BoardMembersList({ boardId }: BoardMembersListProps) {
       onSuccess: () => {
         toast.success(t("shareModal.members.remove"));
       },
-      onError: () => {
-        toast.error(t("common.status.error"));
+      onError: (err) => {
+        toast.error(getApiErrorMessage(err, t("common.status.error")));
       },
       onSettled: () => setRemovingMemberId(null),
     });

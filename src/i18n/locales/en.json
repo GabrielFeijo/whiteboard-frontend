@@ -374,6 +374,22 @@
     "minimap": {
       "toggle": "Toggle Minimap",
       "title": "Minimap Overview"
+    },
+    "accessDenied": {
+      "title": "Whiteboard Access Restricted",
+      "description": "You do not have permission to view this whiteboard. Verify that you are signed in with an authorized account or request access from the owner.",
+      "switchAccount": "Sign In with Another Account",
+      "backToBoards": "Back to My Whiteboards"
+    },
+    "notFound": {
+      "title": "Whiteboard Not Found",
+      "description": "The requested whiteboard was not found or the access link has expired.",
+      "backToBoards": "Back to My Whiteboards"
+    },
+    "errors": {
+      "accessRevoked": "Your permission to access this whiteboard has been revoked or has expired.",
+      "connectionFailed": "Unable to synchronize with the whiteboard. Please check your connection.",
+      "generic": "A problem occurred while loading the whiteboard. Please try again shortly."
     }
   },
   "shareModal": {
