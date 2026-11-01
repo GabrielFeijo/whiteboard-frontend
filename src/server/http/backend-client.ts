@@ -60,7 +60,7 @@ export async function refreshTokensWithBackend(
 
 export interface ServerFetchOptions extends Omit<RequestInit, "headers"> {
   headers?: Record<string, string>;
-  schema?: z.ZodTypeAny;
+  schema?: z.ZodType;
 }
 
 async function extractErrorMessage(response: Response): Promise<string> {
@@ -79,7 +79,7 @@ async function extractErrorMessage(response: Response): Promise<string> {
 
 function parseResponsePayload<T>(
   json: unknown,
-  schema?: z.ZodTypeAny,
+  schema?: z.ZodType,
 ): { ok: true; data: T } | { ok: false; error: string } {
   if (!schema) {
     return { ok: true, data: json as T };

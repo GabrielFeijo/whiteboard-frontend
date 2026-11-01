@@ -27,7 +27,7 @@ export function RenameBoardModal({
 
   if (!isOpen || !board) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     const trimmed = title.trim();
     if (!trimmed) return;
