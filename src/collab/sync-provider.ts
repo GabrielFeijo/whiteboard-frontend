@@ -145,21 +145,12 @@ export class SyncProvider {
         const messageType = decoding.readVarUint(decoder);
 
         if (messageType === MSG.SYNC) {
-          const encoder = encoding.createEncoder();
-          encoding.writeVarUint(encoder, MSG.SYNC);
-          syncProtocol.readSyncMessage(decoder, encoder, this.doc, this);
-          if (encoding.length(encoder) > 1 && ws.readyState === WebSocket.OPEN) {
-            ws.send(encoding.toUint8Array(encoder));
-          }
-          if (this.status === ConnectionStatus.SYNCING) {
-            this.setStatus(ConnectionStatus.SYNCED);
-          }
-        } else if (messageType === MSG.AWARENESS) {
-          awarenessProtocol.applyAwarenessUpdate(
-            this.awareness,
-            decoding.readVarUint8Array(decoder),
-            this,
-          );
+          this.handleSyncMessage(decoder, ws);
+          return;
+        }
+
+        if (messageType === MSG.AWARENESS) {
+          this.handleAwarenessMessage(decoder);
         }
       };
 
@@ -180,6 +171,52 @@ export class SyncProvider {
       this.setStatus(ConnectionStatus.OFFLINE);
       this.scheduleReconnect();
     }
+  }
+
+  private handleSyncMessage(decoder: decoding.Decoder, ws: WebSocket): void {
+    const encoder = encoding.createEncoder();
+    encoding.writeVarUint(encoder, MSG.SYNC);
+    syncProtocol.readSyncMessage(decoder, encoder, this.doc, this);
+    if (encoding.length(encoder) > 1 && ws.readyState === WebSocket.OPEN) {
+      ws.send(encoding.toUint8Array(encoder));
+    }
+    if (this.status === ConnectionStatus.SYNCING) {
+      this.setStatus(ConnectionStatus.SYNCED);
+    }
+  }
+
+  private handleAwarenessMessage(decoder: decoding.Decoder): void {
+    awarenessProtocol.applyAwarenessUpdate(
+      this.awareness,
+      decoding.readVarUint8Array(decoder),
+      this,
+    );
+  }
+
+  private cancelScheduledFlush(): void {
+    if (this.rafHandle === null) return;
+    if (typeof cancelAnimationFrame === "function" && typeof this.rafHandle === "number") {
+      cancelAnimationFrame(this.rafHandle);
+    } else {
+      clearTimeout(this.rafHandle);
+    }
+    this.rafHandle = null;
+  }
+
+  private teardownWebSocket(): void {
+    if (!this.ws) return;
+    const canNotifyAwareness =
+      this.ws.readyState === WebSocket.OPEN &&
+      this.awareness.getLocalState() !== null;
+    if (canNotifyAwareness) {
+      awarenessProtocol.removeAwarenessStates(
+        this.awareness,
+        [this.doc.clientID],
+        "destroy",
+      );
+    }
+    this.ws.close();
+    this.ws = null;
   }
 
   private scheduleReconnect(): void {
@@ -211,14 +248,7 @@ export class SyncProvider {
   }
 
   flush(): void {
-    if (this.rafHandle !== null) {
-      if (typeof cancelAnimationFrame === "function" && typeof this.rafHandle === "number") {
-        cancelAnimationFrame(this.rafHandle);
-      } else {
-        clearTimeout(this.rafHandle);
-      }
-      this.rafHandle = null;
-    }
+    this.cancelScheduledFlush();
 
     if (this.pendingUpdates.length === 0) return;
     if (this.ws?.readyState !== WebSocket.OPEN || this.role === Role.VIEWER) {
@@ -242,31 +272,11 @@ export class SyncProvider {
 
   destroy(): void {
     this.isDestroyed = true;
-    if (this.rafHandle !== null) {
-      if (typeof cancelAnimationFrame === "function" && typeof this.rafHandle === "number") {
-        cancelAnimationFrame(this.rafHandle);
-      } else {
-        clearTimeout(this.rafHandle);
-      }
-      this.rafHandle = null;
-    }
+    this.cancelScheduledFlush();
     this.flush();
     if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
     this.listeners.clear();
-    if (this.ws) {
-      if (
-        this.ws.readyState === WebSocket.OPEN &&
-        this.awareness.getLocalState() !== null
-      ) {
-        awarenessProtocol.removeAwarenessStates(
-          this.awareness,
-          [this.doc.clientID],
-          "destroy",
-        );
-      }
-      this.ws.close();
-      this.ws = null;
-    }
+    this.teardownWebSocket();
     if (this.indexeddbProvider) {
       this.indexeddbProvider.destroy();
     }

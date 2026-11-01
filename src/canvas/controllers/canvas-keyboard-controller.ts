@@ -155,19 +155,34 @@ function tryHandleShiftExtras(ctx: ShortcutContext): boolean {
     return true;
   }
 
-  if (event.shiftKey && normalizeLetterKey(event) === "l") {
-    if (store.selectedIds.length > 0 && target.role !== Role.VIEWER) {
-      event.preventDefault();
-      target.toggleLockSelected?.();
-    }
+  const isShiftL = event.shiftKey && normalizeLetterKey(event) === "l";
+  if (!isShiftL) {
+    return false;
+  }
+  if (store.selectedIds.length > 0 && target.role !== Role.VIEWER) {
+    event.preventDefault();
+    target.toggleLockSelected?.();
+  }
+  return true;
+}
+
+function tryHandleLayerReorder(ctx: ShortcutContext): boolean {
+  const { event, store, target } = ctx;
+  const key = event.key;
+  if (key !== "[" && key !== "]") return false;
+  if (store.selectedIds.length === 0 || target.role === Role.VIEWER) return true;
+
+  event.preventDefault();
+  if (key === "[") {
+    target.sendSelectedToBack?.();
     return true;
   }
-
-  return false;
+  target.bringSelectedToFront?.();
+  return true;
 }
 
 function tryHandlePlainExtras(ctx: ShortcutContext): boolean {
-  const { event, store, target } = ctx;
+  const { event, target } = ctx;
   const key = event.key;
 
   if (event.shiftKey) return false;
@@ -190,19 +205,7 @@ function tryHandlePlainExtras(ctx: ShortcutContext): boolean {
     return true;
   }
 
-  if (key === "[" || key === "]") {
-    if (store.selectedIds.length > 0 && target.role !== Role.VIEWER) {
-      event.preventDefault();
-      if (key === "[") {
-        target.sendSelectedToBack?.();
-      } else {
-        target.bringSelectedToFront?.();
-      }
-    }
-    return true;
-  }
-
-  return false;
+  return tryHandleLayerReorder(ctx);
 }
 
 function tryHandleUnmodifiedExtras(ctx: ShortcutContext): boolean {
@@ -291,6 +294,20 @@ function extractImageFromClipboard(clipboardData: DataTransfer | null): File | n
   return findImageInFiles(clipboardData.files) ?? findImageInItems(clipboardData.items);
 }
 
+function tryHandlePasteShortcut(
+  ctx: ShortcutContext,
+  target: KeyboardControllerTarget,
+  normalizedKey: string,
+  onPasteSuccess: () => void,
+): boolean {
+  if (normalizedKey !== "v" || ctx.event.shiftKey) return false;
+  const pasted = target.role !== Role.VIEWER && Boolean(target.pasteCopiedElements?.());
+  if (pasted) {
+    onPasteSuccess();
+  }
+  return true;
+}
+
 function tryHandleModifierShortcut(
   ctx: ShortcutContext,
   target: KeyboardControllerTarget,
@@ -302,13 +319,7 @@ function tryHandleModifierShortcut(
   if (!isModifier || event.altKey) return false;
 
   if (tryHandleModifierZoom(ctx)) return true;
-
-  if (normalizedKey === "v" && !event.shiftKey) {
-    if (target.role !== Role.VIEWER && target.pasteCopiedElements?.()) {
-      onPasteSuccess();
-    }
-    return true;
-  }
+  if (tryHandlePasteShortcut(ctx, target, normalizedKey, onPasteSuccess)) return true;
 
   const parts = event.shiftKey ? ["ctrl", "shift", normalizedKey] : ["ctrl", normalizedKey];
   const action = MODIFIER_ACTIONS[parts.join("+")];
@@ -340,10 +351,15 @@ function tryHandleAltShortcut(
 
   if (isD) {
     target.duplicateSelected();
-  } else if (isBracketOpen) {
+    return true;
+  }
+  if (isBracketOpen) {
     target.sendSelectedBackward?.();
-  } else if (isBracketClose) {
+    return true;
+  }
+  if (isBracketClose) {
     target.bringSelectedForward?.();
+    return true;
   }
   return true;
 }

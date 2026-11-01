@@ -220,7 +220,10 @@ function renderConnectorSelection(
     const bx = (from.x + to.x) / 2 - badgeSize / 2;
     const by = (from.y + to.y) / 2 - badgeSize / 2;
     renderLockBadge(ctx, bx, by, badgeSize, zoom);
-  } else if (isSingleSelection) {
+    return;
+  }
+
+  if (isSingleSelection) {
     const handleRadius = 5 / zoom;
     ctx.fillStyle = "#ffffff";
     ctx.strokeStyle = "#4f46e5";
@@ -231,6 +234,45 @@ function renderConnectorSelection(
       ctx.fill();
       ctx.stroke();
     });
+  }
+}
+
+function renderSingleSelectionHandles(
+  ctx: CanvasRenderingContext2D,
+  el: ElementData,
+  zoom: number,
+): void {
+  const handleSize = 8 / zoom;
+  ctx.fillStyle = "#ffffff";
+  ctx.strokeStyle = "#4f46e5";
+  ctx.lineWidth = 1.5 / zoom;
+  const handles = getElementHandles(el);
+  handles.forEach((handle) => {
+    ctx.fillRect(
+      handle.x - handleSize / 2,
+      handle.y - handleSize / 2,
+      handleSize,
+      handleSize,
+    );
+    ctx.strokeRect(
+      handle.x - handleSize / 2,
+      handle.y - handleSize / 2,
+      handleSize,
+      handleSize,
+    );
+  });
+
+  if (el.type !== ElementType.FREEHAND) {
+    const rotHandle = getRotationHandle(el, zoom);
+    ctx.beginPath();
+    ctx.moveTo(el.x + el.w / 2, el.y);
+    ctx.lineTo(rotHandle.x, rotHandle.y);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(rotHandle.x, rotHandle.y, 4.5 / zoom, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
   }
 }
 
@@ -258,39 +300,12 @@ function renderBoundingBoxSelection(
     const bx = el.x + el.w - badgeSize;
     const by = el.y - badgeSize - 4 / zoom;
     renderLockBadge(ctx, bx, by, badgeSize, zoom);
-  } else if (isSingleSelection) {
-    const handleSize = 8 / zoom;
-    ctx.fillStyle = "#ffffff";
-    ctx.strokeStyle = "#4f46e5";
-    ctx.lineWidth = 1.5 / zoom;
-    const handles = getElementHandles(el);
-    handles.forEach((handle) => {
-      ctx.fillRect(
-        handle.x - handleSize / 2,
-        handle.y - handleSize / 2,
-        handleSize,
-        handleSize,
-      );
-      ctx.strokeRect(
-        handle.x - handleSize / 2,
-        handle.y - handleSize / 2,
-        handleSize,
-        handleSize,
-      );
-    });
+    ctx.restore();
+    return;
+  }
 
-    if (el.type !== ElementType.FREEHAND) {
-      const rotHandle = getRotationHandle(el, zoom);
-      ctx.beginPath();
-      ctx.moveTo(el.x + el.w / 2, el.y);
-      ctx.lineTo(rotHandle.x, rotHandle.y);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(rotHandle.x, rotHandle.y, 4.5 / zoom, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    }
+  if (isSingleSelection) {
+    renderSingleSelectionHandles(ctx, el, zoom);
   }
   ctx.restore();
 }

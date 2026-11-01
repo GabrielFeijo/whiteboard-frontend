@@ -54,6 +54,22 @@ interface PairContext {
   draggedCrossEnd: number;
 }
 
+function recordGuideMatch(
+  guides: number[],
+  val: number,
+  isCloser: boolean,
+  isEquivalent: boolean,
+): void {
+  if (isCloser) {
+    guides.length = 0;
+    guides.push(val);
+    return;
+  }
+  if (isEquivalent && !guides.includes(val)) {
+    guides.push(val);
+  }
+}
+
 function resolveDragAxisSnap(
   draggedPos: number,
   draggedSize: number,
@@ -87,15 +103,13 @@ function resolveDragAxisSnap(
       if (diff < minDelta) {
         minDelta = diff;
         snappedPos = candidatePos;
-        guides.length = 0;
-        guides.push(pair.o);
-      } else if (
-        snappedPos !== undefined &&
-        Math.abs(candidatePos - snappedPos) < 0.001 &&
-        !guides.includes(pair.o)
-      ) {
-        guides.push(pair.o);
+        recordGuideMatch(guides, pair.o, true, false);
+        continue;
       }
+
+      const isEquivalent =
+        snappedPos !== undefined && Math.abs(candidatePos - snappedPos) < 0.001;
+      recordGuideMatch(guides, pair.o, false, isEquivalent);
     }
   }
 
@@ -369,15 +383,13 @@ function snapResizeAxis(
     if (diff < minDelta) {
       minDelta = diff;
       bestTarget = target;
-      guides.length = 0;
-      guides.push(target);
-    } else if (
-      bestTarget !== undefined &&
-      Math.abs(target - bestTarget) < 0.001 &&
-      !guides.includes(target)
-    ) {
-      guides.push(target);
+      recordGuideMatch(guides, target, true, false);
+      continue;
     }
+
+    const isEquivalent =
+      bestTarget !== undefined && Math.abs(target - bestTarget) < 0.001;
+    recordGuideMatch(guides, target, false, isEquivalent);
   }
 
   if (bestTarget === undefined) {

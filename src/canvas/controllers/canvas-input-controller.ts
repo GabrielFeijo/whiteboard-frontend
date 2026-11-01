@@ -53,21 +53,22 @@ export class CanvasInputController {
 
   private onKeyDown = (e: KeyboardEvent): void => {
     if (isEditableDomElement(e.target) || isModalDialogOpen()) return;
-    if (e.code === "Space" && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      e.preventDefault();
-      if (
-        typeof document !== "undefined" &&
-        document.activeElement instanceof HTMLElement &&
-        document.activeElement.tagName === "BUTTON"
-      ) {
-        document.activeElement.blur();
-      }
-      if (!this.isSpacePressed) {
-        this.isSpacePressed = true;
-        if (!this.isPointerDown) {
-          this.setCursor("grab");
-        }
-      }
+    const isSpaceOnly = e.code === "Space" && !e.ctrlKey && !e.metaKey && !e.altKey;
+    if (!isSpaceOnly) return;
+
+    e.preventDefault();
+    if (
+      typeof document !== "undefined" &&
+      document.activeElement instanceof HTMLElement &&
+      document.activeElement.tagName === "BUTTON"
+    ) {
+      document.activeElement.blur();
+    }
+    if (this.isSpacePressed) return;
+
+    this.isSpacePressed = true;
+    if (!this.isPointerDown) {
+      this.setCursor("grab");
     }
   };
 
@@ -90,10 +91,13 @@ export class CanvasInputController {
   }
 
   private onPointerDown = (e: PointerEvent): void => {
-    if (e.button === 1 || (e.button === 0 && this.isSpacePressed)) {
+    const isMiddleClick = e.button === 1;
+    const isSpaceLeftClick = e.button === 0 && this.isSpacePressed;
+
+    if (isMiddleClick || isSpaceLeftClick) {
       e.preventDefault();
-      if (e.button === 1) this.isMiddlePanning = true;
-      if (this.isSpacePressed) this.isSpacePanning = true;
+      this.isMiddlePanning = isMiddleClick;
+      this.isSpacePanning = isSpaceLeftClick;
       this.isPointerDown = true;
       this.setCursor("grabbing");
       return;

@@ -37,6 +37,21 @@ function setOrDelete<T>(
   }
 }
 
+function resolveOrCreateStyleMap(map: Y.Map<unknown>): Y.Map<unknown> {
+  const rawStyle = map.get("style");
+  if (isYMap(rawStyle)) {
+    return rawStyle;
+  }
+  const styleMap = new Y.Map<unknown>();
+  if (rawStyle && typeof rawStyle === "object" && !Array.isArray(rawStyle)) {
+    for (const [k, v] of Object.entries(rawStyle)) {
+      setIfDefined(styleMap, k, v);
+    }
+  }
+  map.set("style", styleMap);
+  return styleMap;
+}
+
 export class YjsElementAdapter {
   static toElementData(map: Y.Map<unknown>): ElementData | null {
     try {
@@ -143,19 +158,7 @@ export class YjsElementAdapter {
     setOrDelete(map, "endBinding", patch.endBinding);
 
     if (patch.style) {
-      const rawStyle = map.get("style");
-      let styleMap: Y.Map<unknown>;
-      if (isYMap(rawStyle)) {
-        styleMap = rawStyle;
-      } else {
-        styleMap = new Y.Map<unknown>();
-        if (rawStyle && typeof rawStyle === "object" && !Array.isArray(rawStyle)) {
-          for (const [k, v] of Object.entries(rawStyle)) {
-            setIfDefined(styleMap, k, v);
-          }
-        }
-        map.set("style", styleMap);
-      }
+      const styleMap = resolveOrCreateStyleMap(map);
       YjsElementAdapter.updateStyle(styleMap, patch.style);
     }
   }

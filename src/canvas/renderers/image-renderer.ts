@@ -10,11 +10,9 @@ function extractBoardAssetRef(
   assetId?: string,
   rawSrc?: string,
 ): { boardId: string; filename: string } | null {
-  if (assetId) {
-    const match = assetId.match(/^boards\/([^/]+)\/([^/?#]+)$/);
-    if (match) {
-      return { boardId: match[1], filename: match[2] };
-    }
+  const assetMatch = assetId?.match(/^boards\/([^/]+)\/([^/?#]+)$/);
+  if (assetMatch) {
+    return { boardId: assetMatch[1], filename: assetMatch[2] };
   }
 
   if (!rawSrc || rawSrc.startsWith("data:") || rawSrc.startsWith("blob:")) {
@@ -22,12 +20,9 @@ function extractBoardAssetRef(
   }
 
   const apiViewMatch = rawSrc.match(/\/boards\/([^/]+)\/assets\/([^/?#]+)\/view/);
-  if (apiViewMatch) {
-    const decodedKey = decodeURIComponent(apiViewMatch[2]);
-    const filename = decodedKey.split("/").pop();
-    if (filename) {
-      return { boardId: apiViewMatch[1], filename };
-    }
+  const filename = apiViewMatch ? decodeURIComponent(apiViewMatch[2]).split("/").pop() : null;
+  if (apiViewMatch && filename) {
+    return { boardId: apiViewMatch[1], filename };
   }
 
   const s3PathMatch = rawSrc.match(/\/boards\/([^/]+)\/([^/?#]+)(?:\?|$)/);
@@ -40,18 +35,19 @@ function extractBoardAssetRef(
 
 export function resolveRenderableImageSrc(el: ElementData): string | null {
   const ref = extractBoardAssetRef(el.assetId, el.src);
-  if (ref) {
-    let url = `/api/v1/boards/${ref.boardId}/assets/${encodeURIComponent(ref.filename)}/view`;
-    if (typeof window !== "undefined") {
-      const token = new URLSearchParams(window.location.search).get("token");
-      if (token) {
-        url += `?token=${encodeURIComponent(token)}`;
-      }
-    }
-    return url;
+  if (!ref) {
+    return el.src ?? null;
   }
 
-  return el.src ?? null;
+  let url = `/api/v1/boards/${ref.boardId}/assets/${encodeURIComponent(ref.filename)}/view`;
+  const token =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("token")
+      : null;
+  if (token) {
+    url += `?token=${encodeURIComponent(token)}`;
+  }
+  return url;
 }
 
 function pruneImageCache(): void {
@@ -61,11 +57,18 @@ function pruneImageCache(): void {
   imageCache.delete(oldest);
 }
 
-function recordRetryAttempt(src: string): number {
-  if (imageRetryCounts.size >= MAX_CACHE_ENTRIES && !imageRetryCounts.has(src)) {
-    const oldest = imageRetryCounts.keys().next().value;
-    if (oldest) imageRetryCounts.delete(oldest);
+function pruneOldestRetryEntry(src: string): void {
+  if (imageRetryCounts.size < MAX_CACHE_ENTRIES || imageRetryCounts.has(src)) {
+    return;
   }
+  const oldest = imageRetryCounts.keys().next().value;
+  if (oldest) {
+    imageRetryCounts.delete(oldest);
+  }
+}
+
+function recordRetryAttempt(src: string): number {
+  pruneOldestRetryEntry(src);
   const attempts = (imageRetryCounts.get(src) ?? 0) + 1;
   imageRetryCounts.set(src, attempts);
   return attempts;

@@ -198,10 +198,9 @@ function adjustDimensionsForAspectRatio(
   }
   if (handle === ResizeHandleType.SE) {
     const candidateH = w / ratio;
-    if (candidateH >= minHeight) {
-      return { w, h: candidateH };
-    }
-    return { w: h * ratio, h };
+    const resolvedH = candidateH >= minHeight ? candidateH : h;
+    const resolvedW = candidateH >= minHeight ? w : h * ratio;
+    return { w: resolvedW, h: resolvedH };
   }
   return { w, h: w / ratio };
 }
@@ -273,9 +272,11 @@ export function scaleFreehandPoints(
   const scaleY = newBounds.h / initialBounds.h;
 
   return points.map((val, idx) => {
-    if (idx % 3 === 0) {
+    const remainder = idx % 3;
+    if (remainder === 0) {
       return Math.round(newBounds.x + (val - initialBounds.x) * scaleX);
-    } else if (idx % 3 === 1) {
+    }
+    if (remainder === 1) {
       return Math.round(newBounds.y + (val - initialBounds.y) * scaleY);
     }
     return val;
@@ -343,6 +344,32 @@ function evaluateCubicBezier(
   };
 }
 
+function isPointNearConnectorCurve(
+  p: Point,
+  from: Point,
+  to: Point,
+  startBinding: ElementData["startBinding"],
+  endBinding: ElementData["endBinding"],
+  tolerance: number,
+): boolean {
+  const { cp1, cp2 } = computeConnectorCurve(
+    from,
+    to,
+    startBinding?.anchor,
+    endBinding?.anchor,
+  );
+  const steps = 16;
+  let prev = from;
+  for (let i = 1; i <= steps; i++) {
+    const curr = evaluateCubicBezier(i / steps, from, cp1, cp2, to);
+    if (isPointNearSegment(p, prev.x, prev.y, curr.x, curr.y, tolerance)) {
+      return true;
+    }
+    prev = curr;
+  }
+  return false;
+}
+
 function testLineHit(p: Point, el: ElementData): boolean {
   const x1 = el.points && el.points.length >= 4 ? el.points[0] : el.x;
   const y1 = el.points && el.points.length >= 4 ? el.points[1] : el.y;
@@ -351,24 +378,14 @@ function testLineHit(p: Point, el: ElementData): boolean {
   const tolerance = Math.max((el.style?.strokeWidth || 2) + 8, 12);
 
   if (el.startBinding || el.endBinding) {
-    const from = { x: x1, y: y1 };
-    const to = { x: x2, y: y2 };
-    const { cp1, cp2 } = computeConnectorCurve(
-      from,
-      to,
-      el.startBinding?.anchor,
-      el.endBinding?.anchor,
+    return isPointNearConnectorCurve(
+      p,
+      { x: x1, y: y1 },
+      { x: x2, y: y2 },
+      el.startBinding,
+      el.endBinding,
+      tolerance,
     );
-    const steps = 16;
-    let prev = from;
-    for (let i = 1; i <= steps; i++) {
-      const curr = evaluateCubicBezier(i / steps, from, cp1, cp2, to);
-      if (isPointNearSegment(p, prev.x, prev.y, curr.x, curr.y, tolerance)) {
-        return true;
-      }
-      prev = curr;
-    }
-    return false;
   }
 
   return isPointNearSegment(p, x1, y1, x2, y2, tolerance);

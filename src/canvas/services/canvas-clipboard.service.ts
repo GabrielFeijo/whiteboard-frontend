@@ -20,6 +20,26 @@ function offsetClonedPoints(
   });
 }
 
+function computeTargetPasteOffset(
+  elements: readonly ElementData[],
+  targetWorldPt?: Point,
+): { dx: number; dy: number } | null {
+  if (!targetWorldPt) return null;
+  let minX = Infinity;
+  let minY = Infinity;
+  for (const el of elements) {
+    minX = Math.min(minX, el.x);
+    minY = Math.min(minY, el.y);
+  }
+  if (!Number.isFinite(minX) || !Number.isFinite(minY)) {
+    return null;
+  }
+  return {
+    dx: Math.round(targetWorldPt.x - minX),
+    dy: Math.round(targetWorldPt.y - minY),
+  };
+}
+
 export class CanvasClipboardService {
   private copiedElements: ElementData[] = [];
   private pasteStep = 0;
@@ -51,17 +71,10 @@ export class CanvasClipboardService {
     let dx = 24 * this.pasteStep;
     let dy = 24 * this.pasteStep;
 
-    if (targetWorldPt) {
-      let minX = Infinity;
-      let minY = Infinity;
-      for (const el of this.copiedElements) {
-        minX = Math.min(minX, el.x);
-        minY = Math.min(minY, el.y);
-      }
-      if (Number.isFinite(minX) && Number.isFinite(minY)) {
-        dx = Math.round(targetWorldPt.x - minX);
-        dy = Math.round(targetWorldPt.y - minY);
-      }
+    const targetOffset = computeTargetPasteOffset(this.copiedElements, targetWorldPt);
+    if (targetOffset) {
+      dx = targetOffset.dx;
+      dy = targetOffset.dy;
     }
 
     const idMap = new Map<string, string>();

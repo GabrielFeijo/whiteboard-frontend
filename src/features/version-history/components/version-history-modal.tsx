@@ -89,7 +89,7 @@ export function VersionHistoryModal({
               className="gap-1.5 shrink-0 whitespace-nowrap shadow-2xs"
             >
               <BookmarkPlus className="h-3.5 w-3.5 shrink-0 text-text-secondary" />
-              <span>
+              <span className="whitespace-nowrap">
                 {createSnapshotMutation.isPending
                   ? t("versionHistory.actions.creatingManual")
                   : t("versionHistory.actions.createManual")}

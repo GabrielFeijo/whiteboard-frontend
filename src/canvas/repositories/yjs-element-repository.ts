@@ -24,11 +24,12 @@ const MAX_ORDER_KEY_CACHE_SIZE = 2000;
 const orderKeyValidityCache = new Map<string, boolean>();
 
 function cacheOrderKeyValidity(key: string, isValid: boolean): void {
-  if (orderKeyValidityCache.size >= MAX_ORDER_KEY_CACHE_SIZE) {
-    const oldest = orderKeyValidityCache.keys().next().value;
-    if (oldest !== undefined) {
-      orderKeyValidityCache.delete(oldest);
-    }
+  const oldest =
+    orderKeyValidityCache.size >= MAX_ORDER_KEY_CACHE_SIZE
+      ? orderKeyValidityCache.keys().next().value
+      : undefined;
+  if (oldest !== undefined) {
+    orderKeyValidityCache.delete(oldest);
   }
   orderKeyValidityCache.set(key, isValid);
 }
@@ -84,6 +85,20 @@ function offsetPoints(
   return points.map((pt, i) => (i % 3 === 2 ? pt : pt + offset));
 }
 
+function findDirectChildElementMap(
+  target: unknown,
+  elementsMap: Y.Map<Y.Map<unknown>>,
+): Y.Map<unknown> | null {
+  if (!(target instanceof Y.Map)) {
+    return null;
+  }
+  let curr: Y.Map<unknown> = target;
+  while (curr.parent instanceof Y.Map && curr.parent !== elementsMap) {
+    curr = curr.parent;
+  }
+  return curr.parent === elementsMap ? curr : null;
+}
+
 export class YjsElementRepository {
   private readonly elementCache = new Map<string, ElementData>();
   private sortedAllCache: ElementData[] | null = null;
@@ -113,14 +128,9 @@ export class YjsElementRepository {
           return;
         }
 
-        if (event.target instanceof Y.Map) {
-          let curr: Y.Map<unknown> = event.target;
-          while (curr.parent instanceof Y.Map && curr.parent !== elementsMap) {
-            curr = curr.parent;
-          }
-          if (curr.parent === elementsMap) {
-            this.syncCacheAndSpatialIndex(curr);
-          }
+        const directMap = findDirectChildElementMap(event.target, elementsMap);
+        if (directMap) {
+          this.syncCacheAndSpatialIndex(directMap);
         }
       });
       this.dirtyListeners.forEach((cb) => cb());
@@ -195,9 +205,9 @@ export class YjsElementRepository {
         continue;
       }
       const map = elementsMap.get(id);
-      if (map) {
-        const data = this.syncCacheAndSpatialIndex(map, id);
-        if (data) result.push(data);
+      const data = map ? this.syncCacheAndSpatialIndex(map, id) : null;
+      if (data) {
+        result.push(data);
       }
     }
     return result;

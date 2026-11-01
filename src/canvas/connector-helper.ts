@@ -79,6 +79,25 @@ function getDistanceToBoundingBox(pt: Point, el: ElementData): number {
   return Math.hypot(dx, dy);
 }
 
+function tryGetInsideAnchorMatch(
+  worldPt: Point,
+  el: ElementData,
+  anchors: readonly { anchor: AnchorPoint; pt: Point }[],
+): { elementId: string; anchor: AnchorPoint; pt: Point } | null {
+  if (!isPointInsideElementBounds(worldPt, el)) {
+    return null;
+  }
+  const match = findClosestAnchor(worldPt, anchors);
+  if (!match) {
+    return null;
+  }
+  return {
+    elementId: el.id,
+    anchor: match.anchor,
+    pt: match.pt,
+  };
+}
+
 export function findNearestAnchor(
   worldPt: Point,
   elements: readonly ElementData[],
@@ -93,16 +112,9 @@ export function findNearestAnchor(
     }
 
     const anchors = getAllAnchorPoints(el);
-
-    if (isPointInsideElementBounds(worldPt, el)) {
-      const match = findClosestAnchor(worldPt, anchors);
-      if (match) {
-        return {
-          elementId: el.id,
-          anchor: match.anchor,
-          pt: match.pt,
-        };
-      }
+    const insideMatch = tryGetInsideAnchorMatch(worldPt, el, anchors);
+    if (insideMatch) {
+      return insideMatch;
     }
 
     if (getDistanceToBoundingBox(worldPt, el) > threshold) {
@@ -284,56 +296,76 @@ export function drawCurvedLine(
   drawCurvedConnector(ctx, from, to, style, startAnchor, endAnchor, false);
 }
 
+function getConnectorBoundingBox(data: ElementData): {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+} | null {
+  const isLineOrArrow = data.type === ElementType.LINE || data.type === ElementType.ARROW;
+  if (!isLineOrArrow || !data.points || data.points.length < 4) {
+    return null;
+  }
+
+  const from: Point = { x: data.points[0], y: data.points[1] };
+  const to: Point = { x: data.points[2], y: data.points[3] };
+  let minX = Math.min(from.x, to.x);
+  let minY = Math.min(from.y, to.y);
+  let maxX = Math.max(from.x, to.x);
+  let maxY = Math.max(from.y, to.y);
+
+  if (data.startBinding || data.endBinding) {
+    const { cp1, cp2 } = computeConnectorCurve(
+      from,
+      to,
+      data.startBinding?.anchor,
+      data.endBinding?.anchor,
+    );
+    minX = Math.min(minX, cp1.x, cp2.x);
+    minY = Math.min(minY, cp1.y, cp2.y);
+    maxX = Math.max(maxX, cp1.x, cp2.x);
+    maxY = Math.max(maxY, cp1.y, cp2.y);
+  }
+
+  const w = Math.max(1, maxX - minX);
+  const h = Math.max(1, maxY - minY);
+  return { x: minX, y: minY, w, h };
+}
+
+function getRotatedBoundingBox(data: ElementData): {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+} {
+  const rad = ((data.rotation ?? 0) * Math.PI) / 180;
+  const absCos = Math.abs(Math.cos(rad));
+  const absSin = Math.abs(Math.sin(rad));
+  const rotatedW = data.w * absCos + data.h * absSin;
+  const rotatedH = data.w * absSin + data.h * absCos;
+  const cx = data.x + data.w / 2;
+  const cy = data.y + data.h / 2;
+  return {
+    x: cx - rotatedW / 2,
+    y: cy - rotatedH / 2,
+    w: Math.max(1, rotatedW),
+    h: Math.max(1, rotatedH),
+  };
+}
+
 export function getElementBoundingBox(data: ElementData): {
   x: number;
   y: number;
   w: number;
   h: number;
 } {
-  if (
-    (data.type === ElementType.LINE || data.type === ElementType.ARROW) &&
-    data.points &&
-    data.points.length >= 4
-  ) {
-    const from: Point = { x: data.points[0], y: data.points[1] };
-    const to: Point = { x: data.points[2], y: data.points[3] };
-    let minX = Math.min(from.x, to.x);
-    let minY = Math.min(from.y, to.y);
-    let maxX = Math.max(from.x, to.x);
-    let maxY = Math.max(from.y, to.y);
-
-    if (data.startBinding || data.endBinding) {
-      const { cp1, cp2 } = computeConnectorCurve(
-        from,
-        to,
-        data.startBinding?.anchor,
-        data.endBinding?.anchor,
-      );
-      minX = Math.min(minX, cp1.x, cp2.x);
-      minY = Math.min(minY, cp1.y, cp2.y);
-      maxX = Math.max(maxX, cp1.x, cp2.x);
-      maxY = Math.max(maxY, cp1.y, cp2.y);
-    }
-
-    const w = Math.max(1, maxX - minX);
-    const h = Math.max(1, maxY - minY);
-    return { x: minX, y: minY, w, h };
+  const connectorBBox = getConnectorBoundingBox(data);
+  if (connectorBBox) {
+    return connectorBBox;
   }
 
   if (data.rotation && data.rotation % 360 !== 0) {
-    const rad = (data.rotation * Math.PI) / 180;
-    const absCos = Math.abs(Math.cos(rad));
-    const absSin = Math.abs(Math.sin(rad));
-    const rotatedW = data.w * absCos + data.h * absSin;
-    const rotatedH = data.w * absSin + data.h * absCos;
-    const cx = data.x + data.w / 2;
-    const cy = data.y + data.h / 2;
-    return {
-      x: cx - rotatedW / 2,
-      y: cy - rotatedH / 2,
-      w: Math.max(1, rotatedW),
-      h: Math.max(1, rotatedH),
-    };
+    return getRotatedBoundingBox(data);
   }
 
   return { x: data.x, y: data.y, w: data.w, h: data.h };

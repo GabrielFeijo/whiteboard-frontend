@@ -1,4 +1,5 @@
 import { CanvasHost, CanvasTool, ToolContext } from "./tool.interface";
+import { Point } from "@/canvas/viewport";
 import { CanvasToolType, useCanvasStore } from "@/store/canvas-store";
 import { ArrowBinding, ElementData, ElementType, getDocRoots, isStructuralElement, Role } from "@/shared";
 import { LOCAL_ORIGIN } from "@/collab/undo-manager";
@@ -90,26 +91,34 @@ export class SelectTool implements CanvasTool {
 
     const hitId = this.host.hitTest(ctx.worldPt);
     if (!hitId) {
-      if (!ctx.event.shiftKey) {
-        useCanvasStore.getState().setSelectedIds([]);
-      }
-      this.dragMode = SelectDragMode.SELECT_BOX;
-      this.host.setSelectBox({ x: ctx.worldPt.x, y: ctx.worldPt.y, w: 0, h: 0 });
+      this.startSelectionBox(ctx.worldPt, ctx.event.shiftKey);
       return;
     }
 
     this.handleHitSelection(hitId, ctx.event.shiftKey);
   }
 
+  private startSelectionBox(worldPt: Point, isShift: boolean): void {
+    if (!isShift) {
+      useCanvasStore.getState().setSelectedIds([]);
+    }
+    this.dragMode = SelectDragMode.SELECT_BOX;
+    this.host.setSelectBox({ x: worldPt.x, y: worldPt.y, w: 0, h: 0 });
+  }
+
   onPointerMove(ctx: ToolContext): void {
     if (!ctx.isPointerDown || this.host.role === Role.VIEWER) return;
 
-    if (this.dragMode === SelectDragMode.RESIZE) {
-      this.handleResizeMove(ctx);
-    } else if (this.dragMode === SelectDragMode.MOVE) {
-      this.handleMoveElements(ctx);
-    } else if (this.dragMode === SelectDragMode.SELECT_BOX) {
-      this.handleSelectBoxMove(ctx);
+    switch (this.dragMode) {
+      case SelectDragMode.RESIZE:
+        this.handleResizeMove(ctx);
+        break;
+      case SelectDragMode.MOVE:
+        this.handleMoveElements(ctx);
+        break;
+      case SelectDragMode.SELECT_BOX:
+        this.handleSelectBoxMove(ctx);
+        break;
     }
   }
 
@@ -117,12 +126,16 @@ export class SelectTool implements CanvasTool {
     this.host.setGuides(null);
     this.host.setSnapIndicator(null);
 
-    if (this.dragMode === SelectDragMode.SELECT_BOX) {
-      this.finishSelectBox();
-    } else if (this.dragMode === SelectDragMode.MOVE) {
-      this.finishMove();
-    } else if (this.dragMode === SelectDragMode.RESIZE) {
-      this.finishResize();
+    switch (this.dragMode) {
+      case SelectDragMode.SELECT_BOX:
+        this.finishSelectBox();
+        break;
+      case SelectDragMode.MOVE:
+        this.finishMove();
+        break;
+      case SelectDragMode.RESIZE:
+        this.finishResize();
+        break;
     }
 
     this.dragMode = SelectDragMode.NONE;
@@ -194,7 +207,8 @@ export class SelectTool implements CanvasTool {
         ? store.selectedIds.filter((id) => !expandedIds.includes(id))
         : [...store.selectedIds, ...expandedIds];
       store.setSelectedIds(nextIds);
-    } else if (!isAlreadySelected) {
+    }
+    if (!isShift && !isAlreadySelected) {
       store.setSelectedIds(expandedIds);
     }
 
