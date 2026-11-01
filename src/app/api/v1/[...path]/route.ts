@@ -42,10 +42,9 @@ function buildForwardHeaders(
   const headers: Record<string, string> = {
     ...extractClientForwardHeaders(request),
   };
-  if (contentType) {
-    headers["Content-Type"] = contentType;
-  } else if (hasBody) {
-    headers["Content-Type"] = "application/json";
+  const resolvedContentType = contentType || (hasBody ? "application/json" : null);
+  if (resolvedContentType) {
+    headers["Content-Type"] = resolvedContentType;
   }
   if (token) {
     headers.Authorization = `Bearer ${token}`;
@@ -70,17 +69,32 @@ async function attemptTokenRefresh(
   };
 }
 
+function syncResponseAuthCookies(
+  res: NextResponse,
+  rotatedTokens: AuthTokenPair | null,
+  isUnauthorizedWithRefresh: boolean,
+  hostHeader: string | null,
+): void {
+  if (rotatedTokens) {
+    applyAuthCookiesToResponse(res, rotatedTokens, hostHeader);
+    return;
+  }
+  if (isUnauthorizedWithRefresh) {
+    clearAuthCookiesFromResponse(res, hostHeader);
+  }
+}
+
 async function buildProxyResponse(
   upstreamRes: Response,
   rotatedTokens: AuthTokenPair | null,
   refreshToken: string | null,
   hostHeader: string | null,
 ): Promise<NextResponse> {
+  const isUnauthorizedWithRefresh = upstreamRes.status === 401 && Boolean(refreshToken);
+
   if (upstreamRes.status === 204) {
     const emptyResponse = new NextResponse(null, { status: 204 });
-    if (rotatedTokens) {
-      applyAuthCookiesToResponse(emptyResponse, rotatedTokens, hostHeader);
-    }
+    syncResponseAuthCookies(emptyResponse, rotatedTokens, isUnauthorizedWithRefresh, hostHeader);
     return emptyResponse;
   }
 
@@ -100,11 +114,7 @@ async function buildProxyResponse(
     headers,
   });
 
-  if (rotatedTokens) {
-    applyAuthCookiesToResponse(nextRes, rotatedTokens, hostHeader);
-  } else if (upstreamRes.status === 401 && refreshToken) {
-    clearAuthCookiesFromResponse(nextRes, hostHeader);
-  }
+  syncResponseAuthCookies(nextRes, rotatedTokens, isUnauthorizedWithRefresh, hostHeader);
 
   return nextRes;
 }
@@ -150,21 +160,21 @@ async function handleProxyRequest(
   try {
     if (!accessToken && refreshToken) {
       const refreshResult = await attemptTokenRefresh(refreshToken);
-      if (refreshResult) {
-        accessToken = refreshResult.accessToken;
-        rotatedTokens = refreshResult.rotatedTokens;
-      }
+      accessToken = refreshResult?.accessToken ?? null;
+      rotatedTokens = refreshResult?.rotatedTokens ?? null;
     }
 
     let upstreamRes = await forwardToBackend(accessToken);
 
-    if (upstreamRes.status === 401 && refreshToken && !rotatedTokens) {
-      const refreshResult = await attemptTokenRefresh(refreshToken);
-      if (refreshResult) {
-        accessToken = refreshResult.accessToken;
-        rotatedTokens = refreshResult.rotatedTokens;
-        upstreamRes = await forwardToBackend(accessToken);
-      }
+    const shouldRetryWithRefresh =
+      upstreamRes.status === 401 && Boolean(refreshToken) && !rotatedTokens;
+    const retryTokens = shouldRetryWithRefresh
+      ? await attemptTokenRefresh(refreshToken!)
+      : null;
+    if (retryTokens) {
+      accessToken = retryTokens.accessToken;
+      rotatedTokens = retryTokens.rotatedTokens;
+      upstreamRes = await forwardToBackend(accessToken);
     }
 
     return await buildProxyResponse(upstreamRes, rotatedTokens, refreshToken, hostHeader);

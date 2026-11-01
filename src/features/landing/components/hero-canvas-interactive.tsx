@@ -149,12 +149,11 @@ export function HeroCanvasInteractive() {
 
   const handlePointerUp = useCallback(
     (e: React.PointerEvent) => {
-      if (draggingId) {
-        setDraggingId(null);
-        const target = e.target as HTMLElement;
-        if (typeof target.hasPointerCapture === "function" && target.hasPointerCapture(e.pointerId)) {
-          target.releasePointerCapture(e.pointerId);
-        }
+      if (!draggingId) return;
+      setDraggingId(null);
+      const target = e.target as HTMLElement;
+      if (typeof target.hasPointerCapture === "function" && target.hasPointerCapture(e.pointerId)) {
+        target.releasePointerCapture(e.pointerId);
       }
     },
     [draggingId],

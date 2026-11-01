@@ -63,6 +63,34 @@ export interface ServerFetchOptions extends Omit<RequestInit, "headers"> {
   schema?: z.ZodTypeAny;
 }
 
+async function extractErrorMessage(response: Response): Promise<string> {
+  const errorMsg = `HTTP ${response.status}`;
+  try {
+    const errBody: unknown = await response.json();
+    if (errBody && typeof errBody === "object" && "message" in errBody) {
+      const msg = (errBody as { message?: unknown }).message;
+      return Array.isArray(msg) ? msg.join(", ") : String(msg);
+    }
+  } catch {
+    return response.statusText || errorMsg;
+  }
+  return errorMsg;
+}
+
+function parseResponsePayload<T>(
+  json: unknown,
+  schema?: z.ZodTypeAny,
+): { ok: true; data: T } | { ok: false; error: string } {
+  if (!schema) {
+    return { ok: true, data: json as T };
+  }
+  const parsed = schema.safeParse(json);
+  if (!parsed.success) {
+    return { ok: false, error: "Invalid upstream response schema" };
+  }
+  return { ok: true, data: parsed.data as T };
+}
+
 export async function serverBackendFetch<T>(
   path: string,
   options: ServerFetchOptions = {},
@@ -91,16 +119,7 @@ export async function serverBackendFetch<T>(
     const response = await executeRequest(accessToken);
 
     if (!response.ok) {
-      let errorMsg = `HTTP ${response.status}`;
-      try {
-        const errBody: unknown = await response.json();
-        if (errBody && typeof errBody === "object" && "message" in errBody) {
-          const msg = (errBody as { message?: unknown }).message;
-          errorMsg = Array.isArray(msg) ? msg.join(", ") : String(msg);
-        }
-      } catch {
-        errorMsg = response.statusText || errorMsg;
-      }
+      const errorMsg = await extractErrorMessage(response);
       return { ok: false, status: response.status, error: errorMsg };
     }
 
@@ -109,15 +128,12 @@ export async function serverBackendFetch<T>(
     }
 
     const json: unknown = await response.json();
-    if (options.schema) {
-      const parsed = options.schema.safeParse(json);
-      if (!parsed.success) {
-        return { ok: false, status: 500, error: "Invalid upstream response schema" };
-      }
-      return { ok: true, status: response.status, data: parsed.data as T };
+    const parsedPayload = parseResponsePayload<T>(json, options.schema);
+    if (!parsedPayload.ok) {
+      return { ok: false, status: 500, error: parsedPayload.error };
     }
 
-    return { ok: true, status: response.status, data: json as T };
+    return { ok: true, status: response.status, data: parsedPayload.data };
   } catch (err) {
     return {
       ok: false,

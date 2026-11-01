@@ -29,14 +29,11 @@ async function handleRefreshedSession(
   const isProtected = isProtectedRoute(pathname, request.nextUrl.searchParams);
   const refreshed = await refreshTokensWithBackend(refreshToken);
   if (!refreshed) {
-    if (isProtected) {
-      const loginRedirect = NextResponse.redirect(new URL("/login", request.url));
-      clearAuthCookiesFromResponse(loginRedirect, hostHeader);
-      return loginRedirect;
-    }
-    const nextRes = NextResponse.next();
-    clearAuthCookiesFromResponse(nextRes, hostHeader);
-    return nextRes;
+    const fallbackRes = isProtected
+      ? NextResponse.redirect(new URL("/login", request.url))
+      : NextResponse.next();
+    clearAuthCookiesFromResponse(fallbackRes, hostHeader);
+    return fallbackRes;
   }
 
   request.cookies.set(COOKIE_NAMES.ACCESS_TOKEN, refreshed.accessToken);

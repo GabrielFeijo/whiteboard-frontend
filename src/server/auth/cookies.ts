@@ -26,10 +26,9 @@ export function extractClientForwardHeaders(
   const forwardedProto = request.headers.get("x-forwarded-proto");
   const host = request.headers.get("host");
 
-  if (forwardedFor) {
-    headers["X-Forwarded-For"] = forwardedFor;
-  } else if (realIp) {
-    headers["X-Forwarded-For"] = realIp;
+  const clientIp = forwardedFor || realIp;
+  if (clientIp) {
+    headers["X-Forwarded-For"] = clientIp;
   }
   if (realIp) {
     headers["X-Real-IP"] = realIp;

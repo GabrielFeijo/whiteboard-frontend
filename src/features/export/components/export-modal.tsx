@@ -90,18 +90,17 @@ export function ExportModal({
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result;
-      if (typeof content === "string") {
-        const result = importBoardFromJson(doc, content);
-        if (result.success) {
-          onImported?.();
-          toast.success(
-            t("exportModal.import.success", { count: result.count }),
-          );
-          onClose();
-        } else {
-          toast.error(result.error || t("exportModal.import.error"));
-        }
+      if (typeof content !== "string") return;
+      const result = importBoardFromJson(doc, content);
+      if (result.success) {
+        onImported?.();
+        toast.success(
+          t("exportModal.import.success", { count: result.count }),
+        );
+        onClose();
+        return;
       }
+      toast.error(result.error || t("exportModal.import.error"));
     };
     reader.readAsText(file);
     if (fileInputRef.current) fileInputRef.current.value = "";

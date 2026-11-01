@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig } from "axios";
+import axios, { AxiosError, AxiosRequestConfig } from "axios";
 import { BACKEND_API_V1_URL, BFF_API_BASE_PATH, WS_COLLAB_URL } from "@/lib/env";
 
 export const API_URL = BACKEND_API_V1_URL;
@@ -32,24 +32,42 @@ export class ApiError extends Error {
   }
 }
 
+function extractAxiosErrorMessage(
+  error: AxiosError<ApiProblem>,
+  fallback: string,
+): string {
+  const data = error.response?.data;
+  if (data?.message) {
+    return Array.isArray(data.message) ? data.message.join(", ") : data.message;
+  }
+  if (data?.error) {
+    return data.error;
+  }
+  return error.message || fallback;
+}
+
 export function getApiErrorMessage(
   error: unknown,
   fallback = "An unexpected error occurred"
 ): string {
   if (axios.isAxiosError<ApiProblem>(error)) {
-    const data = error.response?.data;
-    if (data?.message) {
-      return Array.isArray(data.message) ? data.message.join(", ") : data.message;
-    }
-    if (data?.error) {
-      return data.error;
-    }
-    return error.message || fallback;
+    return extractAxiosErrorMessage(error, fallback);
   }
   if (error instanceof Error) {
     return error.message;
   }
   return fallback;
+}
+
+function parseRequestBody(body: unknown): unknown {
+  if (typeof body !== "string") {
+    return body;
+  }
+  try {
+    return JSON.parse(body);
+  } catch {
+    return body;
+  }
 }
 
 export interface ApiFetchOptions extends AxiosRequestConfig {
@@ -58,18 +76,7 @@ export interface ApiFetchOptions extends AxiosRequestConfig {
 
 export async function apiFetch<T>(path: string, init?: ApiFetchOptions): Promise<T> {
   const { body, ...config } = init || {};
-  let data: unknown = config.data;
-  if (body !== undefined && data === undefined) {
-    if (typeof body === "string") {
-      try {
-        data = JSON.parse(body);
-      } catch {
-        data = body;
-      }
-    } else {
-      data = body;
-    }
-  }
+  const data = config.data !== undefined ? config.data : parseRequestBody(body);
 
   const response = await api.request<T>({
     url: path.startsWith("/") ? path : `/${path}`,
