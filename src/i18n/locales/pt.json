@@ -518,5 +518,48 @@
     "description": "Ocorreu um erro inesperado ao carregar este quadro.",
     "tryAgain": "Tentar Novamente",
     "backHome": "Voltar para Quadros"
+  },
+  "apiErrors": {
+    "network": "Não foi possível conectar ao servidor. Verifique sua conexão com a internet.",
+    "generic": "Ocorreu um erro inesperado ao processar sua solicitação.",
+    "status": {
+      "400": "A solicitação contém dados inválidos. Verifique as informações e tente novamente.",
+      "401": "Sua sessão expirou ou você não está autenticado. Por favor, faça login novamente.",
+      "403": "Você não possui permissão para acessar este recurso ou realizar esta ação.",
+      "404": "O recurso solicitado não foi encontrado ou não está mais disponível.",
+      "409": "Já existe um registro com essas informações ou há um conflito de dados.",
+      "429": "Muitas tentativas em pouco tempo. Aguarde alguns instantes antes de tentar novamente.",
+      "500": "O servidor encontrou uma instabilidade temporária. Tente novamente em instantes.",
+      "502": "O serviço está temporariamente indisponível. Tente novamente em instantes.",
+      "503": "O serviço está em manutenção ou sobrecarregado. Tente novamente em instantes."
+    },
+    "permissions": {
+      "ownerOnly": "Apenas o proprietário deste quadro pode realizar esta ação.",
+      "editorOrOwner": "Apenas editores ou o proprietário deste quadro podem realizar esta ação."
+    },
+    "domain": {
+      "accessDenied": "Você não possui permissão para acessar este quadro.",
+      "invalidOrRevokedShareLink": "Este link de compartilhamento é inválido ou foi revogado.",
+      "shareLinkExpired": "Este link de compartilhamento expirou.",
+      "authOrShareLinkRequired": "É necessário entrar na sua conta ou utilizar um link de acesso válido.",
+      "boardNotFound": "Quadro não encontrado ou não está mais disponível.",
+      "userNotFound": "Usuário não encontrado.",
+      "userEmailExists": "Já existe uma conta cadastrada com este e-mail.",
+      "invalidCredentials": "E-mail ou senha incorretos. Verifique suas credenciais.",
+      "resourceConflict": "Este item já está cadastrado no sistema.",
+      "recordNotFound": "O registro solicitado não foi encontrado.",
+      "invalidRelation": "Referência inválida para esta operação.",
+      "viewersCannotRename": "Visualizadores não possuem permissão para renomear o quadro.",
+      "ownerOnlyDelete": "Apenas o proprietário do quadro pode excluí-lo.",
+      "ownerOnlyAddMembers": "Apenas o proprietário pode convidar ou adicionar membros diretamente.",
+      "ownerOnlyRemoveMembers": "Apenas o proprietário pode remover membros do quadro.",
+      "editorOrOwnerShareLinks": "Apenas editores ou o proprietário podem gerar links de compartilhamento.",
+      "ownerOnlyRevokeLinks": "Apenas o proprietário pode revogar links de compartilhamento.",
+      "editorOrOwnerSnapshots": "Apenas editores ou o proprietário podem salvar versões do quadro.",
+      "editorOrOwnerRestore": "Apenas editores ou o proprietário podem restaurar versões anteriores.",
+      "viewersCannotUpload": "Visualizadores não possuem permissão para enviar imagens.",
+      "invalidAssetMime": "O formato do arquivo enviado não é suportado.",
+      "unsupportedAssetMime": "Formato de imagem não suportado. Use PNG, JPEG, SVG ou WebP."
+    }
   }
 }

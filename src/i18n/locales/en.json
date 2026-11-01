@@ -518,5 +518,48 @@
     "description": "An unexpected error occurred while rendering this whiteboard.",
     "tryAgain": "Try Again",
     "backHome": "Back to Dashboard"
+  },
+  "apiErrors": {
+    "network": "Unable to connect to the server. Please check your internet connection.",
+    "generic": "An unexpected error occurred while processing your request.",
+    "status": {
+      "400": "The request contains invalid data. Please verify and try again.",
+      "401": "Your session has expired or you are not signed in. Please sign in again.",
+      "403": "You do not have permission to access this resource or perform this action.",
+      "404": "The requested resource was not found or is no longer available.",
+      "409": "A record with this information already exists or there is a data conflict.",
+      "429": "Too many requests. Please wait a moment before trying again.",
+      "500": "The server encountered a temporary issue. Please try again shortly.",
+      "502": "The service is temporarily unavailable. Please try again shortly.",
+      "503": "The service is under maintenance or overloaded. Please try again shortly."
+    },
+    "permissions": {
+      "ownerOnly": "Only the whiteboard owner can perform this action.",
+      "editorOrOwner": "Only editors or the whiteboard owner can perform this action."
+    },
+    "domain": {
+      "accessDenied": "You do not have permission to access this whiteboard.",
+      "invalidOrRevokedShareLink": "This share link is invalid or has been revoked.",
+      "shareLinkExpired": "This share link has expired.",
+      "authOrShareLinkRequired": "Sign in or a valid share link is required.",
+      "boardNotFound": "Whiteboard not found or is no longer available.",
+      "userNotFound": "User not found.",
+      "userEmailExists": "An account with this email already exists.",
+      "invalidCredentials": "Invalid email or password. Please check your credentials.",
+      "resourceConflict": "This item is already registered in the system.",
+      "recordNotFound": "The requested record was not found.",
+      "invalidRelation": "Invalid reference for this operation.",
+      "viewersCannotRename": "Viewers do not have permission to rename the whiteboard.",
+      "ownerOnlyDelete": "Only the whiteboard owner can delete it.",
+      "ownerOnlyAddMembers": "Only the owner can add members directly.",
+      "ownerOnlyRemoveMembers": "Only the owner can remove members from the whiteboard.",
+      "editorOrOwnerShareLinks": "Only editors or the owner can create share links.",
+      "ownerOnlyRevokeLinks": "Only the owner can revoke share links.",
+      "editorOrOwnerSnapshots": "Only editors or the owner can create version snapshots.",
+      "editorOrOwnerRestore": "Only editors or the owner can restore previous versions.",
+      "viewersCannotUpload": "Viewers do not have permission to upload images.",
+      "invalidAssetMime": "The uploaded file format is not supported.",
+      "unsupportedAssetMime": "Unsupported image format. Please use PNG, JPEG, SVG, or WebP."
+    }
   }
 }
